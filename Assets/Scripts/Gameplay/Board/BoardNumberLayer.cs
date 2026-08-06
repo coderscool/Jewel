@@ -30,6 +30,15 @@ namespace JewelPainter.Gameplay.Board
                  "đã mờ đi, lúc đó nền sau nó gần như trong suốt nên một màu cố định là đủ.")]
         [SerializeField] private Color _numberColor = Color.black;
 
+        [Tooltip("Số chữ được sinh tối đa trong MỘT frame. Zoom liên tục có thể đẩy hàng " +
+                 "nghìn ô vào tầm nhìn cùng lúc; chia ra nhiều frame thì không có cú khựng " +
+                 "nào, đổi lại số ở rìa hiện chậm hơn vài frame.")]
+        [SerializeField] private int _maxSpawnPerFrame = 24;
+
+        [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn. Ô ở rìa không " +
+                 "bị thu về rồi sinh lại liên tục mỗi khi camera nhích một chút.")]
+        [SerializeField] private int _visibleMarginCells = 2;
+
         private readonly Dictionary<Vector2Int, TextMeshPro> _active = new();
         private readonly Stack<TextMeshPro> _pool = new();
         private readonly List<Vector2Int> _toRelease = new();
@@ -44,6 +53,7 @@ namespace JewelPainter.Gameplay.Board
         private float _baseSize = -1f;
 
         private bool _needsBaseCapture = true;
+        private bool _needsRefresh;
 
         public void Init(BoardView boardView)
         {
@@ -76,12 +86,17 @@ namespace JewelPainter.Gameplay.Board
                 _lastOrthographicSize = -1f;
             }
 
-            if (!HasCameraChanged()) return;
+            if (HasCameraChanged())
+            {
+                _lastCameraPosition = _camera.transform.position;
+                _lastOrthographicSize = _camera.orthographicSize;
+                _needsRefresh = true;
+            }
 
-            _lastCameraPosition = _camera.transform.position;
-            _lastOrthographicSize = _camera.orthographicSize;
+            // Còn việc dở từ frame trước thì làm tiếp, kể cả khi camera đã đứng yên.
+            if (!_needsRefresh) return;
 
-            Refresh();
+            _needsRefresh = !Refresh();
         }
 
         private bool HasCameraChanged()
@@ -91,20 +106,24 @@ namespace JewelPainter.Gameplay.Board
             return _lastCameraPosition != _camera.transform.position;
         }
 
-        private void Refresh()
+        /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này
+        /// và còn việc dở, lúc đó LateUpdate sẽ gọi lại ở frame sau.
+        private bool Refresh()
         {
             if (!ShouldShowNumbers())
             {
                 ReleaseAll();
-                return;
+                return true;
             }
 
             var layout = _boardView.Layout;
             var grid = _boardView.Grid;
             var colors = _boardView.Colors;
-            var visible = layout.VisibleCells(CameraWorldRect());
+            var visible = layout.VisibleCells(ExpandedCameraRect());
 
             ReleaseOutside(visible);
+
+            var budget = Mathf.Max(1, _maxSpawnPerFrame);
 
             for (var y = visible.yMin; y < visible.yMax; y++)
             {
@@ -123,8 +142,29 @@ namespace JewelPainter.Gameplay.Board
                     label.SetText("{0}", index + 1);
 
                     _active[cell] = label;
+
+                    // Duyệt lại từ đầu ở frame sau; ô đã có thì bỏ qua ngay bằng một phép
+                    // tra dictionary, rẻ hơn nhiều so với Instantiate nên không đáng lo.
+                    if (--budget <= 0) return false;
                 }
             }
+
+            return true;
+        }
+
+        /// Nới rộng tầm nhìn thêm vài ô để camera nhích một chút không làm ô ở rìa bị
+        /// thu về rồi sinh lại liên tục.
+        private Rect ExpandedCameraRect()
+        {
+            var rect = CameraWorldRect();
+            var margin = Mathf.Max(0, _visibleMarginCells);
+
+            rect.xMin -= margin;
+            rect.xMax += margin;
+            rect.yMin -= margin;
+            rect.yMax += margin;
+
+            return rect;
         }
 
         /// Tính theo dải zoom của màn: từ mức lúc vào màn xuống tới mức lớp màu tan hết.

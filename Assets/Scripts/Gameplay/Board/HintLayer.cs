@@ -28,6 +28,14 @@ namespace JewelPainter.Gameplay.Board
                  "loạt object cùng lúc — dựng sẵn thì cú đó chỉ là lấy đồ khỏi kho.")]
         [SerializeField] private int _prewarmCount = 400;
 
+        [Tooltip("Số marker được sinh tối đa trong MỘT frame. Đây là lớp nặng nhất vì " +
+                 "chọn màu là sinh hàng loạt cùng lúc; chia ra nhiều frame thì không khựng.")]
+        [SerializeField] private int _maxSpawnPerFrame = 32;
+
+        [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn, để ô ở rìa " +
+                 "không bị thu về rồi sinh lại liên tục khi camera nhích.")]
+        [SerializeField] private int _visibleMarginCells = 2;
+
         private readonly Dictionary<Vector2Int, SpriteRenderer> _active = new();
         private readonly Stack<SpriteRenderer> _pool = new();
         private readonly List<Vector2Int> _toRelease = new();
@@ -38,6 +46,7 @@ namespace JewelPainter.Gameplay.Board
 
         private Vector3 _lastCameraPosition;
         private float _lastOrthographicSize = -1f;
+        private bool _needsRefresh;
 
         public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect)
         {
@@ -74,7 +83,7 @@ namespace JewelPainter.Gameplay.Board
         private void HandleColorSelected(int paletteIndex)
         {
             ReleaseAll();
-            Refresh();
+            _needsRefresh = true;
         }
 
         private void HandleJewelLanded(Vector2Int cell, int paletteIndex) => Release(cell);
@@ -82,12 +91,18 @@ namespace JewelPainter.Gameplay.Board
         private void LateUpdate()
         {
             if (_boardView == null || _boardView.Layout == null) return;
-            if (!HasCameraChanged()) return;
 
-            _lastCameraPosition = _camera.transform.position;
-            _lastOrthographicSize = _camera.orthographicSize;
+            if (HasCameraChanged())
+            {
+                _lastCameraPosition = _camera.transform.position;
+                _lastOrthographicSize = _camera.orthographicSize;
+                _needsRefresh = true;
+            }
 
-            Refresh();
+            // Còn việc dở từ frame trước thì làm tiếp, kể cả khi camera đã đứng yên.
+            if (!_needsRefresh) return;
+
+            _needsRefresh = !Refresh();
         }
 
         private bool HasCameraChanged()
@@ -97,28 +112,31 @@ namespace JewelPainter.Gameplay.Board
             return _lastCameraPosition != _camera.transform.position;
         }
 
-        private void Refresh()
+        /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này.
+        private bool Refresh()
         {
             var selected = _paintService.SelectedPaletteIndex;
             if (selected < 0)
             {
                 ReleaseAll();
-                return;
+                return true;
             }
 
             if (CellScreenPixels() < _minCellScreenPixels)
             {
                 ReleaseAll();
-                return;
+                return true;
             }
 
             var layout = _boardView.Layout;
             var grid = _boardView.Grid;
-            if (layout == null || grid == null) return;
+            if (layout == null || grid == null) return true;
 
-            var visible = layout.VisibleCells(CameraWorldRect());
+            var visible = layout.VisibleCells(ExpandedCameraRect());
 
             ReleaseOutside(visible);
+
+            var budget = Mathf.Max(1, _maxSpawnPerFrame);
 
             for (var y = visible.yMin; y < visible.yMax; y++)
             {
@@ -131,8 +149,27 @@ namespace JewelPainter.Gameplay.Board
                     if (IsDone(cell)) continue;
 
                     Show(cell);
+
+                    if (--budget <= 0) return false;
                 }
             }
+
+            return true;
+        }
+
+        /// Nới rộng tầm nhìn thêm vài ô để camera nhích một chút không làm ô ở rìa bị
+        /// thu về rồi sinh lại liên tục.
+        private Rect ExpandedCameraRect()
+        {
+            var rect = CameraWorldRect();
+            var margin = Mathf.Max(0, _visibleMarginCells);
+
+            rect.xMin -= margin;
+            rect.xMax += margin;
+            rect.yMin -= margin;
+            rect.yMax += margin;
+
+            return rect;
         }
 
         /// Ô đã tô nhưng viên ngọc còn đang bay thì vẫn coi là CHƯA xong — giữ marker
