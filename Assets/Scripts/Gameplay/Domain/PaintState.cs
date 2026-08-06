@@ -1,0 +1,115 @@
+using System;
+using System.Collections.Generic;
+
+namespace JewelPainter.Gameplay.Domain
+{
+    /// Trạng thái tô của một màn chơi. Thuần C# — không MonoBehaviour, không scene,
+    /// nên toàn bộ luật tô test được ở EditMode.
+    public class PaintState
+    {
+        private readonly PixelGrid _grid;
+        private readonly bool[] _painted;
+        private readonly Dictionary<int, int> _remaining = new();
+
+        /// Tổng số ô của mỗi màu lúc mới vào màn. Cần giữ riêng vì _remaining giảm dần,
+        /// không suy ngược ra được mẫu số để tính phần trăm.
+        private readonly Dictionary<int, int> _totals = new();
+        private readonly List<int> _usedPaletteIndices = new();
+
+        private int _remainingTotal;
+
+        public PaintState(PixelGrid grid)
+        {
+            _grid = grid ?? throw new ArgumentNullException(nameof(grid));
+            _painted = new bool[grid.Width * grid.Height];
+
+            ScanGrid();
+        }
+
+        /// Các chỉ số màu lưới thật sự dùng, tăng dần. Ô rỗng không tính.
+        /// Đây là thứ cho thanh màu biết chỉ hiện 7 màu thay vì cả 16.
+        public IReadOnlyList<int> UsedPaletteIndices => _usedPaletteIndices;
+
+        public bool IsComplete => _remainingTotal == 0;
+
+        /// false nếu toạ độ nằm ngoài bảng — bên gọi quét lưới không phải tự kiểm biên.
+        public bool IsPainted(int x, int y) => IsInside(x, y) && _painted[Index(x, y)];
+
+        /// Ảnh có dùng màu này không. Tra dictionary, không duyệt danh sách.
+        public bool IsUsed(int paletteIndex) => _remaining.ContainsKey(paletteIndex);
+
+        public int RemainingFor(int paletteIndex)
+        {
+            return _remaining.TryGetValue(paletteIndex, out var count) ? count : 0;
+        }
+
+        public int TotalFor(int paletteIndex)
+        {
+            return _totals.TryGetValue(paletteIndex, out var count) ? count : 0;
+        }
+
+        /// Tỉ lệ ô đã tô của một màu, thang 0..1.
+        /// Màu không có ô nào coi như đã xong — không có gì để tô thì không thể dở dang.
+        public float ProgressFor(int paletteIndex)
+        {
+            var total = TotalFor(paletteIndex);
+            if (total <= 0) return 1f;
+
+            return (total - RemainingFor(paletteIndex)) / (float)total;
+        }
+
+        /// false nếu toạ độ ngoài bảng, ô rỗng, ô đã tô, hoặc màu không khớp.
+        public bool CanPaint(int x, int y, int paletteIndex)
+        {
+            if (!IsInside(x, y)) return false;
+            if (_painted[Index(x, y)]) return false;
+
+            var cell = _grid.GetCell(x, y);
+
+            return cell != PixelGrid.EmptyCell && cell == paletteIndex;
+        }
+
+        public bool TryPaint(int x, int y, int paletteIndex)
+        {
+            if (!CanPaint(x, y, paletteIndex)) return false;
+
+            _painted[Index(x, y)] = true;
+            _remaining[paletteIndex] -= 1;
+            _remainingTotal -= 1;
+
+            return true;
+        }
+
+        private void ScanGrid()
+        {
+            for (var y = 0; y < _grid.Height; y++)
+            {
+                for (var x = 0; x < _grid.Width; x++)
+                {
+                    var cell = _grid.GetCell(x, y);
+                    if (cell == PixelGrid.EmptyCell) continue;
+
+                    if (_remaining.TryGetValue(cell, out var count))
+                    {
+                        _remaining[cell] = count + 1;
+                        _totals[cell] = count + 1;
+                    }
+                    else
+                    {
+                        _remaining[cell] = 1;
+                        _totals[cell] = 1;
+                        _usedPaletteIndices.Add(cell);
+                    }
+
+                    _remainingTotal++;
+                }
+            }
+
+            _usedPaletteIndices.Sort();
+        }
+
+        private bool IsInside(int x, int y) => x >= 0 && x < _grid.Width && y >= 0 && y < _grid.Height;
+
+        private int Index(int x, int y) => y * _grid.Width + x;
+    }
+}

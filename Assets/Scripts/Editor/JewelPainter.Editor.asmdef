@@ -1,0 +1,19 @@
+{
+    "name": "JewelPainter.Editor",
+    "rootNamespace": "JewelPainter.Editor",
+    "references": [
+        "JewelPainter.Core",
+        "JewelPainter.Gameplay"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

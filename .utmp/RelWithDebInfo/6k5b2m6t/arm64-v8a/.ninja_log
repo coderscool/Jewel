@@ -1,0 +1,12 @@
+# ninja log v5
+122	1237	8076913134808859	FramePacing/CMakeFiles/swappywrapper.dir/UnitySwappyWrapper.cpp.o	6305d5ac90abb644
+1238	2561	8076913145488086	D:/UnityProjects/JewelPainter/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6k5b2m6t/obj/arm64-v8a/libswappywrapper.so	7673cd5adfc0a409
+50	3186	8076913154400789	GameActivity/CMakeFiles/game.dir/UGAEntry.cpp.o	7b2146045cb85736
+63	3277	8076913154848376	GameActivity/CMakeFiles/game.dir/UGAInputKeyEvent.cpp.o	e639cd1c62a084e4
+16	3280	8076913155043718	GameActivity/CMakeFiles/game.dir/UGAConfiguration.cpp.o	85b0a2f1205e2082
+76	3288	8076913155416637	GameActivity/CMakeFiles/game.dir/UGAInputMotionEvent.cpp.o	3b037dd9f14f0cfd
+28	3406	8076913156448735	GameActivity/CMakeFiles/game.dir/UGADebug.cpp.o	9425ce42c6258b23
+106	3796	8076913160554233	GameActivity/CMakeFiles/game.dir/UGASoftKeyboard.cpp.o	17ffcd5604e643f8
+39	3830	8076913160875898	GameActivity/CMakeFiles/game.dir/UGAInput.cpp.o	fda67cb804ccbeb
+1	3916	8076913161680026	GameActivity/CMakeFiles/game.dir/UGAApplication.cpp.o	2b4298d04833670b
+3916	4045	8076913163037322	D:/UnityProjects/JewelPainter/Library/Bee/Android/Prj/IL2CPP/Gradle/unityLibrary/build/intermediates/cxx/RelWithDebInfo/6k5b2m6t/obj/arm64-v8a/libgame.so	6805b0e79c24aac7

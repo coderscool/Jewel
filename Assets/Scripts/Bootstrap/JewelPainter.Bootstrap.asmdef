@@ -1,0 +1,19 @@
+{
+    "name": "JewelPainter.Bootstrap",
+    "rootNamespace": "JewelPainter.Bootstrap",
+    "references": [
+        "JewelPainter.Core",
+        "JewelPainter.Gameplay",
+        "JewelPainter.UI",
+        "VContainer"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

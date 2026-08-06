@@ -1,0 +1,19 @@
+{
+    "name": "JewelPainter.UI",
+    "rootNamespace": "JewelPainter.UI",
+    "references": [
+        "JewelPainter.Core",
+        "JewelPainter.Gameplay",
+        "VContainer",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
