@@ -147,14 +147,23 @@ lộn xộn lúc zoom xa do ô `Min Cell Screen Pixels` lo, không phải do th�
 - [ ] `GameObject > UI > Button - TextMeshPro`, đổi tên `ColorSwatch`
 - [ ] Xoá object `Text (TMP)` con mặc định
 - [ ] `Add Component` → `Color Swatch View`
-- [ ] Tạo hai con:
-  - `UI > Image` tên `ColorFill` — phủ kín nút
+- [ ] Chuột phải `ColorSwatch` → `Create Empty`, đổi tên `Content`, phủ kín nút
+- [ ] Tạo hai con **bên trong `Content`**:
+  - `UI > Image` tên `ColorFill` — phủ kín
   - `UI > Text - TextMeshPro` tên `Number` — đặt giữa
 - [ ] Trên `ColorFill` và `Number`: **bỏ tick `Raycast Target`**
 - [ ] Gán vào `Color Swatch View`: `Color Image` = `ColorFill`,
       `Number Text` = `Number`, `Button` = chính nó
 - [ ] `Text Color` = **đen** (dùng chung cho cả số thứ tự lẫn số ô còn lại)
+- [ ] `Rise Target` = **`Content`**, `Selected Rise` = **24**
 - [ ] Ba ô dưới mục **Tuỳ chọn** để trống lúc này
+
+**`Content` bắt buộc phải là object con**, không nâng thẳng `ColorSwatch` được:
+`Horizontal Layout Group` điều khiển vị trí con trực tiếp của nó nên sẽ kéo về ngay
+lần dựng lại kế tiếp.
+
+**Nút `ColorSwatch` nên có `Image` nền riêng.** `ColorFill` giờ **chỉ hiện ở ô đang
+chọn**, nên ô chưa chọn sẽ trống trơn nếu không có nền phía sau.
 - [ ] `RectTransform`: `Width` = 140, `Height` = 140
 - [ ] Kéo vào `Assets/Prefabs/`, xoá khỏi Hierarchy
 
@@ -200,6 +209,219 @@ bằng các sắc độ xám, để màu thật do code gán.
 `Pixels Per Unit` bằng cạnh ảnh làm viên ngọc vừa khít một ô. Mip map làm sprite mờ
 khi thu nhỏ — đúng thứ không muốn.
 
+### 4.4 Hiệu ứng lấp lánh — làm bằng Particle System, không cần code
+
+Ba hiệu ứng dựng hoàn toàn trong Editor từ hai sprite sheet có sẵn. Không thêm dòng
+code nào: Particle System tự chạy khi GameObject được bật, mà `JewelLayer` thì bật/tắt
+viên ngọc từ kho — nên hiệu ứng tự phát đúng lúc ngọc hiện ra.
+
+Vì sao Particle System chứ không phải Animator: một Animator là một component nặng,
+mà lúc zoom xa có tới vài trăm viên ngọc sống cùng lúc. Particle System còn cho **ngẫu
+nhiên hoá** (delay, cỡ, frame bắt đầu) ngay trong Inspector — thứ Animator phải viết
+code mới có, và thiếu nó thì cả bảng nhấp nháy đồng loạt như đèn báo.
+
+#### Bước 1 — Cắt sprite sheet
+
+Làm với **từng** file: `Shining_1.png` (192×32, 6 frame) và `Shining_2.png` (256×32, 8 frame).
+
+- [ ] Chọn file, Inspector: `Texture Type` = Sprite (2D and UI)
+- [ ] `Sprite Mode` = **Multiple**
+- [ ] `Pixels Per Unit` = **32** (bằng cạnh một frame)
+- [ ] `Filter Mode` = **Point (no filter)** — giữ nét pixel
+- [ ] `Compression` = None
+- [ ] **Bỏ tick** `Generate Mip Maps`
+- [ ] `Apply`
+- [ ] `Sprite Editor` → `Slice` → `Type` = **Grid By Cell Size** → `Pixel Size` = **32 × 32**
+- [ ] `Slice` → `Apply` → đóng cửa sổ
+
+Xong sẽ thấy mũi tên xổ ra ở file trong Project: `Shining_1_0…5`, `Shining_2_0…7`.
+
+`Pixels Per Unit` = 32 là chỗ dễ sai nhất. Để mặc định 100 thì hiệu ứng chỉ bằng
+1/3 viên ngọc.
+
+#### Bước 2 — Material phát sáng
+
+- [ ] Chuột phải `Assets/Materials` → `Create > Material`, tên `SparkleAdditive`
+- [ ] `Shader` = **Universal Render Pipeline/Particles/Unlit** (URP)
+      hoặc **Mobile/Particles/Additive** (Built-in)
+- [ ] `Surface Type` = Transparent, `Blending Mode` = **Additive**
+- [ ] Ô texture để **trống** — Particle System tự nạp sprite vào
+
+Additive nghĩa là cộng ánh sáng vào nền: vệt trắng trên viên ngọc đỏ ra hồng sáng,
+đúng cảm giác phản quang. Để Alpha Blend thì vệt trắng đè kín màu ngọc, trông như
+dán giấy.
+
+Muốn giữ đúng tông pixel art gốc thì dùng `Sprites-Default` thay vì Additive — lấp
+lánh sẽ đục hơn nhưng sắc nét hơn.
+
+#### Bước 3 — VFX 1: Vệt sáng quét
+
+Đây là hiệu ứng phát **một lần** khi viên ngọc vừa hiện ra.
+
+- [ ] Mở prefab `Jewel_01` (double-click trong Project)
+- [ ] Chuột phải node gốc → `Effects > Particle System`, đổi tên `Sweep`
+- [ ] `Position` = (0, 0, 0)
+
+Điền các module — bỏ tick những module không nhắc tới:
+
+**Main**
+
+| Ô | Giá trị | Vì sao |
+|---|---|---|
+| Duration | `0.4` | 6 frame ÷ 15 fps |
+| Looping | **tắt** | quét một lần rồi thôi |
+| Start Delay | `0` | |
+| Start Lifetime | `0.4` | phải **bằng** Duration |
+| Start Speed | `0` | vệt sáng đứng yên trên viên ngọc |
+| Start Size | `1` | vừa khít một ô |
+| Start Color | trắng, alpha 255 | |
+| Gravity Modifier | `0` | |
+| **Simulation Space** | **Local** | **bắt buộc** — xem cảnh báo dưới |
+| Scaling Mode | `Hierarchy` | co theo viên ngọc |
+| **Play On Awake** | **bật** | đây là thứ thay cho code |
+| Max Particles | `2` | |
+
+**Emission**
+
+- [ ] `Rate over Time` = **0**
+- [ ] `Bursts`: bấm `+`, đặt `Time` = 0, `Count` = **1**, `Cycles` = 1
+
+**Shape** — bỏ tick hẳn module này (hạt sinh đúng tâm viên ngọc).
+
+**Texture Sheet Animation** — bật
+
+| Ô | Giá trị |
+|---|---|
+| Mode | **Sprites** |
+| Sprites | bấm `+` 6 lần, gán `Shining_1_0` … `Shining_1_5` **đúng thứ tự** |
+| Time Mode | `Lifetime` |
+| Frame over Time | để nguyên đường chéo 0→1 |
+| Start Frame | `0` |
+| Cycles | `1` |
+
+**Renderer**
+
+| Ô | Giá trị |
+|---|---|
+| Render Mode | `Billboard` |
+| Material | `SparkleAdditive` |
+| Sorting Layer | cùng layer với viên ngọc |
+| **Order in Layer** | **12** |
+| Culling Mode | `Pause` |
+
+`Order in Layer` = 12 nằm giữa **4** (viên ngọc, mục 4.3) và **15** (viên đang bay,
+mục 5.8C): lấp lánh phủ lên ngọc, nhưng viên đang bay vẫn che được tất cả.
+
+> ⚠️ **Simulation Space phải là Local.** `JewelLayer` tái dùng viên ngọc từ kho: một
+> viên vừa nằm ở góc trên có thể xuất hiện lại ở góc dưới ngay frame sau. Để World
+> Space thì hạt còn sót lại giữ nguyên toạ độ cũ và bạn thấy một vệt sáng kéo ngang
+> cả bảng. Local Space buộc hạt bám theo viên ngọc.
+
+#### Bước 4 — VFX 2: Sao nhấp nháy
+
+Hiệu ứng **lặp mãi**, rải rác, để tranh đã tô không đứng chết.
+
+- [ ] Vẫn trong prefab `Jewel_01`, chuột phải node gốc → `Effects > Particle System`
+- [ ] Đổi tên `Twinkle`, `Position` = (0, 0, 0)
+
+**Main**
+
+| Ô | Giá trị | Vì sao |
+|---|---|---|
+| Duration | `2` | |
+| Looping | **bật** | |
+| **Start Delay** | `Random Between Two Constants`, **0 → 2** | **quan trọng nhất** |
+| Start Lifetime | `0.57` | 8 frame ÷ 14 fps |
+| Start Speed | `0` | |
+| Start Size | `Random Between Two Constants`, **0.7 → 1.1** | |
+| Start Rotation | `0` | pixel art xoay là vỡ nét |
+| Simulation Space | **Local** | |
+| Scaling Mode | `Hierarchy` | |
+| Play On Awake | **bật** | |
+| Max Particles | `2` | |
+
+Đổi một ô sang `Random Between Two Constants`: bấm mũi tên nhỏ ▾ ở **cuối** dòng đó.
+
+**Emission**
+
+- [ ] `Rate over Time` = **0.5** (trung bình 2 giây một lần loé)
+- [ ] `Bursts`: để trống
+
+**Shape** — bật
+
+| Ô | Giá trị |
+|---|---|
+| Shape | `Box` |
+| Scale | `(0.5, 0.5, 0)` |
+| Randomize Position | `0` |
+
+Hộp nhỏ này làm sao xuất hiện lệch tâm mỗi lần một chỗ, thay vì luôn đúng giữa viên.
+
+**Texture Sheet Animation** — bật
+
+| Ô | Giá trị |
+|---|---|
+| Mode | **Sprites** |
+| Sprites | 8 ô, gán `Shining_2_0` … `Shining_2_7` |
+| Time Mode | `Lifetime` |
+| **Start Frame** | `Random Between Two Constants`, **0 → 8** |
+| Cycles | `1` |
+
+**Renderer** — y hệt Bước 3 (`SparkleAdditive`, Order in Layer 12, Culling Mode Pause).
+
+`Start Delay` và `Start Frame` ngẫu nhiên là hai ô làm nên toàn bộ hiệu ứng. Bỏ chúng
+đi thì mọi viên ngọc trên bảng nhấp nháy cùng một nhịp, nhìn ra ngay là máy móc.
+
+#### Bước 5 — VFX 3: Lấp lánh dày
+
+Đúng viên thứ ba trong ảnh mẫu: có cả vệt quét lẫn sao, và sao dày hơn.
+
+- [ ] Chọn cả `Sweep` và `Twinkle` trong prefab → `Ctrl+D` để nhân đôi
+- [ ] Trên bản `Twinkle` mới: `Rate over Time` = **1.5**, `Max Particles` = **4**
+- [ ] `Shape > Scale` = `(0.8, 0.8, 0)` — sao văng rộng hơn
+
+Cách dùng ba cái: **không bật cả ba cùng lúc trên một viên ngọc.** Tạo ba prefab
+variant của `Jewel_01` (chuột phải prefab → `Create > Prefab Variant`), mỗi variant
+giữ lại một bộ, rồi lần lượt gán vào ô `Jewel Prefab` của `Jewels` (mục 5.8B) để
+xem cái nào hợp.
+
+Gợi ý: **VFX 1** cho cảm giác phản hồi rõ nhất lúc tô, **VFX 2** để tranh xong vẫn
+sống, **VFX 3** hơi nhiều cho bảng 64×64 nhưng hợp với bảng nhỏ.
+
+#### Bước 6 — Xem thử ngay trong Editor
+
+- [ ] Kéo `Jewel_01` vào Scene, chọn nó
+- [ ] Cửa sổ **Particle Effect** hiện ở góc dưới phải Scene View
+- [ ] Bấm `Restart` để xem lại từ đầu, `Playback Speed` = 0.2 để soi từng frame
+- [ ] Xong nhớ **xoá khỏi Hierarchy**
+
+Hiệu ứng không hiện thì soi ba ô này trước: `Play On Awake` có bật không, ô `Sprites`
+có đủ frame không, và `Order in Layer` có lớn hơn của viên ngọc không.
+
+#### Bước 7 — Giá phải trả về hiệu năng
+
+Đây là đánh đổi thật của hướng không-code: mỗi viên ngọc mang một Particle System,
+mà lúc zoom xa có thể có ~200 viên sống cùng lúc. Bảng 64×64 thì đó là 200 hệ hạt.
+
+Cắt bớt chi phí:
+
+- [ ] `Max Particles` để **2** — không bao giờ để mặc định 1000
+- [ ] `Culling Mode` = **Pause** — viên ra ngoài khung hình thì ngừng tính
+- [ ] Tắt hẳn `Collision`, `Trails`, `Lights`, `Noise`, `Sub Emitters`
+- [ ] Mọi VFX dùng **chung một material** → Unity gộp được draw call
+- [ ] `Jewels > Min Cell Screen Pixels` (mục 5.8B) tăng từ 14 lên **20–24** —
+      zoom xa thì không sinh ngọc, cũng không sinh hiệu ứng
+
+Cách kiểm chứng, đừng đoán:
+
+- [ ] `Build Settings` → bật **Development Build** + **Autoconnect Profiler**
+- [ ] Build lên máy thật, mở `Window > Analysis > Profiler`
+- [ ] Xem dòng **ParticleSystem.Update** trong tab CPU khi zoom xa nhất
+
+Quá nặng thì có hai đường lùi: bỏ `Twinkle` chỉ giữ `Sweep` (hiệu ứng một lần, chết
+sau 0.4 giây nên gần như không tốn gì), hoặc quay lại hướng viết code — một lớp gộp
+chạy nhịp cho tất cả, chặn cứng số hiệu ứng sống cùng lúc.
+
 ---
 
 ## Phần 5 — Dựng scene
@@ -236,10 +458,16 @@ SampleScene
 
 - [ ] `Projection` = **Orthographic**, `Position` = **(0, 0, -10)**
 - [ ] `Add Component > Board Camera`, ô `Camera` = chính nó, ô `Board View` để trống
-- [ ] `Pan Margin Cells` = **2**
+- [ ] `Pan Margin Screen Fraction` = **0.5**
 
-Cho kéo ra ngoài mép bảng thêm 2 ô. Sát mép thì ngón tay che mất chính ô đang định tô
-ở hàng ngoài cùng. Để 0 là khoá sát mép như trước.
+Cho kéo ra ngoài mép bảng thêm **nửa màn hình** — nửa chiều rộng theo trục ngang, nửa
+chiều cao theo trục dọc. Kéo hết cỡ thì mép bảng nằm đúng giữa màn.
+
+Đo theo màn hình chứ không theo số ô, nên zoom mức nào cũng kéo thừa ra được đúng
+bấy nhiêu phần màn. Tính bằng ô thì lúc phóng sát lề chiếm gần hết màn, còn lúc kéo
+xa thì gần như không thấy.
+
+Để 0 là khoá sát mép bảng.
 
 ### 5.3 Audio
 
@@ -392,7 +620,7 @@ vẫn còn nguyên màu, không ai nhận ra có gì biến mất.
 - [ ] Chuột phải `Board` → Create Empty, tên `JewelFly`, `Position` = (0, 0, **-1**)
 - [ ] `Add Component > Jewel Fly Effect`
 - [ ] `Jewel Prefab` = `Jewel_01`, `Root` = chính nó
-- [ ] `Duration` = 0.35, `Jump Power` = 2.5, `Start Scale` = 0.5
+- [ ] `Duration` = 0.35, `Start Scale` = 0.5
 - [ ] `Max Concurrent` = 24, `Prewarm Count` = 24
 
 `z = -1` để viên đang bay nằm trên mọi lớp khác.
@@ -465,6 +693,7 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 
 - [ ] Thanh dưới màn hình hiện các ô màu, **chỉ những màu ảnh dùng**
 - [ ] Kéo ngang thanh màu → cuộn được, thấy hết các màu
+- [ ] Bấm một ô màu → ô đó **nhô cao lên và hiện màu**, ô khác phẳng lại và mất màu
 - [ ] Bấm một ô màu → những ô tô được bằng màu đó **sáng lên trên bảng**
 - [ ] Chuột trái bấm vào ô sáng → ô đó hiện **viên ngọc màu tương ứng**
 - [ ] Viên ngọc đúng màu của ô, không bị ám nâu đen (ám là do ảnh gốc chưa trắng)
@@ -487,8 +716,8 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 - [ ] Tô hết một màu → **ô màu đó biến mất khỏi thanh**, các ô còn lại dồn sang
 - [ ] Số trên mọi ô màu đều **đen**, kể cả trên ô màu tối
 - [ ] Chuột phải kéo → luôn di chuyển được, kể cả đứng trên ô có gợi ý
-- [ ] Kéo tới mép bảng → đi được thêm khoảng 2 ô ra ngoài rồi mới dừng
-- [ ] Zoom xa nhất (thấy trọn bảng) → bảng vẫn khoá giữa, không trôi lệch
+- [ ] Kéo tới mép bảng → đi thêm được nửa màn nữa rồi mới dừng
+- [ ] Kéo hết cỡ → mép bảng nằm đúng giữa màn hình, nửa màn còn lại là nền trống
 - [ ] Trên điện thoại: một ngón theo cùng luật trên, hai ngón luôn là di chuyển và zoom
 
 **Hiệu năng (thử với ảnh 64 ô cạnh dài):**

@@ -447,7 +447,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _camera: {fileID: 519420031}
   _boardView: {fileID: 0}
-  _panMarginCells: 2
+  _panMarginScreenFraction: 0.5
 --- !u!222 &519420034
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -949,6 +949,8 @@ MonoBehaviour:
   _showAtZoomProgress: 0.6
   _minCellScreenPixels: 32
   _numberColor: {r: 0, g: 0, b: 0, a: 1}
+  _maxSpawnPerFrame: 24
+  _visibleMarginCells: 2
 --- !u!1 &929957781
 GameObject:
   m_ObjectHideFlags: 0
@@ -998,6 +1000,8 @@ MonoBehaviour:
   _root: {fileID: 929957782}
   _minCellScreenPixels: 14
   _prewarmCount: 200
+  _maxSpawnPerFrame: 24
+  _visibleMarginCells: 2
 --- !u!1 &986912013
 GameObject:
   m_ObjectHideFlags: 0
@@ -1371,7 +1375,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 10
   m_TargetDisplay: 0
 --- !u!224 &1385524984
 RectTransform:
@@ -1462,10 +1466,10 @@ MonoBehaviour:
   _jewelPrefab: {fileID: 6352456925884473337, guid: 34a6a5cd170b873408d83dee24c35489, type: 3}
   _root: {fileID: 1519212029}
   _duration: 0.35
-  _jumpPower: 2.5
-  _startScale: 0.5
+  _startScale: 4
   _maxConcurrent: 24
   _prewarmCount: 24
+  _flyingSortingOrder: 15
 --- !u!1 &1531300737
 GameObject:
   m_ObjectHideFlags: 0
@@ -1697,6 +1701,8 @@ MonoBehaviour:
   _root: {fileID: 1769084357}
   _minCellScreenPixels: 5
   _prewarmCount: 400
+  _maxSpawnPerFrame: 32
+  _visibleMarginCells: 2
 --- !u!1 &1863074567
 GameObject:
   m_ObjectHideFlags: 0

@@ -22,7 +22,7 @@ Bootstrap → UI → Gameplay → Core
 - Namespace gốc: `JewelPainter.*` (thư mục = namespace, 1:1)
 - DI: **VContainer** — `GameLifetimeScope` + `GameEntryPoint : IStartable`
 - Message: event C# trực tiếp (`event Action<int>` trên manager). Struct message đã khai sẵn ở `Core/Messages/GameEvents.cs`, chuyển sang MessagePipe khi cần nhiều người nghe.
-- Tween: **DOTween**, chỉ dùng phần core (`Transform.DOJump`, `DOScale`) ở `Gameplay/Board/JewelFlyEffect.cs`. Không đụng module UI/Sprite để khỏi phải khai thêm assembly. Mọi tween phải `Kill()` trong `OnDestroy` **và** trước khi trả object về pool — object tái dùng mang theo tween cũ sẽ bị kéo về vị trí lần trước.
+- Tween: **DOTween**, chỉ dùng phần core (`Transform.DOMove`, `DOScale`) ở `Gameplay/Board/JewelFlyEffect.cs`. Không đụng module UI/Sprite để khỏi phải khai thêm assembly. Mọi tween phải `Kill()` trong `OnDestroy` **và** trước khi trả object về pool — object tái dùng mang theo tween cũ sẽ bị kéo về vị trí lần trước.
 - Assembly: `JewelPainter.Core` / `.Gameplay` / `.UI` / `.Bootstrap`
 
 ## Quy ước đã cắm sẵn trong khung code

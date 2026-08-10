@@ -127,7 +127,7 @@ namespace JewelPainter.UI.Views
                 ? canvas.worldCamera
                 : null;
 
-            var screen = RectTransformUtility.WorldToScreenPoint(uiCamera, swatch.transform.position);
+            var screen = RectTransformUtility.WorldToScreenPoint(uiCamera, swatch.ColorCenterWorldPosition);
             var depth = Mathf.Abs(_worldCamera.transform.position.z);
 
             world = _worldCamera.ScreenToWorldPoint(new Vector3(screen.x, screen.y, depth));

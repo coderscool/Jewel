@@ -28,10 +28,11 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private Camera _camera;
         [SerializeField] private BoardView _boardView;
 
-        [Tooltip("Kéo được ra ngoài mép bảng thêm bao nhiêu ô. 0 là sát mép như cũ. " +
-                 "Chừa một chút cho dễ thao tác ở hàng ô ngoài cùng — sát mép thì ngón tay " +
-                 "che mất chính ô đang định tô.")]
-        [SerializeField] private float _panMarginCells = 2f;
+        [Tooltip("Kéo được ra ngoài mép bảng thêm bao nhiêu PHẦN MÀN HÌNH. 0.5 nghĩa là " +
+                 "nửa chiều rộng màn theo trục ngang và nửa chiều cao theo trục dọc — kéo " +
+                 "hết cỡ thì mép bảng nằm đúng giữa màn. 0 là khoá sát mép.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _panMarginScreenFraction = 0.5f;
 
         private ILevelService _levelService;
         private BoardInput _boardInput;
@@ -231,11 +232,14 @@ namespace JewelPainter.Gameplay.Board
             _camera.orthographicSize = Mathf.Clamp(_camera.orthographicSize + delta, _minSize, _maxSize);
         }
 
-        /// Không cho kéo bảng đi mất. Khi zoom xa hơn cả bảng thì khoá về giữa.
+        /// Không cho kéo bảng đi mất.
         ///
-        /// Lề cộng vào TRƯỚC khi kẹp về 0, không phải sau: lúc zoom vừa khít hoặc xa hơn
-        /// bảng thì hiệu số vốn đã âm, cộng lề vẫn âm nên vẫn khoá giữa. Cộng sau thì
-        /// bảng trôi lệch ngay cả khi đang thấy trọn nó — không có lý do gì để di chuyển.
+        /// Lề đo theo MÀN HÌNH chứ không theo ô, nên zoom mức nào cũng kéo thừa ra được
+        /// đúng bấy nhiêu phần màn — lề tính bằng ô thì lúc phóng sát nó chiếm gần hết
+        /// màn, còn lúc kéo xa thì gần như không thấy.
+        ///
+        /// Với fraction = 0.5 công thức rút gọn thành maxX = extents.x: kéo hết cỡ thì
+        /// mép bảng nằm đúng giữa màn hình.
         private void ClampPosition()
         {
             var bounds = _boardView.Layout.WorldBounds;
@@ -243,10 +247,14 @@ namespace JewelPainter.Gameplay.Board
             var halfHeight = _camera.orthographicSize;
             var halfWidth = halfHeight * _camera.aspect;
 
-            var margin = Mathf.Max(0f, _panMarginCells);
+            var fraction = Mathf.Clamp01(_panMarginScreenFraction);
 
-            var maxX = Mathf.Max(0f, bounds.extents.x - halfWidth + margin);
-            var maxY = Mathf.Max(0f, bounds.extents.y - halfHeight + margin);
+            // Lề = fraction * CẢ chiều rộng màn = fraction * 2 * nửa chiều rộng.
+            var marginX = fraction * 2f * halfWidth;
+            var marginY = fraction * 2f * halfHeight;
+
+            var maxX = Mathf.Max(0f, bounds.extents.x - halfWidth + marginX);
+            var maxY = Mathf.Max(0f, bounds.extents.y - halfHeight + marginY);
 
             var position = transform.position;
 

@@ -26,11 +26,39 @@ namespace JewelPainter.UI.Views
                  "Fill Method = Radial 360 — code chỉ gán fillAmount, Unity lo phần vẽ cung.")]
         [SerializeField] private Image _progressRing;
 
+        [Tooltip("Object được nâng lên khi ô này được chọn. Phải là một object CON " +
+                 "(ví dụ 'Content' bọc ColorFill và Number), KHÔNG phải chính ColorSwatch — " +
+                 "Horizontal Layout Group điều khiển vị trí con trực tiếp nên sẽ kéo nó về.")]
+        [SerializeField] private RectTransform _riseTarget;
+
+        [Tooltip("Nâng lên bao nhiêu pixel khi được chọn.")]
+        [SerializeField] private float _selectedRise = 24f;
+
         private Action<int> _onClicked;
         private int _displayedRemaining = -1;
         private float _displayedProgress = -1f;
 
+        private Vector2 _riseBasePosition;
+        private bool _hasRiseBase;
+
         public int PaletteIndex { get; private set; } = -1;
+
+        /// Tâm ô màu trong world. Đã gồm cả phần nhô lên khi ô được chọn, vì ColorImage
+        /// nằm trong Content — chính object bị nâng.
+        ///
+        /// Dùng TransformPoint(rect.center) chứ không lấy thẳng transform.position:
+        /// position là điểm PIVOT, chỉ trùng tâm khi pivot đúng giữa.
+        public Vector3 ColorCenterWorldPosition
+        {
+            get
+            {
+                if (_colorImage == null) return transform.position;
+
+                var rect = (RectTransform)_colorImage.transform;
+
+                return rect.TransformPoint(rect.rect.center);
+            }
+        }
 
         public void Bind(int paletteIndex, Color32 color, Action<int> onClicked)
         {
@@ -75,9 +103,30 @@ namespace JewelPainter.UI.Views
 
         public void SetSelected(bool selected)
         {
-            if (_selectedHighlight == null) return;
+            if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
 
-            _selectedHighlight.SetActive(selected);
+            // Màu nền chỉ hiện ở ô đang chọn. Tắt component thay vì SetActive để không
+            // kích hoạt lại cả cây con mỗi lần đổi màu.
+            if (_progressRing != null) _progressRing.enabled = selected;
+
+            ApplyRise(selected);
+        }
+
+        private void ApplyRise(bool selected)
+        {
+            if (_riseTarget == null) return;
+
+            // Ghi lại vị trí gốc ở lần gọi ĐẦU TIÊN, không phải trong Awake: lúc Awake
+            // layout chưa chạy nên toạ độ chưa đúng.
+            if (!_hasRiseBase)
+            {
+                _riseBasePosition = _riseTarget.anchoredPosition;
+                _hasRiseBase = true;
+            }
+
+            _riseTarget.anchoredPosition = selected
+                ? _riseBasePosition + new Vector2(0f, _selectedRise)
+                : _riseBasePosition;
         }
 
         private void OnDestroy()
