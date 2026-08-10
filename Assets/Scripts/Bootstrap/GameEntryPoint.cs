@@ -34,6 +34,7 @@ namespace JewelPainter.Bootstrap
         private readonly LevelFlowController _levelFlow;
         private readonly JewelFlyEffect _jewelFlyEffect;
         private readonly JewelLayer _jewelLayer;
+        private readonly ColorCompleteSparkle _colorCompleteSparkle;
         private readonly ColorPaletteBar _paletteBar;
 
         public GameEntryPoint(
@@ -54,6 +55,7 @@ namespace JewelPainter.Bootstrap
             LevelFlowController levelFlow,
             JewelFlyEffect jewelFlyEffect,
             JewelLayer jewelLayer,
+            ColorCompleteSparkle colorCompleteSparkle,
             ColorPaletteBar paletteBar)
         {
             _save = save;
@@ -73,6 +75,7 @@ namespace JewelPainter.Bootstrap
             _levelFlow = levelFlow;
             _jewelFlyEffect = jewelFlyEffect;
             _jewelLayer = jewelLayer;
+            _colorCompleteSparkle = colorCompleteSparkle;
             _paletteBar = paletteBar;
         }
 
@@ -103,6 +106,7 @@ namespace JewelPainter.Bootstrap
             _jewelFlyEffect.Init(_boardView, _paintService, _paletteBar);
             _hintLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLayer.Init(_boardView, _paintService, _jewelFlyEffect);
+            _colorCompleteSparkle.Init(_boardView, _paintService, _jewelFlyEffect);
             _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect);
 
             _levelService.LoadLevel(_progress.Level);

@@ -50,6 +50,7 @@ namespace JewelPainter.Bootstrap
             builder.RegisterComponentInHierarchy<HintLayer>();
             builder.RegisterComponentInHierarchy<JewelFlyEffect>();
             builder.RegisterComponentInHierarchy<JewelLayer>();
+            builder.RegisterComponentInHierarchy<ColorCompleteSparkle>();
 
             builder.RegisterComponentInHierarchy<ColorPaletteBar>()
                    .AsImplementedInterfaces().AsSelf();

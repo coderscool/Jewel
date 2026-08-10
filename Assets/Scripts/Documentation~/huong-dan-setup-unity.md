@@ -209,7 +209,7 @@ bằng các sắc độ xám, để màu thật do code gán.
 `Pixels Per Unit` bằng cạnh ảnh làm viên ngọc vừa khít một ô. Mip map làm sprite mờ
 khi thu nhỏ — đúng thứ không muốn.
 
-### 4.4 Hiệu ứng lấp lánh — làm bằng Particle System, không cần code
+### 4.4 Hiệu ứng lấp lánh — dựng bằng Particle System
 
 Ba hiệu ứng dựng hoàn toàn trong Editor từ hai sprite sheet có sẵn. Không thêm dòng
 code nào: Particle System tự chạy khi GameObject được bật, mà `JewelLayer` thì bật/tắt
@@ -260,7 +260,11 @@ lánh sẽ đục hơn nhưng sắc nét hơn.
 
 - [ ] Mở prefab `Jewel_01` (double-click trong Project)
 - [ ] Chuột phải node gốc → `Effects > Particle System`, đổi tên `Sweep`
-- [ ] `Position` = (0, 0, 0)
+- [ ] `Position` = (0, 0, 0), **`Rotation` = (0, 0, 0)**
+
+Unity tạo Particle System mới với `Rotation` = **(-90, 0, 0)** — đó là lý do hạt bay
+lên trên. Đưa về (0, 0, 0) rồi điều khiển hướng bằng `Velocity over Lifetime` (xem
+Bước 3b), dễ đọc hơn nhiều so với vặn Euler.
 
 Điền các module — bỏ tick những module không nhắc tới:
 
@@ -317,45 +321,102 @@ mục 5.8C): lấp lánh phủ lên ngọc, nhưng viên đang bay vẫn che đ�
 > Space thì hạt còn sót lại giữ nguyên toạ độ cũ và bạn thấy một vệt sáng kéo ngang
 > cả bảng. Local Space buộc hạt bám theo viên ngọc.
 
-#### Bước 4 — VFX 2: Sao nhấp nháy
+#### Bước 3b — Cho vệt sáng trượt theo hướng mong muốn
 
-Hiệu ứng **lặp mãi**, rải rác, để tranh đã tô không đứng chết.
+Trong Particle System có **hai thứ tên là rotation**, và chúng làm việc khác hẳn nhau:
 
-- [ ] Vẫn trong prefab `Jewel_01`, chuột phải node gốc → `Effects > Particle System`
-- [ ] Đổi tên `Twinkle`, `Position` = (0, 0, 0)
+| Ô | Điều khiển | Dùng khi |
+|---|---|---|
+| `Transform > Rotation` | **đường đi** của hạt (trục phát của Shape) | đổi hướng bay |
+| `Main > Start Rotation` | **ảnh** bị xoay quanh tâm nó | nghiêng chính cái vệt |
+| `Renderer > Flip` | lật ảnh theo X hoặc Y | đảo chiều vệt, không vỡ nét |
+
+Muốn vệt sáng **trượt chéo xuống dưới**, đừng vặn `Transform > Rotation`. Cách gọn hơn:
+
+- [ ] `Transform > Rotation` = (0, 0, 0)
+- [ ] `Main > Start Speed` = **0**
+- [ ] Module `Shape` = **tắt**
+- [ ] Bật module **Velocity over Lifetime**
+- [ ] `Linear` = `X` **1.2**, `Y` **-1.2**, `Z` 0
+- [ ] `Space` = **Local**
+
+X dương là sang phải, Y âm là xuống dưới — đọc thẳng ra hướng, không phải suy từ Euler.
+
+Quãng đường đi được = tốc độ × `Start Lifetime`. Với 1.2 và vòng đời 0.4 giây thì vệt
+trượt khoảng **0.5 ô** — đủ thấy chuyển động mà không rời khỏi viên ngọc. Để 3 trở lên
+là vệt bay hẳn sang ô bên cạnh.
+
+Nếu vẫn muốn làm bằng `Transform > Rotation` (hạt phát theo trục **+Z cục bộ**):
+
+| Hướng | Rotation (X, Y, Z) |
+|---|---|
+| Lên | (-90, 0, 0) ← mặc định Unity |
+| Xuống | (90, 0, 0) |
+| Phải | (0, 90, 0) |
+| Trái | (0, -90, 0) |
+| **Chéo xuống-phải** | **(45, 90, 0)** |
+| Chéo xuống-trái | (45, -90, 0) |
+| Chéo lên-phải | (-45, 90, 0) |
+
+Nhớ đặt `Start Speed` > 0 (ví dụ 1.2), vì cách này lấy hướng từ trục phát chứ không
+phải từ vận tốc.
+
+Còn muốn **bản thân cái vệt nghiêng đi** thì đó là `Main > Start Rotation`. Nhưng
+sprite pixel art xoay góc lẻ sẽ vỡ nét — chỉ nên dùng bội số của 90, hoặc dùng
+`Renderer > Flip` để đảo chiều mà không đụng tới pixel.
+
+#### Bước 4 — VFX 2: Loé sáng khi tô xong một màu
+
+Tô hết sạch ô của một màu thì **mọi ô mang màu đó loé lên cùng lúc**.
+
+Phần hình ảnh vẫn dựng ở đây, trong Editor. Nhưng riêng hiệu ứng này cần một script
+nhỏ (`ColorCompleteSparkle`) làm nhiệm vụ bấm nút: Editor không có cách nào tự biết
+"màu số 3 vừa xong" — đó là trạng thái trong game. Script chỉ trả lời *lúc nào* và
+*ở những ô nào*, không đụng gì tới hình ảnh.
+
+Khác VFX 1 ở hai chỗ quan trọng: prefab này **đứng riêng**, không nằm trong `Jewel_01`,
+và **tắt `Play On Awake`** vì code tự gọi `Play()`.
+
+- [ ] `GameObject > Effects > Particle System`, đổi tên `ColorCompleteBurst`
+- [ ] `Position` = (0, 0, 0), **`Rotation` = (0, 0, 0)**
 
 **Main**
 
 | Ô | Giá trị | Vì sao |
 |---|---|---|
-| Duration | `2` | |
-| Looping | **bật** | |
-| **Start Delay** | `Random Between Two Constants`, **0 → 2** | **quan trọng nhất** |
+| Duration | `0.6` | |
+| Looping | **tắt** | loé một lần |
+| Start Delay | `Random Between Two Constants`, **0 → 0.12** | xem ghi chú dưới |
 | Start Lifetime | `0.57` | 8 frame ÷ 14 fps |
 | Start Speed | `0` | |
 | Start Size | `Random Between Two Constants`, **0.7 → 1.1** | |
 | Start Rotation | `0` | pixel art xoay là vỡ nét |
-| Simulation Space | **Local** | |
-| Scaling Mode | `Hierarchy` | |
-| Play On Awake | **bật** | |
-| Max Particles | `2` | |
+| Simulation Space | `Local` | |
+| **Play On Awake** | **TẮT** | code gọi Play(), bật là nó tự nổ lung tung |
+| Max Particles | `3` | |
+| Stop Action | `None` | code lo phần thu về kho |
 
 Đổi một ô sang `Random Between Two Constants`: bấm mũi tên nhỏ ▾ ở **cuối** dòng đó.
 
+`Start Delay` ngẫu nhiên 0–0.12 giây là chỗ đáng chú ý nhất. Nổ chính xác cùng một
+frame nghe thì đúng yêu cầu, nhưng nhìn ra một mảng phẳng bẹt loé rồi tắt. Lệch nhau
+vài phần trăm giây thì mắt vẫn đọc là "cùng lúc" mà hiệu ứng có chiều sâu, như pháo
+hoa lan ra. Muốn đúng nghĩa đồng loạt thì để `Start Delay` = 0.
+
 **Emission**
 
-- [ ] `Rate over Time` = **0.5** (trung bình 2 giây một lần loé)
-- [ ] `Bursts`: để trống
+- [ ] `Rate over Time` = **0**
+- [ ] `Bursts`: bấm `+`, `Time` = 0, `Count` = **2**, `Cycles` = 1
 
 **Shape** — bật
 
 | Ô | Giá trị |
 |---|---|
 | Shape | `Box` |
-| Scale | `(0.5, 0.5, 0)` |
-| Randomize Position | `0` |
+| Scale | `(0.6, 0.6, 0)` |
 
-Hộp nhỏ này làm sao xuất hiện lệch tâm mỗi lần một chỗ, thay vì luôn đúng giữa viên.
+Hộp nhỏ này làm hai ngôi sao rơi lệch tâm mỗi cái một chỗ, thay vì chồng lên nhau
+giữa ô.
 
 **Texture Sheet Animation** — bật
 
@@ -367,41 +428,59 @@ Hộp nhỏ này làm sao xuất hiện lệch tâm mỗi lần một chỗ, tha
 | **Start Frame** | `Random Between Two Constants`, **0 → 8** |
 | Cycles | `1` |
 
-**Renderer** — y hệt Bước 3 (`SparkleAdditive`, Order in Layer 12, Culling Mode Pause).
+**Renderer** — y hệt Bước 3 (`SparkleAdditive`, `Order in Layer` = 12,
+`Culling Mode` = `Pause`).
 
-`Start Delay` và `Start Frame` ngẫu nhiên là hai ô làm nên toàn bộ hiệu ứng. Bỏ chúng
-đi thì mọi viên ngọc trên bảng nhấp nháy cùng một nhịp, nhìn ra ngay là máy móc.
+- [ ] Kéo vào `Assets/Prefabs/`, **xoá khỏi Hierarchy**
+
+**Object trong scene**
+
+- [ ] Chuột phải `Board` → Create Empty, tên `ColorComplete`, `Position` = (0, 0, 0)
+- [ ] `Add Component > Color Complete Sparkle`
+- [ ] `Camera` = Main Camera, `Burst Prefab` = `ColorCompleteBurst`, `Root` = chính nó
+- [ ] `Max Per Burst` = 120, `Min Cell Screen Pixels` = 14
+- [ ] `Prewarm Count` = 60
+- [ ] `Min Alive Seconds` = **0.3** — phải **lớn hơn** `Start Delay` lớn nhất ở trên
+
+Vì sao chặn ở 120 ô: một màu trên bảng 64×64 có thể chiếm hơn 500 ô. Script chỉ phát
+ở ô **đang lọt trong khung hình**, và cắt tiếp ở 120 — mắt không đếm được hơn chừng
+đó đốm sáng nổ cùng lúc, nhưng máy thì vẫn phải vẽ đủ.
+
+`Min Alive Seconds` để script biết chờ bao lâu rồi mới tin là hệ hạt đã chạy xong.
+Đặt nhỏ hơn `Start Delay` thì nó thu hệ hạt về kho ngay trước khi hạt đầu tiên kịp
+bắn ra, và bạn thấy đúng một nửa số ô loé.
 
 #### Bước 5 — VFX 3: Lấp lánh dày
 
 Đúng viên thứ ba trong ảnh mẫu: có cả vệt quét lẫn sao, và sao dày hơn.
 
-- [ ] Chọn cả `Sweep` và `Twinkle` trong prefab → `Ctrl+D` để nhân đôi
-- [ ] Trên bản `Twinkle` mới: `Rate over Time` = **1.5**, `Max Particles` = **4**
-- [ ] `Shape > Scale` = `(0.8, 0.8, 0)` — sao văng rộng hơn
+- [ ] Mở prefab `ColorCompleteBurst`, `Ctrl+D` để nhân đôi thành `ColorCompleteBurstBig`
+- [ ] `Bursts > Count` = **4**, `Max Particles` = **6**
+- [ ] `Shape > Scale` = `(0.9, 0.9, 0)` — sao văng rộng hơn
+- [ ] Thêm module **Size over Lifetime**, đường cong đi xuống — sao to rồi teo dần
 
-Cách dùng ba cái: **không bật cả ba cùng lúc trên một viên ngọc.** Tạo ba prefab
-variant của `Jewel_01` (chuột phải prefab → `Create > Prefab Variant`), mỗi variant
-giữ lại một bộ, rồi lần lượt gán vào ô `Jewel Prefab` của `Jewels` (mục 5.8B) để
-xem cái nào hợp.
-
-Gợi ý: **VFX 1** cho cảm giác phản hồi rõ nhất lúc tô, **VFX 2** để tranh xong vẫn
-sống, **VFX 3** hơi nhiều cho bảng 64×64 nhưng hợp với bảng nhỏ.
+Thử cả hai bằng cách đổi ô `Burst Prefab` của `ColorComplete`, xem cái nào hợp bảng
+của bạn. Bảng nhỏ chịu được bản dày, bảng 64×64 thì bản thường đã đủ chật.
 
 #### Bước 6 — Xem thử ngay trong Editor
 
-- [ ] Kéo `Jewel_01` vào Scene, chọn nó
+- [ ] Kéo `Jewel_01` (hoặc `ColorCompleteBurst`) vào Scene, chọn nó
 - [ ] Cửa sổ **Particle Effect** hiện ở góc dưới phải Scene View
 - [ ] Bấm `Restart` để xem lại từ đầu, `Playback Speed` = 0.2 để soi từng frame
 - [ ] Xong nhớ **xoá khỏi Hierarchy**
 
-Hiệu ứng không hiện thì soi ba ô này trước: `Play On Awake` có bật không, ô `Sprites`
-có đủ frame không, và `Order in Layer` có lớn hơn của viên ngọc không.
+Cửa sổ Particle Effect gọi Play() giùm bạn, nên xem thử được cả prefab đã tắt
+`Play On Awake`.
+
+Hiệu ứng không hiện lúc **chơi thật** thì soi ba ô này trước: ô `Sprites` có đủ frame
+không, `Order in Layer` có lớn hơn của viên ngọc không, và với VFX 1 thì
+`Play On Awake` có bật không (VFX 2 thì ngược lại — phải tắt).
 
 #### Bước 7 — Giá phải trả về hiệu năng
 
-Đây là đánh đổi thật của hướng không-code: mỗi viên ngọc mang một Particle System,
-mà lúc zoom xa có thể có ~200 viên sống cùng lúc. Bảng 64×64 thì đó là 200 hệ hạt.
+VFX 1 nằm trong `Jewel_01`, nên mỗi viên ngọc mang một Particle System — lúc zoom xa
+có thể ~200 viên sống cùng lúc. VFX 2 thì lấy từ kho và chặn cứng ở 120, chỉ sống
+chưa tới một giây.
 
 Cắt bớt chi phí:
 
@@ -418,9 +497,8 @@ Cách kiểm chứng, đừng đoán:
 - [ ] Build lên máy thật, mở `Window > Analysis > Profiler`
 - [ ] Xem dòng **ParticleSystem.Update** trong tab CPU khi zoom xa nhất
 
-Quá nặng thì có hai đường lùi: bỏ `Twinkle` chỉ giữ `Sweep` (hiệu ứng một lần, chết
-sau 0.4 giây nên gần như không tốn gì), hoặc quay lại hướng viết code — một lớp gộp
-chạy nhịp cho tất cả, chặn cứng số hiệu ứng sống cùng lúc.
+Quá nặng thì hạ `Max Per Burst` xuống 60, hoặc bỏ hẳn VFX 1 trong `Jewel_01` và chỉ
+giữ VFX 2 — hiệu ứng lúc hoàn thành màu hiếm khi chạy nên gần như không tốn gì.
 
 ---
 
@@ -438,7 +516,8 @@ SampleScene
 │   ├── Numbers              ← vị trí (0, 0, 0)
 │   ├── GridLines            ← vị trí (0, 0, 0)
 │   ├── Hints                ← vị trí (0, 0, 0)
-│   └── Jewels               ← vị trí (0, 0, 0)
+│   ├── Jewels               ← vị trí (0, 0, 0)
+│   └── ColorComplete        ← vị trí (0, 0, 0), xem mục 4.4
 ├── Canvas                   ← tĩnh: HUD, popup
 │   ├── Hud
 │   │   └── LevelText
