@@ -1,0 +1,96 @@
+using System.Collections.Generic;
+using JewelPainter.Gameplay.Interfaces;
+using UnityEngine;
+using UnityEngine.UI;
+using VContainer;
+
+namespace JewelPainter.UI.Views
+{
+    /// Popup bộ sưu tập: bày ảnh của mọi màn chơi, màn chưa tới thì khoá lại.
+    ///
+    /// Popup được PopupManager tạo qua IObjectResolver nên [Inject] ở đây chạy được —
+    /// Object.Instantiate thường thì không.
+    ///
+    /// Dựng lại danh sách ở mỗi lần Show chứ không ở Awake: qua được một màn là ổ khoá
+    /// phải rơi ra, mà popup thì sống suốt phiên chơi.
+    public class CollectionPopupView : PopupView
+    {
+        [SerializeField] private CollectionItemView _itemPrefab;
+
+        [Tooltip("Object chứa các ô, thường gắn Grid Layout Group. Nằm trong Content " +
+                 "của Scroll Rect nếu danh sách dài.")]
+        [SerializeField] private Transform _itemRoot;
+
+        [SerializeField] private Button _closeButton;
+
+        private readonly List<CollectionItemView> _items = new();
+
+        private ILevelService _levelService;
+
+        [Inject]
+        public void Construct(ILevelService levelService)
+        {
+            _levelService = levelService;
+        }
+
+        private void Awake()
+        {
+            if (_closeButton != null) _closeButton.onClick.AddListener(Hide);
+        }
+
+        private void OnDestroy()
+        {
+            if (_closeButton != null) _closeButton.onClick.RemoveListener(Hide);
+        }
+
+        public override void Show()
+        {
+            base.Show();
+
+            Rebuild();
+        }
+
+        private void Rebuild()
+        {
+            if (_levelService == null || _itemPrefab == null)
+            {
+                Debug.LogWarning($"{nameof(CollectionPopupView)} thiếu Item Prefab hoặc chưa " +
+                                 "được inject — popup sẽ trống.");
+                return;
+            }
+
+            var levels = _levelService.Levels;
+            var slot = 0;
+
+            foreach (var config in levels)
+            {
+                // Ô bỏ trống trong Inspector không được chiếm chỗ, không thì bộ sưu tập
+                // thủng một lỗ ở giữa mà không ai hiểu vì sao.
+                if (config == null) continue;
+
+                var item = GetItem(slot++);
+
+                item.Bind(config.LevelId, config.TargetImage, _levelService.IsUnlocked(config.LevelId));
+                item.gameObject.SetActive(true);
+            }
+
+            HideFrom(slot);
+        }
+
+        /// Tạo một lần rồi bật/tắt để tái dùng — không Instantiate/Destroy mỗi lần mở.
+        private CollectionItemView GetItem(int slot)
+        {
+            while (_items.Count <= slot)
+            {
+                _items.Add(Instantiate(_itemPrefab, _itemRoot));
+            }
+
+            return _items[slot];
+        }
+
+        private void HideFrom(int slot)
+        {
+            for (var i = slot; i < _items.Count; i++) _items[i].gameObject.SetActive(false);
+        }
+    }
+}

@@ -4,6 +4,7 @@ using JewelPainter.Gameplay.Board;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
+using JewelPainter.UI.Interfaces;
 using JewelPainter.UI.Views;
 using VContainer.Unity;
 
@@ -37,6 +38,7 @@ namespace JewelPainter.Bootstrap
         private readonly ColorCompleteSparkle _colorCompleteSparkle;
         private readonly ColorPaletteBar _paletteBar;
         private readonly HintFocusController _hintFocus;
+        private readonly IPopupService _popupService;
 
         public GameEntryPoint(
             ISaveService save,
@@ -58,7 +60,8 @@ namespace JewelPainter.Bootstrap
             JewelLayer jewelLayer,
             ColorCompleteSparkle colorCompleteSparkle,
             ColorPaletteBar paletteBar,
-            HintFocusController hintFocus)
+            HintFocusController hintFocus,
+            IPopupService popupService)
         {
             _save = save;
             _progress = progress;
@@ -80,6 +83,7 @@ namespace JewelPainter.Bootstrap
             _colorCompleteSparkle = colorCompleteSparkle;
             _paletteBar = paletteBar;
             _hintFocus = hintFocus;
+            _popupService = popupService;
         }
 
         public void Start()
@@ -103,7 +107,7 @@ namespace JewelPainter.Bootstrap
             // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
             // ngay trong Init của mình, nên nó phải xong trước HUD.
             _hintFocus.Init(_paintService, _boardCamera);
-            _hud.Init(_levelService, _hintFocus);
+            _hud.Init(_levelService, _hintFocus, _popupService);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService);

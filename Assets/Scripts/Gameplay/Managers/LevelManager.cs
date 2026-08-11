@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JewelPainter.Gameplay.Config;
 using JewelPainter.Gameplay.Data;
 using JewelPainter.Gameplay.Domain;
@@ -22,6 +23,12 @@ namespace JewelPainter.Gameplay.Managers
         // Không dùng `_currentConfig?.GridData` — LevelConfig là UnityEngine.Object,
         // toán tử ?. bỏ qua phép so sánh null của Unity nên object đã huỷ vẫn lọt qua.
         public LevelGridData CurrentGrid => _currentConfig != null ? _currentConfig.GridData : null;
+
+        public IReadOnlyList<LevelConfig> Levels => _levels;
+
+        /// Mở khoá theo tiến trình, không lưu riêng cờ cho từng màn: game chỉ chơi tuần
+        /// tự nên "đã tới màn 5" đã nói đủ rằng 1–4 xong rồi.
+        public bool IsUnlocked(int levelId) => levelId <= CurrentLevel;
 
         public event Action<int> OnLevelStarted;
         public event Action<int> OnLevelCompleted;

@@ -7,5 +7,6 @@ namespace JewelPainter.UI.Definitions
         Settings = 1,
         LevelComplete = 2,
         Pause = 3,
+        Collection = 4,
     }
 }

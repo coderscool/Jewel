@@ -1,4 +1,6 @@
 using JewelPainter.Gameplay.Interfaces;
+using JewelPainter.UI.Definitions;
+using JewelPainter.UI.Interfaces;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -17,19 +19,26 @@ namespace JewelPainter.UI.Views
         [Tooltip("Nút gợi ý. Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
         [SerializeField] private Button _hintButton;
 
+        [Tooltip("Nút mở popup bộ sưu tập. Để trống cũng chạy.")]
+        [SerializeField] private Button _collectionButton;
+
         private ILevelService _levelService;
         private IHintService _hintService;
+        private IPopupService _popupService;
         private int _displayedLevel = -1;
 
-        public void Init(ILevelService levelService, IHintService hintService)
+        public void Init(ILevelService levelService, IHintService hintService, IPopupService popupService)
         {
             _levelService = levelService;
             _hintService = hintService;
+            _popupService = popupService;
 
             _levelService.OnLevelStarted += HandleLevelStarted;
             _hintService.OnHintAvailabilityChanged += SetHintAvailable;
 
             SetLevel(_levelService.CurrentLevel);
+
+            if (_collectionButton != null) _collectionButton.onClick.AddListener(HandleCollectionClicked);
 
             if (_hintButton == null) return;
 
@@ -43,11 +52,14 @@ namespace JewelPainter.UI.Views
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
             if (_hintService != null) _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
+            if (_collectionButton != null) _collectionButton.onClick.RemoveListener(HandleCollectionClicked);
         }
 
         private void HandleLevelStarted(int levelId) => SetLevel(levelId);
 
         private void HandleHintClicked() => _hintService.UseHint();
+
+        private void HandleCollectionClicked() => _popupService.Show(PopupKey.Collection);
 
         /// Chưa chọn màu, hoặc màu đang chọn đã tô hết, thì nút xám đi — bấm vào không
         /// có gì xảy ra mà người chơi lại tưởng game đứng.

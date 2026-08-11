@@ -58,6 +58,8 @@ Trong `Assets/`, tạo: `Settings`, `Prefabs`, `Levels`, `Images`.
 - [ ] `Assets > Create > JewelPainter > UI > Popup Config`
 - [ ] Lưu vào `Assets/Settings/`, tên `PopupConfig`, để `Entries` rỗng
 
+Quay lại điền `Entries` sau khi làm xong prefab popup ở mục 4.5.
+
 ### 2.2 Cấu hình âm thanh
 
 - [ ] `Assets > Create > JewelPainter > Core > Sound Config`
@@ -500,6 +502,61 @@ Cách kiểm chứng, đừng đoán:
 Quá nặng thì hạ `Max Per Burst` xuống 60, hoặc bỏ hẳn VFX 1 trong `Jewel_01` và chỉ
 giữ VFX 2 — hiệu ứng lúc hoàn thành màu hiếm khi chạy nên gần như không tốn gì.
 
+### 4.5 Popup bộ sưu tập
+
+Bày ảnh của mọi màn chơi; màn chưa tới thì xám lại và đeo ổ khoá. Chỉ để xem —
+bấm vào ô không làm gì.
+
+Ảnh lấy từ ô `Target Image` của từng `LevelConfig`, nên màn nào bỏ trống ô đó sẽ hiện
+một ô rỗng. Điền trước rồi hãy làm bước này.
+
+#### Prefab một ô tranh
+
+- [ ] `GameObject > UI > Image`, tên `CollectionItem`, `Width/Height` = 220
+- [ ] Chuột phải nó → `UI > Image`, tên `Artwork`, kéo giãn kín ô cha
+- [ ] Chuột phải nó → `UI > Image`, tên `LockIcon`, đặt giữa, gán sprite ổ khoá
+- [ ] Chuột phải nó → `UI > Text - TextMeshPro`, tên `LevelText`, neo góc dưới trái
+- [ ] Chọn `CollectionItem` → `Add Component > Collection Item View`
+- [ ] `Artwork` = `Artwork`, `Level Text` = `LevelText`, `Lock Icon` = `LockIcon`
+- [ ] `Locked Tint` = xám tối, ví dụ `(107, 107, 115)`
+- [ ] Kéo vào `Assets/Prefabs/`, xoá khỏi Hierarchy
+
+> `Locked Tint` **làm ảnh tối đi, không rút màu ra**. Màu của Image là phép nhân, mà
+> nhân với xám thì đỏ vẫn ra đỏ sẫm. Muốn xám thật thì gán một material dùng shader
+> greyscale vào ô `Locked Material` — bỏ trống thì chỉ dùng tint, vẫn đọc được là
+> "chưa mở" nhờ ổ khoá.
+
+#### Prefab popup
+
+- [ ] `GameObject > UI > Panel`, tên `CollectionPopup`, kéo giãn kín màn hình
+- [ ] `Add Component > Canvas Group` (bắt buộc — `PopupView` yêu cầu)
+- [ ] Chuột phải nó → `UI > Scroll View`, tên `LevelScroll`, tắt `Horizontal`
+- [ ] Chọn `LevelScroll > Viewport > Content`:
+  - `Add Component > Grid Layout Group`, `Cell Size` = 220 × 220, `Spacing` = 16
+  - `Add Component > Content Size Fitter`, `Vertical Fit` = **Preferred Size**
+- [ ] Chuột phải `CollectionPopup` → `UI > Button - TextMeshPro`, tên `CloseButton`
+- [ ] Chọn `CollectionPopup` → `Add Component > Collection Popup View`
+- [ ] `Canvas Group` = chính nó, `Item Prefab` = `CollectionItem`
+- [ ] `Item Root` = **`Content`** (không phải `LevelScroll`)
+- [ ] `Close Button` = `CloseButton`
+- [ ] Kéo vào `Assets/Prefabs/`, xoá khỏi Hierarchy
+
+`Content Size Fitter` là chỗ hay quên: thiếu nó thì `Content` giữ nguyên chiều cao ban
+đầu, các ô tràn ra ngoài mà thanh cuộn không chạy được ô nào.
+
+**Không** gán gì vào `On Click ()` của `CloseButton` — `CollectionPopupView` tự đăng ký
+trong `Awake`.
+
+#### Khai vào PopupConfig
+
+- [ ] Mở `Assets/Settings/PopupConfig`
+- [ ] `Entries`: Size = 1, `Key` = **Collection**, `Prefab` = `CollectionPopup`
+
+Thiếu bước này thì bấm nút chỉ thấy một dòng đỏ trong Console, popup không hiện.
+
+Popup được tạo **một lần** ở lần mở đầu tiên rồi bật/tắt để tái dùng. Danh sách ô dựng
+lại ở mỗi lần mở, nên qua được một màn là ổ khoá của màn kế rơi ra ngay lần mở sau.
+
 ---
 
 ## Phần 5 — Dựng scene
@@ -522,7 +579,8 @@ SampleScene
 ├── Canvas                   ← tĩnh: HUD, popup
 │   ├── Hud
 │   │   ├── LevelText
-│   │   └── HintButton
+│   │   ├── HintButton
+│   │   └── CollectionButton
 │   └── Popups
 ├── PaletteCanvas            ← động, tách riêng để khỏi rebuild Canvas tĩnh
 │   └── PaletteScroll
@@ -740,6 +798,8 @@ lúc tô nên ô không bị trống trong lúc chờ.
 - [ ] Gán `LevelText` vào ô `Level Text` của `Hud View`
 - [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `HintButton`, neo góc dưới phải
 - [ ] Gán `HintButton` vào ô `Hint Button` của `Hud View`
+- [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `CollectionButton`, neo góc trên phải
+- [ ] Gán `CollectionButton` vào ô `Collection Button` của `Hud View`
 - [ ] Chuột phải `Canvas` → Create Empty, tên `Popups`,
       `Add Component > Popup Manager`, `Config` = `PopupConfig`, `Root` = chính nó
 
