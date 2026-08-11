@@ -2587,6 +2587,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _camera: {fileID: 519420031}
   _boardView: {fileID: 0}
+  _holdToPickSeconds: 0.8
+  _holdMoveTolerancePixels: 24
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

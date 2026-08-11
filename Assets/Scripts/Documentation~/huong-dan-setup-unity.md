@@ -671,6 +671,23 @@ trong suốt, không mờ thêm gì.
 Hai mốc này là `orthographicSize` tuyệt đối, không phải tỉ lệ. Đặt `Opaque Size` lớn
 hơn `Transparent Size` thì chiều mờ đảo lại: đục khi phóng sát, mờ khi kéo ra xa.
 - [ ] `Add Component > Board Input`: `Camera` = Main Camera, `Board View` để trống
+- [ ] `Hold To Pick Seconds` = **1.5**, `Hold Move Tolerance Pixels` = **24**
+
+**Giữ tay để chọn màu.** Đặt tay lên một ô **chưa tô** và giữ yên 1.5 giây thì màu của
+ô đó được chọn — khỏi phải dò trong thanh màu xem số đó nằm đâu.
+
+Chỉ chạy trên nét thuộc về **camera**. Ô đúng màu đang chọn thì chạm vào là tô ngay,
+nét đó thuộc về Paint và không có gì để chọn nữa.
+
+`Hold Move Tolerance Pixels` là ngưỡng phân biệt "đang giữ" với "đang kéo", đo bằng
+**pixel màn hình thật**. 24 hợp với màn 1080p; màn 1440p hoặc cao hơn thì nới lên
+32–40, không thì tay run một chút là mất lượt.
+
+Để `Hold To Pick Seconds` = 0 là tắt hẳn tính năng này.
+
+> Chưa có dấu hiệu nào cho biết đang đếm giờ — 1.5 giây im lặng dễ làm người chơi
+> tưởng máy đơ. Muốn thêm vòng tròn chạy quanh ngón tay thì cần một view riêng nghe
+> tiến độ từ `BoardInput`.
 
 ### 5.7 Numbers
 
