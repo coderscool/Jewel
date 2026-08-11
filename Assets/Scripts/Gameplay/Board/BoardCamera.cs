@@ -52,6 +52,10 @@ namespace JewelPainter.Gameplay.Board
         private Vector2 _dragOriginWorld;
         private float _lastPinchDistance;
 
+        /// Số ngón đang chạm ở frame trước. Đổi số ngón là đổi luôn ý nghĩa của điểm
+        /// ghim, nên phải ghim lại — xem HandleTouch.
+        private int _lastTouchCount;
+
         private bool _isFocusing;
         private float _focusElapsed;
         private Vector3 _focusStartPosition;
@@ -86,6 +90,7 @@ namespace JewelPainter.Gameplay.Board
 
             _isDragging = false;
             _lastPinchDistance = 0f;
+            _lastTouchCount = 0;
             _isFocusing = false;
         }
 
@@ -209,31 +214,41 @@ namespace JewelPainter.Gameplay.Board
 
             TouchControl first = null;
             TouchControl second = null;
+            var pressedCount = 0;
 
             foreach (var touch in screen.touches)
             {
                 if (!touch.press.isPressed) continue;
 
+                pressedCount++;
+
                 if (first == null) first = touch;
-                else
-                {
-                    second = touch;
-                    break;
-                }
+                else if (second == null) second = touch;
             }
 
-            if (first == null)
+            // Đổi số ngón là bỏ điểm ghim cũ, ghim lại từ đầu ở frame sau.
+            //
+            // Điểm ghim của hai ngón là TRUNG ĐIỂM giữa chúng, của một ngón là chính
+            // ngón đó. Nhấc bớt một ngón mà giữ nguyên điểm ghim thì DragTo thấy toạ độ
+            // nhảy từ trung điểm sang ngón còn lại, và kéo camera đi đúng nửa khoảng
+            // cách giữa hai ngón — ngay trong một frame. Đó là cú lệch bạn thấy.
+            if (pressedCount != _lastTouchCount)
             {
                 _isDragging = false;
                 _lastPinchDistance = 0f;
+            }
+
+            _lastTouchCount = pressedCount;
+
+            if (pressedCount == 0)
+            {
+                _isDragging = false;
                 return false;
             }
 
             // MỘT ngón: chỉ kéo khi BoardInput không nhận nét này để tô.
-            if (second == null)
+            if (pressedCount == 1)
             {
-                _lastPinchDistance = 0f;
-
                 if (!CanDragStroke())
                 {
                     _isDragging = false;

@@ -54,6 +54,10 @@ namespace JewelPainter.Gameplay.Board
         /// frame sau mốc 1.5 giây lại bắn thêm một lần SelectColor.
         private bool _holdConsumed;
 
+        /// Nét này đã từng có từ hai ngón trở lên. Phải nhấc HẾT tay ra rồi mới nhận
+        /// nét mới.
+        private bool _waitingForFullRelease;
+
         /// BoardCamera đọc cái này để biết có được kéo hay không.
         public StrokeOwner CurrentStroke { get; private set; } = StrokeOwner.None;
 
@@ -172,6 +176,10 @@ namespace JewelPainter.Gameplay.Board
 
         /// false khi không có ngón nào, hoặc khi có từ hai ngón trở lên — lúc đó
         /// BoardCamera lo việc zoom và di chuyển, không ai tô cả.
+        ///
+        /// Sau một cử chỉ hai ngón, phải nhấc HẾT tay ra rồi mới nhận nét mới. Không có
+        /// chốt này thì nhấc bớt một ngón sau khi zoom xong là ngón còn lại lập tức
+        /// thành một nét đơn hợp lệ, và nó tô ngay vào ô nó đang tình cờ đứng.
         private bool TryGetStrokePosition(out Vector2 screenPosition)
         {
             screenPosition = default;
@@ -189,14 +197,24 @@ namespace JewelPainter.Gameplay.Board
                     if (pressedCount == 0) firstPosition = touch.position.ReadValue();
 
                     pressedCount++;
-                    if (pressedCount > 1) return false;
+                }
+
+                if (pressedCount > 1)
+                {
+                    _waitingForFullRelease = true;
+                    return false;
                 }
 
                 if (pressedCount == 1)
                 {
+                    if (_waitingForFullRelease) return false;
+
                     screenPosition = firstPosition;
                     return true;
                 }
+
+                // Không còn ngón nào trên màn: mở chốt cho nét sau.
+                _waitingForFullRelease = false;
             }
 
             var mouse = Mouse.current;

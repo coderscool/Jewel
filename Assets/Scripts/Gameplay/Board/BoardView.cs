@@ -4,20 +4,38 @@ using JewelPainter.Gameplay.Config;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace JewelPainter.Gameplay.Board
 {
-    /// Dựng toàn bộ ô màu thành MỘT texture rồi gắn lên một SpriteRenderer.
+    /// Dựng toàn bộ ô màu thành texture rồi gắn lên SpriteRenderer.
     /// pixelsPerUnit = 1 nên một pixel là một ô là một world unit.
     ///
     /// Ô tô xong cũng chỉ là ghi lại một pixel — chi phí KHÔNG phụ thuộc số ô,
     /// nên lưới 64x64 (4096 ô) tốn đúng bằng lưới 16x16.
+    ///
+    /// HAI LỚP chứ không phải một:
+    ///   - lớp CHƯA TÔ giữ các ô xám, và bị BoardColorFade làm mờ dần khi phóng to
+    ///     để lộ số nằm dưới;
+    ///   - lớp ĐÃ TÔ giữ màu thật, KHÔNG ai làm mờ nó.
+    ///
+    /// Gộp chung một texture thì không tách được: alpha là của cả SpriteRenderer, nên
+    /// làm mờ để hiện số cũng đồng thời xoá màu của những ô người chơi vừa tô xong.
+    /// Hai ô không bao giờ cùng nằm trên cả hai lớp — tô tới đâu, pixel bên lớp chưa
+    /// tô bị xoá tới đó.
     [RequireComponent(typeof(SpriteRenderer))]
     public class BoardView : MonoBehaviour
     {
         private static readonly Color32 Transparent = new Color32(0, 0, 0, 0);
 
-        [SerializeField] private SpriteRenderer _renderer;
+        [Tooltip("Lớp ô CHƯA TÔ (xám). Đây là lớp bị BoardColorFade làm mờ theo mức zoom.")]
+        [FormerlySerializedAs("_renderer")]
+        [SerializeField] private SpriteRenderer _unpaintedRenderer;
+
+        [Tooltip("Lớp ô ĐÃ TÔ (màu thật). KHÔNG gắn BoardColorFade lên đây — chính việc " +
+                 "nó không bị làm mờ là lý do lớp này tồn tại. Order in Layer phải LỚN HƠN " +
+                 "của lớp chưa tô.")]
+        [SerializeField] private SpriteRenderer _paintedRenderer;
 
         [Tooltip("Ô chưa tô hiện dạng xám. Ô tô đúng sẽ hiện màu thật. " +
                  "Tắt để đối chiếu với ảnh gốc.")]
@@ -25,9 +43,13 @@ namespace JewelPainter.Gameplay.Board
 
         private ILevelService _levelService;
 
-        private Texture2D _texture;
-        private Sprite _sprite;
-        private Color32[] _pixels;
+        private Texture2D _unpaintedTexture;
+        private Texture2D _paintedTexture;
+        private Sprite _unpaintedSprite;
+        private Sprite _paintedSprite;
+        private Color32[] _unpaintedPixels;
+        private Color32[] _paintedPixels;
+
         private bool _isTextureDirty;
 
         public BoardLayout Layout { get; private set; }
@@ -52,40 +74,50 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
 
-            ReleaseTexture();
+            ReleaseTextures();
         }
 
-        /// Gộp mọi thay đổi trong một frame thành MỘT lần Apply.
-        /// Kéo tay tô mười ô trong một frame vẫn chỉ upload texture một lần.
+        /// Gộp mọi thay đổi trong một frame thành MỘT lần Apply cho mỗi lớp.
+        /// Kéo tay tô mười ô trong một frame vẫn chỉ upload hai texture một lần.
         private void LateUpdate()
         {
             if (!_isTextureDirty) return;
 
             _isTextureDirty = false;
-            _texture.SetPixels32(_pixels);
-            _texture.Apply(false);
+
+            _unpaintedTexture.SetPixels32(_unpaintedPixels);
+            _unpaintedTexture.Apply(false);
+
+            _paintedTexture.SetPixels32(_paintedPixels);
+            _paintedTexture.Apply(false);
         }
 
         private void HandleLevelStarted(int levelId) => Rebuild();
 
-        /// Đổi ô từ xám sang màu thật.
+        /// Chuyển một ô từ lớp chưa tô sang lớp đã tô.
         ///
         /// KHÔNG tự nghe OnCellPainted: ô phải đợi viên ngọc bay tới rồi mới đổi màu,
         /// nếu không màu hiện trước lúc hiệu ứng kết thúc và cú bay thành vô nghĩa.
         /// JewelFlyEffect gọi hàm này khi viên đáp xuống.
         public void RevealCell(Vector2Int cell, int paletteIndex)
         {
-            if (Grid == null || Colors == null || _pixels == null) return;
+            if (Grid == null || Colors == null || _paintedPixels == null) return;
             if (paletteIndex < 0 || paletteIndex >= Colors.Count) return;
             if (cell.x < 0 || cell.x >= Grid.Width || cell.y < 0 || cell.y >= Grid.Height) return;
 
-            WritePixel(cell.x, cell.y, Colors[paletteIndex]);
+            WritePixel(_paintedPixels, cell.x, cell.y, Colors[paletteIndex]);
+
+            // Xoá bên lớp chưa tô. Lớp đã tô đục và nằm trên nên không xoá cũng không
+            // ai thấy, nhưng để lại thì hai lớp cùng mô tả một ô — sau này sửa gì cũng
+            // phải nhớ giữ chúng khớp nhau.
+            WritePixel(_unpaintedPixels, cell.x, cell.y, Transparent);
+
             _isTextureDirty = true;
         }
 
         private void Rebuild()
         {
-            ReleaseTexture();
+            ReleaseTextures();
 
             // Gán trước mọi nhánh thoát: kể cả khi lưới hỏng, các lớp khác vẫn cần biết
             // cấu hình của màn hiện tại.
@@ -112,27 +144,27 @@ namespace JewelPainter.Gameplay.Board
                 return;
             }
 
+            if (_paintedRenderer == null)
+            {
+                ClearBoard($"{nameof(BoardView)} chưa gán Painted Renderer");
+                return;
+            }
+
             Grid = grid;
             Colors = colors;
             Layout = new BoardLayout(grid.Width, grid.Height);
 
             BuildPixels();
 
-            _texture = new Texture2D(grid.Width, grid.Height, TextureFormat.RGBA32, false)
-            {
-                filterMode = FilterMode.Point,
-                wrapMode = TextureWrapMode.Clamp,
-            };
-            _texture.SetPixels32(_pixels);
-            _texture.Apply(false);
+            _unpaintedTexture = CreateTexture(grid.Width, grid.Height, _unpaintedPixels);
+            _paintedTexture = CreateTexture(grid.Width, grid.Height, _paintedPixels);
 
-            _sprite = Sprite.Create(
-                _texture,
-                new Rect(0f, 0f, grid.Width, grid.Height),
-                new Vector2(0.5f, 0.5f),
-                1f);
+            _unpaintedSprite = CreateSprite(_unpaintedTexture, grid.Width, grid.Height);
+            _paintedSprite = CreateSprite(_paintedTexture, grid.Width, grid.Height);
 
-            _renderer.sprite = _sprite;
+            _unpaintedRenderer.sprite = _unpaintedSprite;
+            _paintedRenderer.sprite = _paintedSprite;
+
             _isTextureDirty = false;
 
             OnBoardRebuilt?.Invoke();
@@ -140,7 +172,11 @@ namespace JewelPainter.Gameplay.Board
 
         private void BuildPixels()
         {
-            _pixels = new Color32[Grid.Width * Grid.Height];
+            var count = Grid.Width * Grid.Height;
+
+            _unpaintedPixels = new Color32[count];
+            _paintedPixels = new Color32[count];
+
             var reportedOutOfRange = false;
 
             for (var y = 0; y < Grid.Height; y++)
@@ -165,45 +201,78 @@ namespace JewelPainter.Gameplay.Board
                         }
                     }
 
-                    WritePixel(x, y, color);
+                    WritePixel(_unpaintedPixels, x, y, color);
+
+                    // Vào màn là chưa ô nào được tô. Trạng thái tô không được lưu, nên
+                    // lớp này luôn bắt đầu từ trống trơn.
+                    WritePixel(_paintedPixels, x, y, Transparent);
                 }
             }
         }
 
-        /// PixelGrid có y = 0 ở trên, Texture2D có y = 0 ở dưới.
-        private void WritePixel(int x, int y, Color32 color)
+        private static Texture2D CreateTexture(int width, int height, Color32[] pixels)
         {
-            _pixels[(Grid.Height - 1 - y) * Grid.Width + x] = color;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+
+            texture.SetPixels32(pixels);
+            texture.Apply(false);
+
+            return texture;
+        }
+
+        /// Hai lớp phải dùng đúng cùng một cách dựng sprite, không thì chúng lệch nhau
+        /// nửa ô và mọi thứ trông như bị nhoè viền.
+        private static Sprite CreateSprite(Texture2D texture, int width, int height)
+        {
+            return Sprite.Create(
+                texture,
+                new Rect(0f, 0f, width, height),
+                new Vector2(0.5f, 0.5f),
+                1f);
+        }
+
+        /// PixelGrid có y = 0 ở trên, Texture2D có y = 0 ở dưới.
+        private void WritePixel(Color32[] pixels, int x, int y, Color32 color)
+        {
+            pixels[(Grid.Height - 1 - y) * Grid.Width + x] = color;
         }
 
         private void ClearBoard(string reason)
         {
             Debug.LogWarning($"Không dựng được bảng: {reason}");
 
-            _renderer.sprite = null;
+            _unpaintedRenderer.sprite = null;
+            if (_paintedRenderer != null) _paintedRenderer.sprite = null;
+
             Grid = null;
             Colors = null;
             Layout = null;
-            _pixels = null;
+            _unpaintedPixels = null;
+            _paintedPixels = null;
 
             OnBoardRebuilt?.Invoke();
         }
 
-        private void ReleaseTexture()
+        private void ReleaseTextures()
         {
             _isTextureDirty = false;
 
-            if (_sprite != null)
-            {
-                Destroy(_sprite);
-                _sprite = null;
-            }
+            DestroyIfAlive(ref _unpaintedSprite);
+            DestroyIfAlive(ref _paintedSprite);
+            DestroyIfAlive(ref _unpaintedTexture);
+            DestroyIfAlive(ref _paintedTexture);
+        }
 
-            if (_texture != null)
-            {
-                Destroy(_texture);
-                _texture = null;
-            }
+        private void DestroyIfAlive<T>(ref T asset) where T : UnityEngine.Object
+        {
+            if (asset == null) return;
+
+            Destroy(asset);
+            asset = null;
         }
     }
 }

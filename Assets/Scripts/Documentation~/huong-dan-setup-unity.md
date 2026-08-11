@@ -258,10 +258,16 @@ lánh sẽ đục hơn nhưng sắc nét hơn.
 
 #### Bước 3 — VFX 1: Vệt sáng quét
 
-Đây là hiệu ứng phát **một lần** khi viên ngọc vừa hiện ra.
+Vệt sáng quét qua ô ngay khi viên ngọc đáp xuống, phát **đúng một lần cho mỗi ô
+trong cả màn**.
 
-- [ ] Mở prefab `Jewel_01` (double-click trong Project)
-- [ ] Chuột phải node gốc → `Effects > Particle System`, đổi tên `Sweep`
+> ⚠️ **Đừng gắn Particle System vào trong prefab `Jewel_01`.** `JewelLayer` thu viên
+> ngọc về kho khi ô trôi ra ngoài khung hình rồi lấy ra dùng lại khi ô trở vào — hệ hạt
+> nằm trong đó, bật `Play On Awake`, sẽ chạy lại mỗi lần viên được bật. Kéo camera qua
+> lại là cả vùng đã tô loé sáng như vừa tô xong. Hiệu ứng phải là prefab **đứng riêng**,
+> do code gọi đúng lúc ô có ngọc.
+
+- [ ] `GameObject > Effects > Particle System`, đổi tên `JewelLandBurst`
 - [ ] `Position` = (0, 0, 0), **`Rotation` = (0, 0, 0)**
 
 Unity tạo Particle System mới với `Rotation` = **(-90, 0, 0)** — đó là lý do hạt bay
@@ -278,13 +284,13 @@ Bước 3b), dễ đọc hơn nhiều so với vặn Euler.
 | Looping | **tắt** | quét một lần rồi thôi |
 | Start Delay | `0` | |
 | Start Lifetime | `0.4` | phải **bằng** Duration |
-| Start Speed | `0` | vệt sáng đứng yên trên viên ngọc |
+| Start Speed | `0` | vệt sáng đứng yên trên ô |
 | Start Size | `1` | vừa khít một ô |
 | Start Color | trắng, alpha 255 | |
 | Gravity Modifier | `0` | |
-| **Simulation Space** | **Local** | **bắt buộc** — xem cảnh báo dưới |
-| Scaling Mode | `Hierarchy` | co theo viên ngọc |
-| **Play On Awake** | **bật** | đây là thứ thay cho code |
+| Simulation Space | `Local` | |
+| **Play On Awake** | **TẮT** | code gọi Play(), bật là nó tự nổ lung tung |
+| Stop Action | `None` | kho lo phần thu về |
 | Max Particles | `2` | |
 
 **Emission**
@@ -318,10 +324,24 @@ Bước 3b), dễ đọc hơn nhiều so với vặn Euler.
 `Order in Layer` = 12 nằm giữa **4** (viên ngọc, mục 4.3) và **15** (viên đang bay,
 mục 5.8C): lấp lánh phủ lên ngọc, nhưng viên đang bay vẫn che được tất cả.
 
-> ⚠️ **Simulation Space phải là Local.** `JewelLayer` tái dùng viên ngọc từ kho: một
-> viên vừa nằm ở góc trên có thể xuất hiện lại ở góc dưới ngay frame sau. Để World
-> Space thì hạt còn sót lại giữ nguyên toạ độ cũ và bạn thấy một vệt sáng kéo ngang
-> cả bảng. Local Space buộc hạt bám theo viên ngọc.
+- [ ] Kéo vào `Assets/Prefabs/`, **xoá khỏi Hierarchy**
+
+**Object trong scene** — làm sau khi đã dựng `Board` ở Phần 5:
+
+- [ ] Chuột phải `Board` → Create Empty, tên `JewelLand`, `Position` = (0, 0, 0)
+- [ ] `Add Component > Particle Burst Pool`
+  - `Prefab` = `JewelLandBurst`, `Root` = chính nó
+  - `Prewarm Count` = 32, `Max Concurrent` = 160, `Min Alive Seconds` = 0.3
+- [ ] `Add Component > Jewel Land Sparkle`
+  - `Camera` = Main Camera, `Burst Pool` = **chính object này**
+  - `Min Cell Screen Pixels` = 14
+
+`ParticleBurstPool` là kho dùng chung: nó tạo, thu hồi và đếm xem hệ hạt chạy xong
+chưa. `JewelLandSparkle` chỉ nghe sự kiện "ngọc vừa đáp" rồi bảo kho loé ở toạ độ nào.
+Popup ăn mừng ở Bước 4 cũng dùng đúng kiểu kho này, chỉ khác lúc gọi.
+
+Nhờ tách ra, số hệ hạt sống cùng lúc phụ thuộc **số ô vừa tô**, không phụ thuộc số
+ngọc đang hiện — kéo xa thấy 200 viên vẫn chỉ có vài hệ hạt đang chạy.
 
 #### Bước 3b — Cho vệt sáng trượt theo hướng mong muốn
 
@@ -376,8 +396,8 @@ nhỏ (`ColorCompleteSparkle`) làm nhiệm vụ bấm nút: Editor không có c
 "màu số 3 vừa xong" — đó là trạng thái trong game. Script chỉ trả lời *lúc nào* và
 *ở những ô nào*, không đụng gì tới hình ảnh.
 
-Khác VFX 1 ở hai chỗ quan trọng: prefab này **đứng riêng**, không nằm trong `Jewel_01`,
-và **tắt `Play On Awake`** vì code tự gọi `Play()`.
+Dựng giống hệt VFX 1: prefab đứng riêng, **tắt `Play On Awake`**, lấy ra dùng qua một
+`ParticleBurstPool`. Chỉ khác ở chỗ ai gọi và gọi lúc nào.
 
 - [ ] `GameObject > Effects > Particle System`, đổi tên `ColorCompleteBurst`
 - [ ] `Position` = (0, 0, 0), **`Rotation` = (0, 0, 0)**
@@ -438,11 +458,16 @@ giữa ô.
 **Object trong scene**
 
 - [ ] Chuột phải `Board` → Create Empty, tên `ColorComplete`, `Position` = (0, 0, 0)
+- [ ] `Add Component > Particle Burst Pool`
+  - `Prefab` = `ColorCompleteBurst`, `Root` = chính nó
+  - `Prewarm Count` = 60, `Max Concurrent` = 160
+  - `Min Alive Seconds` = **0.3** — phải **lớn hơn** `Start Delay` lớn nhất ở trên
 - [ ] `Add Component > Color Complete Sparkle`
-- [ ] `Camera` = Main Camera, `Burst Prefab` = `ColorCompleteBurst`, `Root` = chính nó
-- [ ] `Max Per Burst` = 120, `Min Cell Screen Pixels` = 14
-- [ ] `Prewarm Count` = 60
-- [ ] `Min Alive Seconds` = **0.3** — phải **lớn hơn** `Start Delay` lớn nhất ở trên
+  - `Camera` = Main Camera, `Burst Pool` = **chính object này**
+  - `Max Per Burst` = 120, `Min Cell Screen Pixels` = 14
+
+Mỗi hiệu ứng có **kho riêng** vì hai prefab khác nhau. Đừng dùng chung một
+`ParticleBurstPool` cho cả `JewelLand` lẫn `ColorComplete` — kho chỉ giữ được một prefab.
 
 Vì sao chặn ở 120 ô: một màu trên bảng 64×64 có thể chiếm hơn 500 ô. Script chỉ phát
 ở ô **đang lọt trong khung hình**, và cắt tiếp ở 120 — mắt không đếm được hơn chừng
@@ -456,17 +481,17 @@ bắn ra, và bạn thấy đúng một nửa số ô loé.
 
 Đúng viên thứ ba trong ảnh mẫu: có cả vệt quét lẫn sao, và sao dày hơn.
 
-- [ ] Mở prefab `ColorCompleteBurst`, `Ctrl+D` để nhân đôi thành `ColorCompleteBurstBig`
+- [ ] Trong Project chọn `ColorCompleteBurst`, `Ctrl+D` để nhân đôi thành `ColorCompleteBurstBig`
 - [ ] `Bursts > Count` = **4**, `Max Particles` = **6**
 - [ ] `Shape > Scale` = `(0.9, 0.9, 0)` — sao văng rộng hơn
 - [ ] Thêm module **Size over Lifetime**, đường cong đi xuống — sao to rồi teo dần
 
-Thử cả hai bằng cách đổi ô `Burst Prefab` của `ColorComplete`, xem cái nào hợp bảng
-của bạn. Bảng nhỏ chịu được bản dày, bảng 64×64 thì bản thường đã đủ chật.
+Thử cả hai bằng cách đổi ô `Prefab` trên `Particle Burst Pool` của `ColorComplete`,
+xem cái nào hợp bảng của bạn. Bảng nhỏ chịu được bản dày, bảng 64×64 thì bản thường đã đủ chật.
 
 #### Bước 6 — Xem thử ngay trong Editor
 
-- [ ] Kéo `Jewel_01` (hoặc `ColorCompleteBurst`) vào Scene, chọn nó
+- [ ] Kéo `JewelLandBurst` hoặc `ColorCompleteBurst` vào Scene, chọn nó
 - [ ] Cửa sổ **Particle Effect** hiện ở góc dưới phải Scene View
 - [ ] Bấm `Restart` để xem lại từ đầu, `Playback Speed` = 0.2 để soi từng frame
 - [ ] Xong nhớ **xoá khỏi Hierarchy**
@@ -475,14 +500,14 @@ Cửa sổ Particle Effect gọi Play() giùm bạn, nên xem thử được c�
 `Play On Awake`.
 
 Hiệu ứng không hiện lúc **chơi thật** thì soi ba ô này trước: ô `Sprites` có đủ frame
-không, `Order in Layer` có lớn hơn của viên ngọc không, và với VFX 1 thì
-`Play On Awake` có bật không (VFX 2 thì ngược lại — phải tắt).
+không, `Order in Layer` có lớn hơn của viên ngọc không, và ô `Prefab` trên
+`Particle Burst Pool` đã gán chưa. Cả hai prefab đều phải **tắt** `Play On Awake`.
 
 #### Bước 7 — Giá phải trả về hiệu năng
 
-VFX 1 nằm trong `Jewel_01`, nên mỗi viên ngọc mang một Particle System — lúc zoom xa
-có thể ~200 viên sống cùng lúc. VFX 2 thì lấy từ kho và chặn cứng ở 120, chỉ sống
-chưa tới một giây.
+Cả hai VFX đều lấy hệ hạt từ `ParticleBurstPool`, nên số hệ hạt sống cùng lúc phụ
+thuộc **số sự kiện vừa xảy ra**, không phụ thuộc số ngọc đang hiện trên màn. Kéo xa
+thấy 200 viên ngọc vẫn chỉ có vài hệ hạt đang chạy.
 
 Cắt bớt chi phí:
 
@@ -490,8 +515,8 @@ Cắt bớt chi phí:
 - [ ] `Culling Mode` = **Pause** — viên ra ngoài khung hình thì ngừng tính
 - [ ] Tắt hẳn `Collision`, `Trails`, `Lights`, `Noise`, `Sub Emitters`
 - [ ] Mọi VFX dùng **chung một material** → Unity gộp được draw call
-- [ ] `Jewels > Min Cell Screen Pixels` (mục 5.8B) tăng từ 14 lên **20–24** —
-      zoom xa thì không sinh ngọc, cũng không sinh hiệu ứng
+- [ ] `Min Cell Screen Pixels` trên `JewelLand` tăng từ 14 lên **20–24** — zoom xa thì
+      thôi không loé, ở cỡ đó cũng chẳng nhìn ra
 
 Cách kiểm chứng, đừng đoán:
 
@@ -499,8 +524,8 @@ Cách kiểm chứng, đừng đoán:
 - [ ] Build lên máy thật, mở `Window > Analysis > Profiler`
 - [ ] Xem dòng **ParticleSystem.Update** trong tab CPU khi zoom xa nhất
 
-Quá nặng thì hạ `Max Per Burst` xuống 60, hoặc bỏ hẳn VFX 1 trong `Jewel_01` và chỉ
-giữ VFX 2 — hiệu ứng lúc hoàn thành màu hiếm khi chạy nên gần như không tốn gì.
+Quá nặng thì hạ `Max Per Burst` xuống 60, hoặc hạ `Max Concurrent` của kho. Bỏ hẳn
+VFX 1 cũng được — chỉ cần xoá component `Jewel Land Sparkle`, không phải sửa gì khác.
 
 ### 4.5 Popup bộ sưu tập
 
@@ -575,6 +600,7 @@ SampleScene
 │   ├── GridLines            ← vị trí (0, 0, 0)
 │   ├── Hints                ← vị trí (0, 0, 0)
 │   ├── Jewels               ← vị trí (0, 0, 0)
+│   ├── JewelLand            ← vị trí (0, 0, 0), xem mục 4.4
 │   └── ColorComplete        ← vị trí (0, 0, 0), xem mục 4.4
 ├── Canvas                   ← tĩnh: HUD, popup
 │   ├── Hud
@@ -657,16 +683,39 @@ Muốn có nhiều màn thì thêm `LevelConfig` vào mảng `Levels` của `Lev
 
 ### 5.6 Board
 
+Bảng gồm **hai lớp texture chồng nhau**, không phải một:
+
+| Lớp | Order in Layer | Bị làm mờ khi zoom? |
+|---|---|---|
+| Ô **chưa tô** (xám) | **-1** | có — mờ đi để lộ số |
+| Ô **đã tô** (màu thật) | **0** | **không bao giờ** |
+
+Gộp chung một texture thì không tách được, vì alpha là của cả `SpriteRenderer`: làm
+mờ để hiện số cũng đồng thời xoá mất màu của những ô người chơi vừa tô xong. Hai ô
+không bao giờ cùng nằm trên cả hai lớp — tô tới đâu, pixel bên lớp chưa tô bị xoá
+tới đó.
+
 - [ ] Create Empty, tên `Board`, `Position` = **(0, 0, 0)** — bắt buộc
-- [ ] `Add Component > Sprite Renderer`, đặt `Order in Layer` = **0**
-- [ ] `Add Component > Board View`, ô `Renderer` = chính nó, tick `Grayscale`
+- [ ] `Add Component > Sprite Renderer`, đặt `Order in Layer` = **-1**
+- [ ] Chuột phải `Board` → `2D Object > Sprite > Empty`, tên `Painted`,
+      `Position` = **(0, 0, 0)**, `Order in Layer` = **0**, ô `Sprite` để trống
+- [ ] Chọn lại `Board` → `Add Component > Board View`
+  - `Unpainted Renderer` = **chính `Board`**
+  - `Painted Renderer` = **`Painted`**
+  - tick `Grayscale`
 - [ ] `Add Component > Board Color Fade`: `Camera` = Main Camera, `Renderer` = chính nó,
       `Board View` = chính nó, `Opaque Size` = **0**, `Transparent Size` = **12**,
       `Level Size Is Opaque` = **bỏ tick**
 
+> ⚠️ **Không gắn `Board Color Fade` lên `Painted`.** Chính việc lớp đó không bị làm mờ
+> là toàn bộ lý do nó tồn tại.
+
+`Order in Layer` = -1 cho lớp chưa tô là để **không phải đụng vào các lớp khác**:
+GridLines vẫn ở 1, gợi ý ở 2, số ở 3, ngọc ở 4.
+
 `Opaque Size` = 0 nghĩa là lấy mức zoom lúc vào màn làm mốc đục. Từ đó phóng to dần
-thì ảnh mờ dần, và **đến `orthographicSize` = 12 là mất hẳn** — zoom sát hơn nữa vẫn
-trong suốt, không mờ thêm gì.
+thì lớp xám mờ dần, và **đến `orthographicSize` = 12 là mất hẳn** — zoom sát hơn nữa
+vẫn trong suốt, không mờ thêm gì.
 
 Hai mốc này là `orthographicSize` tuyệt đối, không phải tỉ lệ. Đặt `Opaque Size` lớn
 hơn `Transparent Size` thì chiều mờ đảo lại: đục khi phóng sát, mờ khi kéo ra xa.
@@ -955,22 +1004,30 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 | Ngọc bị ám nâu đen | Ảnh gốc `Jewel_01` có sẵn màu, nhân với màu ô ra màu bẩn | Đổi sang ảnh tông trắng, 4.3 |
 | Tô xong không thấy ngọc | `Jewel Prefab` chưa gán, hoặc đang zoom quá xa | 5.8B — Console có cảnh báo nếu thiếu prefab |
 | Ngọc bị số hoặc gợi ý che | `Jewel_01` chưa đặt `Order in Layer` = 4 | 4.3 |
+| Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
+| Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |
 
 ---
 
-## Ba lớp chồng nhau — để dễ hình dung
+## Các lớp chồng nhau — để dễ hình dung
 
 | Lớp | Order in Layer | Vai trò |
 |---|---|---|
-| Bảng màu (texture) | 0 | Ô chưa tô xám, ô đã tô màu thật. Luôn có, không bao giờ bị cull |
+| Ô **chưa tô** (texture) | -1 | Màu xám. **Mờ dần khi phóng to** để lộ số |
+| Ô **đã tô** (texture) | 0 | Màu thật. **Không bao giờ mờ** — đó là lý do nó tách riêng |
 | Viền ô (texture) | 1 | Chỉ quanh ô có màu. Dựng một lần lúc vào màn |
 | Gợi ý (sprite) | 2 | Chỉ sinh cho ô tô được **đang nhìn thấy** |
 | Số | 3 | Trên gợi ý để marker không che số |
 | Ngọc (sprite) | 4 | Trên số — ô tô xong thì ngọc che số, thành dấu hiệu "đã xong" |
+| Lấp lánh (particle) | 12 | Lấy từ kho theo sự kiện, không gắn vào ngọc |
+| Ngọc đang bay | 15 | Trên tất cả |
 
-Hai lớp texture có chi phí cố định, không phụ thuộc số ô. Hai lớp sprite bị cull theo
+Ba lớp texture có chi phí cố định, không phụ thuộc số ô. Các lớp sprite bị cull theo
 tầm nhìn nên số object phụ thuộc mức zoom, không phụ thuộc kích thước bảng.
+
+Một ô nằm trên **đúng một** trong hai lớp texture đầu: tô tới đâu, pixel bên lớp chưa
+tô bị xoá tới đó. Nhờ vậy làm mờ lớp xám không đụng gì tới màu đã tô.
 
 Ngưỡng ẩn khác nhau có chủ ý: ngọc và số ẩn ở 14 pixel, marker gợi ý ẩn ở 5. Ngọc bị
 cull thì ô vẫn còn màu trong texture, còn marker bị cull là mất hẳn dấu hiệu.

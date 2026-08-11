@@ -35,6 +35,7 @@ namespace JewelPainter.Bootstrap
         private readonly LevelFlowController _levelFlow;
         private readonly JewelFlyEffect _jewelFlyEffect;
         private readonly JewelLayer _jewelLayer;
+        private readonly JewelLandSparkle _jewelLandSparkle;
         private readonly ColorCompleteSparkle _colorCompleteSparkle;
         private readonly ColorPaletteBar _paletteBar;
         private readonly HintFocusController _hintFocus;
@@ -58,6 +59,7 @@ namespace JewelPainter.Bootstrap
             LevelFlowController levelFlow,
             JewelFlyEffect jewelFlyEffect,
             JewelLayer jewelLayer,
+            JewelLandSparkle jewelLandSparkle,
             ColorCompleteSparkle colorCompleteSparkle,
             ColorPaletteBar paletteBar,
             HintFocusController hintFocus,
@@ -80,6 +82,7 @@ namespace JewelPainter.Bootstrap
             _levelFlow = levelFlow;
             _jewelFlyEffect = jewelFlyEffect;
             _jewelLayer = jewelLayer;
+            _jewelLandSparkle = jewelLandSparkle;
             _colorCompleteSparkle = colorCompleteSparkle;
             _paletteBar = paletteBar;
             _hintFocus = hintFocus;
@@ -117,6 +120,7 @@ namespace JewelPainter.Bootstrap
             _jewelFlyEffect.Init(_boardView, _paintService, _paletteBar);
             _hintLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLayer.Init(_boardView, _paintService, _jewelFlyEffect);
+            _jewelLandSparkle.Init(_boardView, _jewelFlyEffect);
             _colorCompleteSparkle.Init(_boardView, _paintService, _jewelFlyEffect);
             _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect);
 
