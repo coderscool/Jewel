@@ -41,6 +41,9 @@ namespace JewelPainter.Bootstrap
 
             builder.RegisterComponentInHierarchy<LevelFlowController>();
 
+            builder.RegisterComponentInHierarchy<HintFocusController>()
+                   .AsImplementedInterfaces().AsSelf();
+
             // Board — mặt sân chơi trong world
             builder.RegisterComponentInHierarchy<BoardView>();
             builder.RegisterComponentInHierarchy<BoardNumberLayer>();

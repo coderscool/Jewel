@@ -512,6 +512,7 @@ SampleScene
 ├── LevelManager
 ├── PaintManager
 ├── LevelFlow
+├── HintFocus
 ├── Board                    ← vị trí (0, 0, 0)
 │   ├── Numbers              ← vị trí (0, 0, 0)
 │   ├── GridLines            ← vị trí (0, 0, 0)
@@ -520,7 +521,8 @@ SampleScene
 │   └── ColorComplete        ← vị trí (0, 0, 0), xem mục 4.4
 ├── Canvas                   ← tĩnh: HUD, popup
 │   ├── Hud
-│   │   └── LevelText
+│   │   ├── LevelText
+│   │   └── HintButton
 │   └── Popups
 ├── PaletteCanvas            ← động, tách riêng để khỏi rebuild Canvas tĩnh
 │   └── PaletteScroll
@@ -575,6 +577,22 @@ Không gán gì, `GameEntryPoint` nối dây lúc chạy.
 Tô kín bảng thì chờ ngần đó giây rồi tự sang màn kế. Không còn màn nào mang id tiếp
 theo thì **dừng lại**, và tiến trình **không** tăng — tăng rồi là lần mở game sau nạp
 một màn không tồn tại, bảng trống trơn.
+
+### 5.5C HintFocus — nút gợi ý
+
+- [ ] Create Empty, tên `HintFocus`, `Add Component > Hint Focus Controller`
+
+Không gán gì, `GameEntryPoint` nối dây lúc chạy.
+
+Bấm nút gợi ý thì nó bốc **ngẫu nhiên một ô chưa tô** của màu đang chọn rồi đưa camera
+tới đó, đồng thời phóng về `Camera Min Size` của màn (mục 3.3).
+
+Nút tự **xám đi** khi chưa chọn màu nào, hoặc màu đang chọn đã tô hết. Một nút bấm vào
+mà không có gì xảy ra thì người chơi tưởng game đứng.
+
+Ô ngẫu nhiên chứ không phải ô gần nhất, đúng như yêu cầu. Muốn đổi sang "ô gần camera
+nhất" thì sửa `HintFocusController.UseHint()` — chỗ bốc `ordinal` là toàn bộ phần
+quyết định.
 
 Muốn có nhiều màn thì thêm `LevelConfig` vào mảng `Levels` của `LevelManager`, với
 `Level Id` chạy liên tiếp 1, 2, 3...
@@ -720,8 +738,27 @@ lúc tô nên ô không bị trống trong lúc chờ.
 - [ ] Chuột phải `Canvas` → Create Empty, tên `Hud`, `Add Component > Hud View`
 - [ ] Chuột phải `Hud` → `UI > Text - TextMeshPro`, tên `LevelText`, neo góc trên trái
 - [ ] Gán `LevelText` vào ô `Level Text` của `Hud View`
+- [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `HintButton`, neo góc dưới phải
+- [ ] Gán `HintButton` vào ô `Hint Button` của `Hud View`
 - [ ] Chuột phải `Canvas` → Create Empty, tên `Popups`,
       `Add Component > Popup Manager`, `Config` = `PopupConfig`, `Root` = chính nó
+
+**Không** gán gì vào `On Click ()` của `HintButton` trong Inspector — `HudView` tự
+đăng ký lúc chạy. Gán thêm ở Inspector là bấm một cái chạy hai lần.
+
+Nút này tự xám đi khi chưa chọn màu. Muốn nó đổi hình thay vì chỉ mờ đi thì chỉnh
+`Transition` của `Button`, `HudView` chỉ đụng tới `interactable`.
+
+**Camera bay tới ô gợi ý** chỉnh ở `Main Camera > Board Camera`:
+
+| Ô | Mặc định | Ý nghĩa |
+|---|---|---|
+| `Focus Duration` | 0.4 | thời gian bay, để 0 là nhảy tức thì |
+| `Focus Input Grace` | 0.2 | chạm màn hình sau ngần này giây là huỷ chuyến bay |
+
+`Focus Input Grace` không được để 0. Bấm nút gợi ý cũng là một cú chạm, mà ngón tay
+chưa kịp nhấc ra khỏi màn hình — không có khoảng chờ thì chính cú chạm đó huỷ luôn
+chuyến bay nó vừa gọi, và bạn thấy nút bấm mãi không ăn.
 
 ### 5.10 Thanh chọn màu cuộn ngang
 

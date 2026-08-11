@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace JewelPainter.Gameplay.Domain
 {
@@ -56,6 +57,38 @@ namespace JewelPainter.Gameplay.Domain
             if (total <= 0) return 1f;
 
             return (total - RemainingFor(paletteIndex)) / (float)total;
+        }
+
+        /// Ô CHƯA TÔ thứ `ordinal` của một màu (đếm từ 0), quét trái→phải, trên→dưới.
+        /// false khi màu đó không có đủ ngần ấy ô chưa tô.
+        ///
+        /// Nhận ordinal thay vì tự bốc ngẫu nhiên: Domain giữ được tính tất định nên
+        /// test được ở EditMode, còn ai muốn ngẫu nhiên thì bốc số ở tầng trên rồi
+        /// truyền xuống. RemainingFor() chính là cận trên hợp lệ của ordinal.
+        public bool TryGetUnpainted(int paletteIndex, int ordinal, out Vector2Int cell)
+        {
+            cell = default;
+
+            if (ordinal < 0) return false;
+            if (paletteIndex == PixelGrid.EmptyCell) return false;
+
+            var seen = 0;
+
+            for (var y = 0; y < _grid.Height; y++)
+            {
+                for (var x = 0; x < _grid.Width; x++)
+                {
+                    if (_grid.GetCell(x, y) != paletteIndex) continue;
+                    if (_painted[Index(x, y)]) continue;
+
+                    if (seen++ != ordinal) continue;
+
+                    cell = new Vector2Int(x, y);
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// false nếu toạ độ ngoài bảng, ô rỗng, ô đã tô, hoặc màu không khớp.

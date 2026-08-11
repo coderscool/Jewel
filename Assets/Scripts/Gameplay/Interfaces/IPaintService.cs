@@ -31,6 +31,10 @@ namespace JewelPainter.Gameplay.Interfaces
 
         int RemainingFor(int paletteIndex);
 
+        /// Ô chưa tô thứ `ordinal` (đếm từ 0) của một màu, quét trái→phải, trên→dưới.
+        /// false khi không đủ ô. Cận trên hợp lệ của ordinal là RemainingFor(paletteIndex).
+        bool TryGetUnpaintedCell(int paletteIndex, int ordinal, out Vector2Int cell);
+
         /// Tỉ lệ ô đã tô của một màu, thang 0..1. Dùng cho vòng tiến độ trên ô màu.
         float ProgressFor(int paletteIndex);
 

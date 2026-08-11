@@ -90,6 +90,13 @@ namespace JewelPainter.Gameplay.Managers
             return _state != null ? _state.RemainingFor(paletteIndex) : 0;
         }
 
+        public bool TryGetUnpaintedCell(int paletteIndex, int ordinal, out Vector2Int cell)
+        {
+            cell = default;
+
+            return _state != null && _state.TryGetUnpainted(paletteIndex, ordinal, out cell);
+        }
+
         public float ProgressFor(int paletteIndex)
         {
             return _state != null ? _state.ProgressFor(paletteIndex) : 0f;

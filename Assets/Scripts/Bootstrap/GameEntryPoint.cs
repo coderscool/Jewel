@@ -36,6 +36,7 @@ namespace JewelPainter.Bootstrap
         private readonly JewelLayer _jewelLayer;
         private readonly ColorCompleteSparkle _colorCompleteSparkle;
         private readonly ColorPaletteBar _paletteBar;
+        private readonly HintFocusController _hintFocus;
 
         public GameEntryPoint(
             ISaveService save,
@@ -56,7 +57,8 @@ namespace JewelPainter.Bootstrap
             JewelFlyEffect jewelFlyEffect,
             JewelLayer jewelLayer,
             ColorCompleteSparkle colorCompleteSparkle,
-            ColorPaletteBar paletteBar)
+            ColorPaletteBar paletteBar,
+            HintFocusController hintFocus)
         {
             _save = save;
             _progress = progress;
@@ -77,13 +79,13 @@ namespace JewelPainter.Bootstrap
             _jewelLayer = jewelLayer;
             _colorCompleteSparkle = colorCompleteSparkle;
             _paletteBar = paletteBar;
+            _hintFocus = hintFocus;
         }
 
         public void Start()
         {
             _sound.Init(_save);
             _levelManager.Init(_progress);
-            _hud.Init(_levelService);
 
             // PaintManager phải Init TRƯỚC BoardView: cả hai nghe OnLevelStarted, và
             // BoardView hỏi trạng thái tô ngay lúc dựng lại bảng.
@@ -97,6 +99,11 @@ namespace JewelPainter.Bootstrap
             // quyết định đó nên phải Init sau nó.
             _boardInput.Init(_boardView, _paintService);
             _boardCamera.Init(_boardView, _levelService, _boardInput);
+
+            // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
+            // ngay trong Init của mình, nên nó phải xong trước HUD.
+            _hintFocus.Init(_paintService, _boardCamera);
+            _hud.Init(_levelService, _hintFocus);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService);
