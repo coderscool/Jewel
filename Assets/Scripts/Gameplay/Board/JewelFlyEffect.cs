@@ -29,8 +29,15 @@ namespace JewelPainter.Gameplay.Board
                  "Đây là thứ giữ cho TỐC ĐỘ đều nhau giữa các cú bay xa gần khác nhau.")]
         [SerializeField] private float _referenceDistance = 8f;
 
-        [SerializeField] private float _minDuration = 0.26f;
+        [SerializeField] private float _minDuration = 0.3f;
         [SerializeField] private float _maxDuration = 0.62f;
+
+        [Tooltip("Thời gian bay bám theo quãng đường CHẶT tới đâu. 1 là tỉ lệ thẳng — " +
+                 "quãng nửa thì thời gian nửa. 0.5 là căn bậc hai: quãng ngắn được chia " +
+                 "phần thời gian rộng rãi hơn tỉ lệ của nó. 0 là mọi quãng cùng một thời " +
+                 "gian.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _durationFalloff = 0.5f;
 
         [Tooltip("Xê dịch ngẫu nhiên thời gian bay, theo tỉ lệ. 0.08 là ±8%. Kéo tay tô " +
                  "một loạt ô thì các viên không đi thành hàng lối cứng nhắc nữa.")]
@@ -42,9 +49,16 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private Ease _moveEase = Ease.OutCubic;
 
         [Header("Cỡ viên")]
-        [Tooltip("Cỡ viên lúc mới rời thanh màu, so với cỡ ô. Lớn hơn 1 rồi nhỏ dần " +
-                 "khi tới nơi cho cảm giác bay từ gần ra xa.")]
-        [SerializeField] private float _startScale = 5f;
+        [Tooltip("Cỡ viên lúc rời thanh màu khi bay quãng XA (từ Reference Distance trở " +
+                 "lên), so với cỡ ô. Lớn hơn 1 rồi nhỏ dần cho cảm giác bay từ gần ra xa.")]
+        [SerializeField] private float _startScale = 2.6f;
+
+        [Tooltip("Cỡ viên lúc rời thanh màu khi bay quãng RẤT NGẮN. Quãng ở giữa thì nội " +
+                 "suy giữa hai giá trị.\n\n" +
+                 "Đây là ô chữa đúng cái cảm giác 'ô sát thanh màu bay giật': quãng ngắn " +
+                 "chỉ có chừng 0.3 giây, mà vẫn phải co từ cỡ 5 về 1 thì mắt đọc ra là " +
+                 "búng chứ không phải bay.")]
+        [SerializeField] private float _nearStartScale = 1.2f;
 
         [Tooltip("Cỡ viên ở thời điểm chạm ô, trước khi nở về đúng 1. Hơi nhỏ hơn 1 rồi " +
                  "giãn ra là thứ làm cú đáp đọc ra 'êm' thay vì 'dừng phựt'.")]
@@ -154,14 +168,24 @@ namespace JewelPainter.Gameplay.Board
             origin.z = depth;
             target.z = depth;
 
+            var distance = Vector3.Distance(origin, target);
+            var reach = Mathf.Clamp01(distance / Mathf.Max(0.01f, _referenceDistance));
+
             flyer.color = colors[paletteIndex];
             flyer.sortingOrder = _flyingSortingOrder;
             flyer.transform.position = origin;
-            flyer.transform.localScale = Vector3.one * _startScale;
+
+            // Cỡ xuất phát đi theo quãng đường, không phải một hằng số.
+            //
+            // Quãng ngắn dù có nới thời gian tới đâu cũng chỉ được vài phần mười giây,
+            // mà nếu vẫn phải co từ cỡ 5 về 1 thì TỐC ĐỘ ĐỔI CỠ vọt lên gấp mấy lần một
+            // cú bay dài. Mắt bắt nhịp đó chứ không bắt quãng đường, nên nó đọc ra là
+            // búng chứ không phải bay.
+            flyer.transform.localScale = Vector3.one * Mathf.Lerp(_nearStartScale, _startScale, reach);
 
             _inFlight.Add(cell);
 
-            var duration = ResolveDuration(Vector3.Distance(origin, target));
+            var duration = ResolveDuration(distance);
             var settleTime = duration * Mathf.Clamp01(_settlePortion);
             var travelTime = duration - settleTime;
 
@@ -205,7 +229,12 @@ namespace JewelPainter.Gameplay.Board
         private float ResolveDuration(float distance)
         {
             var reference = Mathf.Max(0.01f, _referenceDistance);
-            var scaled = _duration * (distance / reference);
+
+            // Số mũ < 1 làm đường cong LÕM: quãng ngắn được chia phần thời gian rộng
+            // rãi hơn tỉ lệ của nó. Tỉ lệ thẳng (số mũ 1) thì ô sát thanh màu chỉ được
+            // 1/8 thời gian của ô ở mép bảng — quá gấp để đọc ra là một cú bay.
+            var factor = Mathf.Pow(distance / reference, Mathf.Clamp01(_durationFalloff));
+            var scaled = _duration * factor;
 
             var min = Mathf.Max(0.01f, _minDuration);
             var max = Mathf.Max(min, _maxDuration);

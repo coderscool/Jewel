@@ -1003,6 +1003,7 @@ GameObject:
   - component: {fileID: 609903735}
   - component: {fileID: 609903734}
   - component: {fileID: 609903738}
+  - component: {fileID: 609903739}
   m_Layer: 5
   m_Name: Canvas-Popup
   m_TagString: Untagged
@@ -1106,6 +1107,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _config: {fileID: 11400000, guid: b8ef6f210c68170488bb8649c7d2fe53, type: 2}
   _root: {fileID: 609903737}
+--- !u!114 &609903739
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 609903733}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 190c5daf7a982334a9eb4bd35c1ac127, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -1889,6 +1902,7 @@ MonoBehaviour:
   _levelText: {fileID: 1531300738}
   _hintButton: {fileID: 1454984757}
   _collectionButton: {fileID: 1562609004}
+  _content: {fileID: 0}
 --- !u!222 &1385524987
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -2136,9 +2150,11 @@ MonoBehaviour:
   _referenceDistance: 8
   _minDuration: 0.26
   _maxDuration: 0.62
+  _durationFalloff: 0.5
   _durationVariance: 0.08
   _moveEase: 9
-  _startScale: 4
+  _startScale: 2.6
+  _nearStartScale: 1.2
   _settleScale: 0.92
   _settlePortion: 0.18
   _scaleEase: 4
@@ -2433,7 +2449,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8088af09caf60814cb2861f7ed2b5595, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _delaySeconds: 1.5
+  _popupDelaySeconds: 2
 --- !u!4 &1620359275
 Transform:
   m_ObjectHideFlags: 0

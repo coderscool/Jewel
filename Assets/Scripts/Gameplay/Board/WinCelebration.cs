@@ -40,22 +40,12 @@ namespace JewelPainter.Gameplay.Board
         private BoardView _boardView;
         private BoardCamera _boardCamera;
 
-        private bool _isPlaying;
         private bool _isSweeping;
         private float _elapsed;
-
-        /// Tổng thời gian của cả màn ăn mừng: phần nào kết thúc muộn nhất thì lấy phần
-        /// đó. Tính một lần lúc Play để việc "xong chưa" luôn có điểm dừng, không phụ
-        /// thuộc dải quét có chạy được hay không.
-        private float _totalDuration;
 
         /// Đường chéo kế tiếp cần xử lý. Giữ lại giữa các frame để dải sáng không quay
         /// đầu và không loé lại chỗ đã đi qua.
         private int _nextDiagonal;
-
-        /// true từ lúc Play cho tới khi camera đã về chỗ VÀ dải quét đã đi hết bảng.
-        /// LevelFlowController chờ cái này rồi mới đếm giờ sang màn kế.
-        public bool IsPlaying => _isPlaying;
 
         public void Init(BoardView boardView, BoardCamera boardCamera)
         {
@@ -72,7 +62,6 @@ namespace JewelPainter.Gameplay.Board
 
         private void HandleBoardRebuilt()
         {
-            _isPlaying = false;
             _isSweeping = false;
 
             if (_burstPool == null) return;
@@ -90,8 +79,6 @@ namespace JewelPainter.Gameplay.Board
 
             _elapsed = 0f;
             _nextDiagonal = 0;
-            _totalDuration = Mathf.Max(_cameraDuration, _sweepStartDelay + _sweepDuration);
-            _isPlaying = true;
 
             if (_burstPool == null || !_burstPool.HasPrefab)
             {
@@ -106,16 +93,11 @@ namespace JewelPainter.Gameplay.Board
 
         private void Update()
         {
-            if (!_isPlaying) return;
+            if (!_isSweeping) return;
 
             _elapsed += Time.deltaTime;
 
-            if (_isSweeping) AdvanceSweep();
-
-            // Xong khi dải quét đã đi hết VÀ đủ thời gian cho phần chạy lâu nhất.
-            // _elapsed luôn tăng nên vòng chờ ở LevelFlowController chắc chắn thoát,
-            // kể cả khi dải quét không chạy được vì thiếu prefab.
-            if (!_isSweeping && _elapsed >= _totalDuration) _isPlaying = false;
+            AdvanceSweep();
         }
 
         private void AdvanceSweep()

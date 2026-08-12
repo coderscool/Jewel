@@ -687,11 +687,22 @@ Không gán gì, `GameEntryPoint` nối dây lúc chạy.
 ### 5.5B LevelFlow
 
 - [ ] Create Empty, tên `LevelFlow`, `Add Component > Level Flow Controller`
-- [ ] `Delay Seconds` = **0.2**
+- [ ] `Popup Delay Seconds` = **1.6**
 
-`Delay Seconds` đếm **sau khi màn ăn mừng chạy xong**, không phải từ lúc tô xong ô
-cuối. Luồng tự đợi `WinCelebration` quét hết bảng rồi mới bắt đầu đếm, nên chỉnh
-`Sweep Duration` bên đó không phải nhớ sửa lại ô này.
+Đây là **một con số tuyệt đối**: bao lâu kể từ lúc viên ngọc cuối đáp xuống thì popup
+hiện ra. Không cộng dồn, không suy từ thời lượng của `WinCelebration`.
+
+Đổi lại, bạn phải **tự canh** nó với màn ăn mừng. Hai thứ chạy song song và độc lập:
+
+```
+tô xong ô cuối
+   ├─ WinCelebration: camera lùi + quét chéo   (tự chạy theo ô của nó)
+   └─ đếm Popup Delay Seconds  ──►  hiện popup + ẩn HUD
+```
+
+Đặt ngắn hơn màn ăn mừng thì popup hiện đè lên lúc dải lấp lánh còn đang quét — đôi
+khi đó lại là thứ bạn muốn. Với số mặc định thì quét xong khoảng 1.55 giây, nên 1.6 là
+vừa chạm mép.
 
 Hết khoảng chờ thì nó **bắn tín hiệu thắng màn**, không tự sang màn kế. Việc đi tiếp
 do người chơi bấm nút trong popup (mục 4.6).
@@ -899,8 +910,9 @@ vẫn còn nguyên màu, không ai nhận ra có gì biến mất.
 |---|---|---|
 | `Duration` | `0.4` | thời gian bay ở quãng tham chiếu |
 | `Reference Distance` | `8` | quãng mà tại đó bay đúng `Duration` |
-| `Min Duration` | `0.26` | |
+| `Min Duration` | `0.3` | |
 | `Max Duration` | `0.62` | |
+| `Duration Falloff` | `0.5` | thời gian bám theo quãng đường chặt tới đâu |
 | `Duration Variance` | `0.08` | ±8%, để các viên không đi thành hàng lối |
 | `Move Ease` | `OutCubic` | vọt ra nhanh, hạ dần |
 
@@ -913,10 +925,33 @@ giữ thời gian đều, rồi kẹp lại để quãng cực ngắn không gi�
 
 | Ô | Giá trị | Vì sao |
 |---|---|---|
-| `Start Scale` | `5` | cỡ lúc rời thanh màu — bằng cỡ ô màu trên màn hình |
+| `Start Scale` | `2.6` | cỡ lúc rời thanh màu, cho quãng **xa** |
+| `Near Start Scale` | `1.2` | cỡ lúc rời thanh màu, cho quãng **rất ngắn** |
 | `Settle Scale` | `0.92` | hơi nhỏ hơn ô ngay lúc chạm |
 | `Settle Portion` | `0.18` | 18% cuối dành cho pha nở về 1 |
 | `Scale Ease` | `InOutSine` | |
+
+**`Near Start Scale` chữa cái giật ở những ô sát thanh màu.** Mắt bắt *tốc độ đổi cỡ*
+chứ không bắt quãng đường. Quãng ngắn dù nới thời gian tới đâu cũng chỉ được chừng
+0.3 giây, mà nếu vẫn phải co từ cỡ 5 về 1 thì nhịp đổi cỡ vọt lên gấp bốn lần một cú
+bay dài — đọc ra là búng, không phải bay. Cho cỡ xuất phát đi theo quãng đường thì
+nhịp đó phẳng lại:
+
+| Quãng | Giây | Cỡ đầu | Co cỡ mỗi giây |
+|---|---|---|---|
+| 1.5 | 0.30 | 1.46 | 1.5 |
+| 3 | 0.30 | 1.73 | 2.4 |
+| 6 | 0.35 | 2.25 | 3.6 |
+| 10 | 0.45 | 2.60 | 3.6 |
+| 20 | 0.62 | 2.60 | 2.6 |
+
+Cột cuối là thứ đáng nhìn: nằm gọn trong 1.5–3.6 ở mọi quãng. Để `Start Scale` = 5 và
+`Near Start Scale` bằng nó thì cột đó vọt từ 6.5 lên 15.4 — chênh gấp đôi, và đó chính
+là cảm giác giật ở những ô sát thanh màu.
+
+`Duration Falloff` = 0.5 (căn bậc hai) là phần thứ hai: quãng ngắn được chia phần thời
+gian rộng rãi hơn tỉ lệ của nó. Để 1 là tỉ lệ thẳng như cũ, để 0 là mọi quãng cùng
+một thời gian.
 
 `Settle Scale` là toàn bộ cảm giác "đáp êm": viên co xuống hơi nhỏ hơn ô rồi giãn về
 đúng cỡ trong 18% cuối. Không có pha này thì viên **dừng phựt** đúng kích thước cuối,
@@ -986,8 +1021,8 @@ giằng camera giữa chừng chỉ làm hỏng nhịp, mà lúc đó cũng ch�
 tô xong ô cuối
    ├─ camera lùi về toàn cảnh      (Camera Duration 1.1s)
    └─ chờ 0.15s rồi quét chéo      (Sweep Duration 1.4s)
-quét hết bảng  ──►  chờ 0.2s  ──►  hiện popup thắng màn
-                                        └─ người chơi bấm nút  ──►  màn kế
+hiện popup thắng màn (+ ẩn HUD) sau Popup Delay Seconds
+   └─ người chơi bấm nút  ──►  màn kế (+ hiện lại HUD)
 ```
 
 `LevelFlow` **hỏi** `WinCelebration` xem xong chưa chứ không cộng sẵn một con số chờ.
@@ -1007,6 +1042,11 @@ Bạn đổi `Sweep Duration` thành 3 giây thì luồng tự giãn theo, khôn
 - [ ] Gán `HintButton` vào ô `Hint Button` của `Hud View`
 - [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `CollectionButton`, neo góc trên phải
 - [ ] Gán `CollectionButton` vào ô `Collection Button` của `Hud View`
+- [ ] Ô `Content` của `Hud View`: để **trống**
+
+Cả HUD **tự ẩn khi thắng màn** và hiện lại khi màn mới bắt đầu, để popup đứng một mình
+trên bức tranh vừa hoàn thành. Để trống ô `Content` thì nó ẩn chính object `Hud`. Muốn
+giữ lại một phần HUD thì gom phần bị ẩn vào một object con rồi gán vào ô đó.
 - [ ] Chuột phải `Canvas` → Create Empty, tên `Popups`,
       `Add Component > Popup Manager`, `Config` = `PopupConfig`, `Root` = chính nó
 - [ ] Trên chính `Popups` đó, `Add Component > Win Popup Presenter` — không gán gì,

@@ -117,7 +117,7 @@ namespace JewelPainter.Bootstrap
             // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
             // ngay trong Init của mình, nên nó phải xong trước HUD.
             _hintFocus.Init(_paintService, _boardCamera);
-            _hud.Init(_levelService, _hintFocus, _popupService);
+            _hud.Init(_levelService, _hintFocus, _popupService, _levelFlow);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService);

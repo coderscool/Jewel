@@ -12,6 +12,9 @@ namespace JewelPainter.UI.Views
     ///
     /// Nút gợi ý ở đây chỉ làm hai việc: bấm thì gọi IHintService, và tự bật/tắt theo
     /// tín hiệu của nó. Tìm ô nào, đưa camera đi đâu là chuyện của Gameplay.
+    ///
+    /// Cả HUD tự ẩn khi thắng màn và hiện lại khi màn mới bắt đầu, để popup thắng màn
+    /// đứng một mình trên bức tranh vừa hoàn thành.
     public class HudView : MonoBehaviour
     {
         [SerializeField] private TMP_Text _levelText;
@@ -22,19 +25,30 @@ namespace JewelPainter.UI.Views
         [Tooltip("Nút mở popup bộ sưu tập. Để trống cũng chạy.")]
         [SerializeField] private Button _collectionButton;
 
+        [Tooltip("Object bị ẩn khi thắng màn. Để TRỐNG thì ẩn chính object này — cách " +
+                 "đó vẫn chạy đúng, chỉ là không tách được phần nào của HUD ở lại.")]
+        [SerializeField] private GameObject _content;
+
         private ILevelService _levelService;
         private IHintService _hintService;
         private IPopupService _popupService;
+        private ILevelFlowService _levelFlow;
         private int _displayedLevel = -1;
 
-        public void Init(ILevelService levelService, IHintService hintService, IPopupService popupService)
+        public void Init(
+            ILevelService levelService,
+            IHintService hintService,
+            IPopupService popupService,
+            ILevelFlowService levelFlow)
         {
             _levelService = levelService;
             _hintService = hintService;
             _popupService = popupService;
+            _levelFlow = levelFlow;
 
             _levelService.OnLevelStarted += HandleLevelStarted;
             _hintService.OnHintAvailabilityChanged += SetHintAvailable;
+            _levelFlow.OnLevelCleared += HandleLevelCleared;
 
             SetLevel(_levelService.CurrentLevel);
 
@@ -51,11 +65,31 @@ namespace JewelPainter.UI.Views
         {
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
             if (_hintService != null) _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
+            if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
             if (_collectionButton != null) _collectionButton.onClick.RemoveListener(HandleCollectionClicked);
         }
 
-        private void HandleLevelStarted(int levelId) => SetLevel(levelId);
+        private void HandleLevelStarted(int levelId)
+        {
+            SetVisible(true);
+            SetLevel(levelId);
+        }
+
+        private void HandleLevelCleared() => SetVisible(false);
+
+        /// Ẩn bằng SetActive chứ không đổi alpha: HUD tắt hẳn thì nút gợi ý cũng không
+        /// còn nhận được cú chạm nào, khỏi phải nhớ khoá riêng từng nút.
+        ///
+        /// Ẩn chính object này vẫn an toàn dù handler nằm trên nó: sự kiện C# giữ tham
+        /// chiếu tới instance, nên hàm vẫn chạy khi GameObject đang tắt — đó là cách
+        /// HUD tự bật lại được ở màn sau.
+        private void SetVisible(bool visible)
+        {
+            var target = _content != null ? _content : gameObject;
+
+            if (target.activeSelf != visible) target.SetActive(visible);
+        }
 
         private void HandleHintClicked() => _hintService.UseHint();
 

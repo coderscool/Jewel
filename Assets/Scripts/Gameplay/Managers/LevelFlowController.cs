@@ -17,10 +17,12 @@ namespace JewelPainter.Gameplay.Managers
     /// màn chơi. LevelManager không cần biết điều gì khiến một màn kết thúc.
     public class LevelFlowController : MonoBehaviour, ILevelFlowService
     {
-        [Tooltip("Chờ bao lâu SAU KHI màn ăn mừng chạy xong rồi mới bắn tín hiệu thắng " +
-                 "màn, tính bằng giây. Không đếm từ lúc tô xong ô cuối — luồng tự đợi " +
-                 "WinCelebration quét hết bảng trước.")]
-        [SerializeField] private float _delaySeconds = 0.2f;
+        [Tooltip("Bao lâu kể từ lúc viên ngọc cuối đáp xuống thì hiện popup thắng màn, " +
+                 "tính bằng giây. Đây là con số TUYỆT ĐỐI, không cộng dồn với thời lượng " +
+                 "của WinCelebration.\n\n" +
+                 "Đặt ngắn hơn màn ăn mừng thì popup hiện đè lên lúc dải lấp lánh còn " +
+                 "đang quét — đôi khi đó lại là thứ bạn muốn.")]
+        [SerializeField] private float _popupDelaySeconds = 2f;
 
         private ILevelService _levelService;
         private IPaintService _paintService;
@@ -92,8 +94,9 @@ namespace JewelPainter.Gameplay.Managers
 
             _hasAnnounced = true;
 
-            // Ăn mừng chạy NGAY, không đợi hết _delaySeconds: khoảng chờ đó tồn tại để
-            // người chơi ngắm bức tranh, mà màn ăn mừng chính là thứ đáng ngắm.
+            // Ăn mừng chạy NGAY, còn popup đếm giờ song song. Hai thứ độc lập nhau về
+            // thời gian: đổi thời lượng dải quét không kéo theo lúc popup hiện, và
+            // ngược lại.
             if (_winCelebration != null) _winCelebration.Play();
 
             StartCoroutine(AnnounceCleared());
@@ -101,15 +104,10 @@ namespace JewelPainter.Gameplay.Managers
 
         private IEnumerator AnnounceCleared()
         {
-            // Đợi dải lấp lánh quét hết bảng rồi mới bắt đầu đếm giờ. Hỏi trạng thái
-            // thay vì cộng sẵn một con số chờ: đổi Sweep Duration bên WinCelebration
-            // không kéo theo việc phải nhớ sửa Delay Seconds ở đây.
-            //
-            // WinCelebration đặt IsPlaying về false theo thời gian trôi qua, không theo
-            // việc dải quét có chạy được hay không, nên vòng này luôn có lối ra.
-            while (_winCelebration != null && _winCelebration.IsPlaying) yield return null;
-
-            yield return new WaitForSeconds(_delaySeconds);
+            // Đếm thẳng một con số thay vì đợi WinCelebration báo xong. Đổi lại là bạn
+            // phải tự canh nó với thời lượng màn ăn mừng, nhưng bù lại thời điểm popup
+            // hiện ra nằm gọn trong một ô Inspector chứ không phải suy từ ba ô khác.
+            if (_popupDelaySeconds > 0f) yield return new WaitForSeconds(_popupDelaySeconds);
 
             OnLevelCleared?.Invoke();
         }
