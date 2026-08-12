@@ -582,6 +582,36 @@ Thiếu bước này thì bấm nút chỉ thấy một dòng đỏ trong Consol
 Popup được tạo **một lần** ở lần mở đầu tiên rồi bật/tắt để tái dùng. Danh sách ô dựng
 lại ở mỗi lần mở, nên qua được một màn là ổ khoá của màn kế rơi ra ngay lần mở sau.
 
+### 4.6 Popup thắng màn
+
+Hiện ra khi tô xong bức tranh, có nút sang màn kế. Màn chơi **không tự chuyển** nữa —
+bức tranh vừa hoàn thành đứng yên bao lâu tuỳ người chơi.
+
+- [ ] `GameObject > UI > Panel`, tên `WinPopup`, kéo giãn kín màn hình
+- [ ] `Add Component > Canvas Group` (bắt buộc — `PopupView` yêu cầu)
+- [ ] Chuột phải nó → `UI > Text - TextMeshPro`, tên `LevelText`
+- [ ] Chuột phải nó → `UI > Button - TextMeshPro`, tên `NextButton`
+- [ ] Chuột phải nó → `UI > Text - TextMeshPro`, tên `LastLevelNotice`,
+      nội dung kiểu "Hết màn rồi!", **tắt object này đi**
+- [ ] Chọn `WinPopup` → `Add Component > Win Popup View`
+  - `Canvas Group` = chính nó
+  - `Next Button` = `NextButton`
+  - `Level Text` = `LevelText`, `Last Level Notice` = `LastLevelNotice`
+  - `Close Button` để trống, hoặc gán nếu muốn cho đóng mà không đi tiếp
+- [ ] Kéo vào `Assets/Prefabs/`, **xoá khỏi Hierarchy**
+
+**Khai vào PopupConfig**
+
+- [ ] Mở `Assets/Settings/PopupConfig`, thêm một phần tử vào `Entries`
+- [ ] `Key` = **LevelComplete**, `Prefab` = `WinPopup`
+
+**Không** gán gì vào `On Click ()` của `NextButton` — `WinPopupView` tự đăng ký trong
+`Awake`.
+
+Nút sang màn kế **tự ẩn khi đang ở màn cuối**, và `LastLevelNotice` hiện lên thay chỗ.
+Màn cuối cũng **không tăng tiến trình**: tăng rồi thì lần mở game sau nạp một màn không
+tồn tại và người chơi nhận được bảng trống.
+
 ---
 
 ## Phần 5 — Dựng scene
@@ -601,7 +631,8 @@ SampleScene
 │   ├── Hints                ← vị trí (0, 0, 0)
 │   ├── Jewels               ← vị trí (0, 0, 0)
 │   ├── JewelLand            ← vị trí (0, 0, 0), xem mục 4.4
-│   └── ColorComplete        ← vị trí (0, 0, 0), xem mục 4.4
+│   ├── ColorComplete        ← vị trí (0, 0, 0), xem mục 4.4
+│   └── WinCelebration       ← vị trí (0, 0, 0), xem mục 5.8E
 ├── Canvas                   ← tĩnh: HUD, popup
 │   ├── Hud
 │   │   ├── LevelText
@@ -656,7 +687,14 @@ Không gán gì, `GameEntryPoint` nối dây lúc chạy.
 ### 5.5B LevelFlow
 
 - [ ] Create Empty, tên `LevelFlow`, `Add Component > Level Flow Controller`
-- [ ] `Delay Seconds` = 1.5
+- [ ] `Delay Seconds` = **0.2**
+
+`Delay Seconds` đếm **sau khi màn ăn mừng chạy xong**, không phải từ lúc tô xong ô
+cuối. Luồng tự đợi `WinCelebration` quét hết bảng rồi mới bắt đầu đếm, nên chỉnh
+`Sweep Duration` bên đó không phải nhớ sửa lại ô này.
+
+Hết khoảng chờ thì nó **bắn tín hiệu thắng màn**, không tự sang màn kế. Việc đi tiếp
+do người chơi bấm nút trong popup (mục 4.6).
 
 Tô kín bảng thì chờ ngần đó giây rồi tự sang màn kế. Không còn màn nào mang id tiếp
 theo thì **dừng lại**, và tiến trình **không** tăng — tăng rồi là lần mở game sau nạp
@@ -854,8 +892,49 @@ vẫn còn nguyên màu, không ai nhận ra có gì biến mất.
 - [ ] Chuột phải `Board` → Create Empty, tên `JewelFly`, `Position` = (0, 0, **-1**)
 - [ ] `Add Component > Jewel Fly Effect`
 - [ ] `Jewel Prefab` = `Jewel_01`, `Root` = chính nó
-- [ ] `Duration` = 0.35, `Start Scale` = 0.5
-- [ ] `Max Concurrent` = 24, `Prewarm Count` = 24
+
+**Đường bay**
+
+| Ô | Giá trị | Vì sao |
+|---|---|---|
+| `Duration` | `0.4` | thời gian bay ở quãng tham chiếu |
+| `Reference Distance` | `8` | quãng mà tại đó bay đúng `Duration` |
+| `Min Duration` | `0.26` | |
+| `Max Duration` | `0.62` | |
+| `Duration Variance` | `0.08` | ±8%, để các viên không đi thành hàng lối |
+| `Move Ease` | `OutCubic` | vọt ra nhanh, hạ dần |
+
+Ba ô đầu là thứ đáng chú ý nhất. Thời gian bay **cố định** làm ô ngay sát thanh màu
+bò lừ đừ còn ô ở mép bảng thì lao vun vút — mắt đọc ra ngay là hai chuyển động khác
+nhau, và đó chính là cái làm hiệu ứng thấy gợn. Ba ô này giữ **tốc độ** đều thay vì
+giữ thời gian đều, rồi kẹp lại để quãng cực ngắn không giật và quãng cực dài không lê.
+
+**Cỡ viên**
+
+| Ô | Giá trị | Vì sao |
+|---|---|---|
+| `Start Scale` | `5` | cỡ lúc rời thanh màu — bằng cỡ ô màu trên màn hình |
+| `Settle Scale` | `0.92` | hơi nhỏ hơn ô ngay lúc chạm |
+| `Settle Portion` | `0.18` | 18% cuối dành cho pha nở về 1 |
+| `Scale Ease` | `InOutSine` | |
+
+`Settle Scale` là toàn bộ cảm giác "đáp êm": viên co xuống hơi nhỏ hơn ô rồi giãn về
+đúng cỡ trong 18% cuối. Không có pha này thì viên **dừng phựt** đúng kích thước cuối,
+và mắt đọc ra là va chạm chứ không phải đặt xuống. Để `Settle Portion` = 0 là bỏ hẳn.
+
+**Hiện dần**
+
+- [ ] `Fade In Portion` = **0.2**
+
+Viên hiện dần từ trong suốt trong 20% đầu, thay vì bật ra đột ngột ở thanh màu.
+
+**Giới hạn**
+
+- [ ] `Max Concurrent` = 24, `Prewarm Count` = 24, `Flying Sorting Order` = 15
+
+Muốn **nhẹ hơn nữa** thì nâng `Duration` lên 0.5 và đổi `Move Ease` sang `InOutSine` —
+mềm cả hai đầu, nhưng khởi động chậm nên phản hồi lúc bấm kém dứt khoát hơn. Muốn
+**gọn gàng, dứt khoát** thì hạ `Duration` xuống 0.3 và dùng `OutQuart`.
 
 `z = -1` để viên đang bay nằm trên mọi lớp khác.
 
@@ -865,6 +944,55 @@ chứ không nổ.
 
 Ngọc ở ô đích chỉ hiện **khi viên bay đáp xuống**. Lớp màu trong texture vẫn đổi ngay
 lúc tô nên ô không bị trống trong lúc chờ.
+
+### 5.8E WinCelebration — ăn mừng khi thắng màn
+
+Tô xong ô cuối thì ba thứ chạy cùng lúc: camera thu về toàn cảnh, bảng về giữa màn
+hình, và một dải lấp lánh quét chéo từ góc trên trái xuống góc dưới phải.
+
+Dùng lại đúng prefab `JewelLandBurst` ở mục 4.4, nhưng qua một **kho riêng** — kho chỉ
+giữ được một prefab, và để chung với `JewelLand` thì hai hiệu ứng tranh chỗ nhau.
+
+- [ ] Chuột phải `Board` → Create Empty, tên `WinCelebration`, `Position` = (0, 0, 0)
+- [ ] `Add Component > Particle Burst Pool`
+  - `Prefab` = `JewelLandBurst`, `Root` = chính nó
+  - `Prewarm Count` = **120**, `Max Concurrent` = **200**
+  - `Min Alive Seconds` = 0.3
+- [ ] `Add Component > Win Celebration`
+  - `Burst Pool` = **chính object này**
+
+| Ô | Giá trị | Ý nghĩa |
+|---|---|---|
+| `Camera Duration` | `1.1` | thời gian camera lùi về toàn cảnh |
+| `Sweep Duration` | `1.4` | dải sáng đi hết từ góc này sang góc kia |
+| `Sweep Start Delay` | `0.15` | chờ camera lùi một chút rồi mới quét. 0 là chạy cùng lúc |
+| `Cell Step` | `4` | cứ 4 ô loé 1 ô, theo cả hai trục |
+| `Max Spawn Per Frame` | `12` | chặn khựng ở đoạn giữa bảng |
+
+**`Cell Step` là ô quan trọng nhất.** Để 1 thì bảng 64×64 loé đủ 4096 ô trong 1.4 giây
+— chắc chắn khựng, mà nhìn cũng chỉ ra một mảng trắng. Để 4 thì còn 1/16, khoảng 256
+lần loé, đọc ra thành dải lấp lánh thưa. Bảng nhỏ (12×12) thì hạ xuống 2.
+
+Quét theo **đường chéo** là vì mọi ô có cùng tổng `x + y` nằm trên một đường chéo, nên
+chỉ cần cho một con số chạy từ 0 tới `W + H - 2` là có ngay mặt sóng đi từ góc trên
+trái xuống góc dưới phải. Không phải xếp trước danh sách ô nào.
+
+Camera trong đoạn này **không huỷ được bằng chạm**, khác với nút gợi ý — người chơi
+giằng camera giữa chừng chỉ làm hỏng nhịp, mà lúc đó cũng chẳng còn ô nào để tô.
+
+**Nhịp của cả đoạn thắng màn:**
+
+```
+tô xong ô cuối
+   ├─ camera lùi về toàn cảnh      (Camera Duration 1.1s)
+   └─ chờ 0.15s rồi quét chéo      (Sweep Duration 1.4s)
+quét hết bảng  ──►  chờ 0.2s  ──►  hiện popup thắng màn
+                                        └─ người chơi bấm nút  ──►  màn kế
+```
+
+`LevelFlow` **hỏi** `WinCelebration` xem xong chưa chứ không cộng sẵn một con số chờ.
+Bạn đổi `Sweep Duration` thành 3 giây thì luồng tự giãn theo, không phải nhớ sửa
+`Delay Seconds`.
 
 ### 5.9 Canvas và HUD
 
@@ -881,6 +1009,8 @@ lúc tô nên ô không bị trống trong lúc chờ.
 - [ ] Gán `CollectionButton` vào ô `Collection Button` của `Hud View`
 - [ ] Chuột phải `Canvas` → Create Empty, tên `Popups`,
       `Add Component > Popup Manager`, `Config` = `PopupConfig`, `Root` = chính nó
+- [ ] Trên chính `Popups` đó, `Add Component > Win Popup Presenter` — không gán gì,
+      `GameEntryPoint` nối dây lúc chạy
 
 **Không** gán gì vào `On Click ()` của `HintButton` trong Inspector — `HudView` tự
 đăng ký lúc chạy. Gán thêm ở Inspector là bấm một cái chạy hai lần.
@@ -1018,6 +1148,7 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 | Tô xong không thấy ngọc | `Jewel Prefab` chưa gán, hoặc đang zoom quá xa | 5.8B — Console có cảnh báo nếu thiếu prefab |
 | Ngọc bị số hoặc gợi ý che | `Jewel_01` chưa đặt `Order in Layer` = 4 | 4.3 |
 | Thấy sọc viền ô ngay lúc mới vào màn | `GridLines > Level Size Is Opaque` chưa tick, hoặc `Transparent Size` khác 0 | 5.7B |
+| Thắng màn thì khựng một nhịp | `Cell Step` quá nhỏ so với cỡ bảng | 5.8E |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

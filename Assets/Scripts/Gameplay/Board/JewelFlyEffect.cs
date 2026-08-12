@@ -20,13 +20,50 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private SpriteRenderer _jewelPrefab;
         [SerializeField] private Transform _root;
 
-        [Tooltip("Thời gian bay, tính bằng giây.")]
-        [SerializeField] private float _duration = 0.35f;
+        [Header("Đường bay")]
+        [Tooltip("Thời gian bay ứng với Reference Distance. Quãng ngắn hơn thì nhanh " +
+                 "hơn, dài hơn thì chậm hơn, luôn kẹp trong Min/Max Duration.")]
+        [SerializeField] private float _duration = 0.4f;
 
-        [Tooltip("Cỡ viên lúc mới rời thanh màu, so với cỡ ô. Nhỏ hơn 1 rồi to dần " +
-                 "khi tới nơi cho cảm giác bay từ xa lại.")]
+        [Tooltip("Khoảng cách (world unit) mà tại đó viên bay đúng bằng Duration. " +
+                 "Đây là thứ giữ cho TỐC ĐỘ đều nhau giữa các cú bay xa gần khác nhau.")]
+        [SerializeField] private float _referenceDistance = 8f;
+
+        [SerializeField] private float _minDuration = 0.26f;
+        [SerializeField] private float _maxDuration = 0.62f;
+
+        [Tooltip("Xê dịch ngẫu nhiên thời gian bay, theo tỉ lệ. 0.08 là ±8%. Kéo tay tô " +
+                 "một loạt ô thì các viên không đi thành hàng lối cứng nhắc nữa.")]
+        [Range(0f, 0.4f)]
+        [SerializeField] private float _durationVariance = 0.08f;
+
+        [Tooltip("Nhịp của quãng bay. OutCubic: vọt ra nhanh rồi hạ dần — phản hồi tức " +
+                 "thì mà vẫn đáp êm. InOutSine mềm hơn nhưng khởi động chậm.")]
+        [SerializeField] private Ease _moveEase = Ease.OutCubic;
+
+        [Header("Cỡ viên")]
+        [Tooltip("Cỡ viên lúc mới rời thanh màu, so với cỡ ô. Lớn hơn 1 rồi nhỏ dần " +
+                 "khi tới nơi cho cảm giác bay từ gần ra xa.")]
         [SerializeField] private float _startScale = 5f;
 
+        [Tooltip("Cỡ viên ở thời điểm chạm ô, trước khi nở về đúng 1. Hơi nhỏ hơn 1 rồi " +
+                 "giãn ra là thứ làm cú đáp đọc ra 'êm' thay vì 'dừng phựt'.")]
+        [SerializeField] private float _settleScale = 0.92f;
+
+        [Tooltip("Phần cuối của quãng bay dành cho pha nở về 1, tính theo tỉ lệ. " +
+                 "Để 0 là bỏ hẳn pha đáp.")]
+        [Range(0f, 0.5f)]
+        [SerializeField] private float _settlePortion = 0.18f;
+
+        [SerializeField] private Ease _scaleEase = Ease.InOutSine;
+
+        [Header("Hiện dần")]
+        [Tooltip("Phần đầu quãng bay dành cho việc hiện dần từ trong suốt, tính theo " +
+                 "tỉ lệ. Để 0 là hiện ngay tức khắc.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] private float _fadeInPortion = 0.2f;
+
+        [Header("Giới hạn")]
         [Tooltip("Số viên bay cùng lúc tối đa. Vượt quá thì ô vẫn được tô, chỉ là " +
                  "ngọc hiện ngay không có hiệu ứng.")]
         [SerializeField] private int _maxConcurrent = 24;
@@ -124,21 +161,82 @@ namespace JewelPainter.Gameplay.Board
 
             _inFlight.Add(cell);
 
+            var duration = ResolveDuration(Vector3.Distance(origin, target));
+            var settleTime = duration * Mathf.Clamp01(_settlePortion);
+            var travelTime = duration - settleTime;
+
             // DOMove chứ không DOJump: DOJump tách trục Y ra tween riêng với easing khác
             // trục X, nên kể cả đặt jumpPower = 0 thì hai trục vẫn chạy lệch nhịp và
             // đường bay vẫn cong. DOMove nội suy thẳng giữa hai điểm.
-            var sequence = DOTween.Sequence()
-                .Append(flyer.transform.DOMove(target, _duration).SetEase(Ease.InOutQuad))
-                .Join(flyer.transform.DOScale(1f, _duration).SetEase(Ease.OutQuad))
-                .OnComplete(() =>
-                {
-                    Release(flyer);
-                    _inFlight.Remove(cell);
-                    Land(cell, paletteIndex);
-                });
+            var sequence = DOTween.Sequence();
+
+            sequence.Insert(0f, flyer.transform.DOMove(target, duration).SetEase(_moveEase));
+
+            // Hai tween scale nối đuôi nhau, KHÔNG chồng thời gian: co về settleScale
+            // suốt quãng bay, rồi nở về 1 ở đoạn cuối. Chồng nhau thì DOTween để tween
+            // sau đè tween trước và pha co bị nuốt mất.
+            if (settleTime > 0f && !Mathf.Approximately(_settleScale, 1f))
+            {
+                sequence.Insert(0f, flyer.transform.DOScale(_settleScale, travelTime).SetEase(_scaleEase));
+                sequence.Insert(travelTime, flyer.transform.DOScale(1f, settleTime).SetEase(Ease.OutSine));
+            }
+            else
+            {
+                sequence.Insert(0f, flyer.transform.DOScale(1f, duration).SetEase(_scaleEase));
+            }
+
+            var fadeTime = duration * Mathf.Clamp01(_fadeInPortion);
+            if (fadeTime > 0f) sequence.Insert(0f, CreateFadeIn(flyer, fadeTime));
+
+            sequence.OnComplete(() =>
+            {
+                Release(flyer);
+                _inFlight.Remove(cell);
+                Land(cell, paletteIndex);
+            });
 
             _tweens[flyer] = sequence;
             return true;
+        }
+
+        /// Giữ TỐC ĐỘ đều thay vì giữ thời gian đều. Thời gian cố định làm ô ngay sát
+        /// thanh màu bay lừ đừ còn ô ở mép bảng thì lao vun vút — mắt đọc ra ngay là
+        /// hai chuyển động khác nhau, và đó chính là cái làm hiệu ứng thấy gợn.
+        private float ResolveDuration(float distance)
+        {
+            var reference = Mathf.Max(0.01f, _referenceDistance);
+            var scaled = _duration * (distance / reference);
+
+            var min = Mathf.Max(0.01f, _minDuration);
+            var max = Mathf.Max(min, _maxDuration);
+
+            var variance = 1f + UnityEngine.Random.Range(-_durationVariance, _durationVariance);
+
+            return Mathf.Clamp(scaled, min, max) * variance;
+        }
+
+        /// Hiện dần bằng DOTween.To trên alpha thay vì SpriteRenderer.DOFade: DOFade cho
+        /// SpriteRenderer nằm trong module Sprite của DOTween, mà project cố ý chỉ dùng
+        /// phần core để khỏi phải khai thêm assembly.
+        private static Tween CreateFadeIn(SpriteRenderer flyer, float duration)
+        {
+            var color = flyer.color;
+            var targetAlpha = color.a;
+
+            color.a = 0f;
+            flyer.color = color;
+
+            return DOTween.To(
+                    () => flyer.color.a,
+                    alpha =>
+                    {
+                        var current = flyer.color;
+                        current.a = alpha;
+                        flyer.color = current;
+                    },
+                    targetAlpha,
+                    duration)
+                .SetEase(Ease.OutSine);
         }
 
         /// Ô chỉ đổi từ xám sang màu thật ở đây, không phải lúc người chơi bấm.
@@ -186,10 +284,7 @@ namespace JewelPainter.Gameplay.Board
                 _tweens.Remove(flyer);
             }
 
-            flyer.transform.localScale = Vector3.one;
-            flyer.sortingOrder = _baseSortingOrder;
-            flyer.gameObject.SetActive(false);
-            _pool.Push(flyer);
+            Recycle(flyer);
         }
 
         private void KillAllTweens()
@@ -200,15 +295,28 @@ namespace JewelPainter.Gameplay.Board
 
                 if (pair.Key == null) continue;
 
-                // Đường thứ hai trả viên về pool (đổi màn). Phải reset đủ như Release,
-                // không thì viên tái dùng ở màn sau mang theo sortingOrder lúc bay.
-                pair.Key.transform.localScale = Vector3.one;
-                pair.Key.sortingOrder = _baseSortingOrder;
-                pair.Key.gameObject.SetActive(false);
-                _pool.Push(pair.Key);
+                Recycle(pair.Key);
             }
 
             _tweens.Clear();
+        }
+
+        /// MỘT nơi duy nhất trả viên về kho, cho cả hai đường (đáp xuống và đổi màn).
+        ///
+        /// Trước đây hai đường tự reset riêng và đã có lần sót sortingOrder. Mỗi lần
+        /// thêm một thứ bị đổi lúc thuê — scale, sortingOrder, giờ là alpha — là một
+        /// lần nữa phải nhớ sửa cả hai chỗ. Gộp lại thì không còn chỗ để sót.
+        private void Recycle(SpriteRenderer flyer)
+        {
+            flyer.transform.localScale = Vector3.one;
+            flyer.sortingOrder = _baseSortingOrder;
+
+            var color = flyer.color;
+            color.a = 1f;
+            flyer.color = color;
+
+            flyer.gameObject.SetActive(false);
+            _pool.Push(flyer);
         }
 
         /// Đọc từ prefab, không đọc từ viên đang dùng — viên đó đã bị đổi sang

@@ -2018,6 +2018,74 @@ RectTransform:
   m_AnchoredPosition: {x: -50, y: -82}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &1491911198
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1491911199}
+  - component: {fileID: 1491911201}
+  - component: {fileID: 1491911200}
+  m_Layer: 0
+  m_Name: WinCelebration
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1491911199
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1491911198}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2005522619}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1491911200
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1491911198}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f9e05b44fc4e048a2ba349d7de8bf2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _burstPool: {fileID: 1491911201}
+  _cameraDuration: 1.1
+  _sweepDuration: 1.4
+  _sweepStartDelay: 0.15
+  _cellStep: 1
+  _maxSpawnPerFrame: 32
+--- !u!114 &1491911201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1491911198}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cc374ee04b58d144695963e12e66300c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _prefab: {fileID: 153916915514136638, guid: 0d2d479c3bc368d459280bab525e2103, type: 3}
+  _root: {fileID: 1491911199}
+  _prewarmCount: 120
+  _maxConcurrent: 200
+  _minAliveSeconds: 0.3
 --- !u!1 &1519212028
 GameObject:
   m_ObjectHideFlags: 0
@@ -2065,7 +2133,16 @@ MonoBehaviour:
   _jewelPrefab: {fileID: 6352456925884473337, guid: 34a6a5cd170b873408d83dee24c35489, type: 3}
   _root: {fileID: 1519212029}
   _duration: 0.35
+  _referenceDistance: 8
+  _minDuration: 0.26
+  _maxDuration: 0.62
+  _durationVariance: 0.08
+  _moveEase: 9
   _startScale: 4
+  _settleScale: 0.92
+  _settlePortion: 0.18
+  _scaleEase: 4
+  _fadeInPortion: 0.2
   _maxConcurrent: 24
   _prewarmCount: 24
   _flyingSortingOrder: 15
@@ -2723,6 +2800,7 @@ Transform:
   - {fileID: 1519212029}
   - {fileID: 1809138253}
   - {fileID: 454836497}
+  - {fileID: 1491911199}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2005522620

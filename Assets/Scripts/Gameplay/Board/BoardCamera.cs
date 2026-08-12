@@ -57,6 +57,8 @@ namespace JewelPainter.Gameplay.Board
         private int _lastTouchCount;
 
         private bool _isFocusing;
+        private bool _focusCancelOnInput;
+        private float _focusMoveDuration;
         private float _focusElapsed;
         private Vector3 _focusStartPosition;
         private Vector3 _focusTargetPosition;
@@ -104,12 +106,32 @@ namespace JewelPainter.Gameplay.Board
             if (layout == null) return;
 
             var center = layout.CellToWorldCenter(cell.x, cell.y);
+
+            BeginMove(new Vector2(center.x, center.y), _minSize, _focusDuration, true);
+        }
+
+        /// Đưa camera về toàn cảnh: tâm bảng, mức kéo xa nhất. Đoạn ăn mừng lúc thắng
+        /// màn gọi hàm này.
+        ///
+        /// KHÔNG huỷ được bằng chạm, khác nút gợi ý: người chơi giằng camera giữa chừng
+        /// chỉ làm hỏng nhịp của màn ăn mừng, mà lúc này cũng chẳng còn gì để tô.
+        public void FrameWholeBoard(float duration)
+        {
+            BeginMove(Vector2.zero, _maxSize, duration, false);
+        }
+
+        /// Đích có thể nằm ngoài vùng kéo cho phép (ô ở sát mép bảng), nhưng không cần
+        /// tự kẹp: ClampPosition chạy sau mỗi bước nên camera tự dừng đúng ở biên.
+        private void BeginMove(Vector2 targetPosition, float targetSize, float duration, bool cancelOnInput)
+        {
             var position = transform.position;
 
             _focusStartPosition = position;
             _focusStartSize = _camera.orthographicSize;
-            _focusTargetPosition = new Vector3(center.x, center.y, position.z);
-            _focusTargetSize = _minSize;
+            _focusTargetPosition = new Vector3(targetPosition.x, targetPosition.y, position.z);
+            _focusTargetSize = targetSize;
+            _focusMoveDuration = duration;
+            _focusCancelOnInput = cancelOnInput;
 
             _focusElapsed = 0f;
             _isFocusing = true;
@@ -166,13 +188,13 @@ namespace JewelPainter.Gameplay.Board
         {
             _focusElapsed += Time.deltaTime;
 
-            if (_focusElapsed > _focusInputGrace && IsUserTouchingScreen())
+            if (_focusCancelOnInput && _focusElapsed > _focusInputGrace && IsUserTouchingScreen())
             {
                 _isFocusing = false;
                 return true;
             }
 
-            var duration = Mathf.Max(0.0001f, _focusDuration);
+            var duration = Mathf.Max(0.0001f, _focusMoveDuration);
             var t = Mathf.Clamp01(_focusElapsed / duration);
 
             // Smoothstep: rời đi và dừng lại đều êm, không cần thư viện tween nào.

@@ -5,6 +5,7 @@ using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
 using JewelPainter.UI.Interfaces;
+using JewelPainter.UI.Managers;
 using JewelPainter.UI.Views;
 using VContainer.Unity;
 
@@ -37,9 +38,11 @@ namespace JewelPainter.Bootstrap
         private readonly JewelLayer _jewelLayer;
         private readonly JewelLandSparkle _jewelLandSparkle;
         private readonly ColorCompleteSparkle _colorCompleteSparkle;
+        private readonly WinCelebration _winCelebration;
         private readonly ColorPaletteBar _paletteBar;
         private readonly HintFocusController _hintFocus;
         private readonly IPopupService _popupService;
+        private readonly WinPopupPresenter _winPopupPresenter;
 
         public GameEntryPoint(
             ISaveService save,
@@ -61,9 +64,11 @@ namespace JewelPainter.Bootstrap
             JewelLayer jewelLayer,
             JewelLandSparkle jewelLandSparkle,
             ColorCompleteSparkle colorCompleteSparkle,
+            WinCelebration winCelebration,
             ColorPaletteBar paletteBar,
             HintFocusController hintFocus,
-            IPopupService popupService)
+            IPopupService popupService,
+            WinPopupPresenter winPopupPresenter)
         {
             _save = save;
             _progress = progress;
@@ -84,9 +89,11 @@ namespace JewelPainter.Bootstrap
             _jewelLayer = jewelLayer;
             _jewelLandSparkle = jewelLandSparkle;
             _colorCompleteSparkle = colorCompleteSparkle;
+            _winCelebration = winCelebration;
             _paletteBar = paletteBar;
             _hintFocus = hintFocus;
             _popupService = popupService;
+            _winPopupPresenter = winPopupPresenter;
         }
 
         public void Start()
@@ -122,7 +129,11 @@ namespace JewelPainter.Bootstrap
             _jewelLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLandSparkle.Init(_boardView, _jewelFlyEffect);
             _colorCompleteSparkle.Init(_boardView, _paintService, _jewelFlyEffect);
-            _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect);
+            _winCelebration.Init(_boardView, _boardCamera);
+            _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect, _winCelebration);
+
+            // Init sau LevelFlow: nó đăng ký nghe sự kiện thắng màn của LevelFlow.
+            _winPopupPresenter.Init(_levelFlow, _popupService);
 
             _levelService.LoadLevel(_progress.Level);
         }

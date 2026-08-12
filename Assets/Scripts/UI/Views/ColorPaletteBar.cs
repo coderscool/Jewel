@@ -134,11 +134,24 @@ namespace JewelPainter.UI.Views
             return true;
         }
 
+        /// Cố tình KHÔNG đòi ô phải đang hiện.
+        ///
+        /// Ô màu vừa tô hết bị ẩn ngay trong lượt sự kiện OnCellPainted, mà thanh màu
+        /// lại đăng ký sự kiện đó TRƯỚC hiệu ứng ngọc bay. Đòi activeSelf thì viên cuối
+        /// cùng của mỗi màu hỏi vị trí xuất phát đúng lúc ô vừa tắt, không tìm ra, và
+        /// vĩnh viễn không có hiệu ứng bay.
+        ///
+        /// Sửa ở đây chứ không sửa thứ tự Init: dựa vào thứ tự đăng ký event là loại
+        /// ràng buộc vô hình, ai đổi một dòng ở Bootstrap là hỏng lại mà không hiểu vì sao.
+        ///
+        /// Ô đã Unbind mang PaletteIndex = -1 nên không bao giờ khớp nhầm.
         private ColorSwatchView FindSwatch(int paletteIndex)
         {
+            if (paletteIndex < 0) return null;
+
             foreach (var swatch in _swatches)
             {
-                if (swatch.gameObject.activeSelf && swatch.PaletteIndex == paletteIndex) return swatch;
+                if (swatch.PaletteIndex == paletteIndex) return swatch;
             }
 
             return null;
@@ -155,9 +168,15 @@ namespace JewelPainter.UI.Views
             return _swatches[slot];
         }
 
+        /// Unbind trước khi ẩn: ô còn giữ chỉ số màu của màn trước sẽ bị FindSwatch
+        /// khớp nhầm, và ngọc của màn mới bay ra từ một chỗ vô nghĩa.
         private void HideAll()
         {
-            foreach (var swatch in _swatches) swatch.gameObject.SetActive(false);
+            foreach (var swatch in _swatches)
+            {
+                swatch.Unbind();
+                swatch.gameObject.SetActive(false);
+            }
         }
     }
 }

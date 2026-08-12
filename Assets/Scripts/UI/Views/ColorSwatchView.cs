@@ -78,6 +78,17 @@ namespace JewelPainter.UI.Views
             _button.onClick.AddListener(HandleClick);
         }
 
+        /// Gỡ ô khỏi mọi màu. Gọi lúc dựng lại thanh màu, để ô cũ chưa được dùng lại
+        /// không còn mang chỉ số màu của màn trước — nếu còn, việc tra ô theo chỉ số
+        /// màu sẽ khớp nhầm vào nó.
+        public void Unbind()
+        {
+            PaletteIndex = -1;
+            _onClicked = null;
+            _displayedRemaining = -1;
+            _displayedProgress = -1f;
+        }
+
         /// Chỉ SetText khi số đổi — tránh sinh rác mỗi lần bảng cập nhật.
         public void SetRemaining(int remaining)
         {

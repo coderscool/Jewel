@@ -39,7 +39,10 @@ namespace JewelPainter.Bootstrap
             builder.RegisterComponentInHierarchy<PaintManager>()
                    .AsImplementedInterfaces().AsSelf();
 
-            builder.RegisterComponentInHierarchy<LevelFlowController>();
+            builder.RegisterComponentInHierarchy<LevelFlowController>()
+                   .AsImplementedInterfaces().AsSelf();
+
+            builder.RegisterComponentInHierarchy<WinPopupPresenter>();
 
             builder.RegisterComponentInHierarchy<HintFocusController>()
                    .AsImplementedInterfaces().AsSelf();
@@ -55,6 +58,7 @@ namespace JewelPainter.Bootstrap
             builder.RegisterComponentInHierarchy<JewelLayer>();
             builder.RegisterComponentInHierarchy<JewelLandSparkle>();
             builder.RegisterComponentInHierarchy<ColorCompleteSparkle>();
+            builder.RegisterComponentInHierarchy<WinCelebration>();
 
             builder.RegisterComponentInHierarchy<ColorPaletteBar>()
                    .AsImplementedInterfaces().AsSelf();

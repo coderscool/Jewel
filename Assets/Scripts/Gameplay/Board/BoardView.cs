@@ -123,10 +123,21 @@ namespace JewelPainter.Gameplay.Board
             // cấu hình của màn hiện tại.
             Config = _levelService.CurrentConfig;
 
+            // Hai nguyên nhân rất khác nhau, phải tách: "không tìm thấy màn" là hỏng ở
+            // LevelManager hoặc ở tiến trình đã lưu, còn "thiếu GridData" là hỏng ở
+            // chính asset LevelConfig. Gộp chung một câu là bắt người đọc đi mò.
+            if (Config == null)
+            {
+                ClearBoard($"không có LevelConfig nào mang Level Id = {_levelService.CurrentLevel}. " +
+                           "Kiểm tra mảng Levels của LevelManager, hoặc tiến trình đã lưu đang " +
+                           "trỏ tới một màn chưa tồn tại.");
+                return;
+            }
+
             var data = _levelService.CurrentGrid;
             if (data == null)
             {
-                ClearBoard("LevelConfig của màn này chưa gán GridData");
+                ClearBoard($"'{Config.name}' (Level Id = {Config.LevelId}) chưa gán Grid Data");
                 return;
             }
 
