@@ -795,6 +795,19 @@ nhau. Tick sai thì điền `Fade Switch Size` sẽ làm hai lớp mờ cùng ch
 mốc 12 thì bảng biến mất và viền hiện đủ. Hai lớp giao nhau đúng tại 12, nên lúc nào
 cũng nhìn ra được ranh giới các ô.
 
+Cả hai mốc đều hiểu **0 là "mức zoom lúc vào màn"**. Bảng dùng nó cho mốc đục, viền
+dùng nó cho mốc trong suốt — cùng một quy ước, hai vai ngược nhau.
+
+Kiểm nhanh xem đã đúng chưa với `Camera Max Size` = 36, `Fade Switch Size` = 32:
+
+| orthographicSize | Lớp màu | Lớp viền |
+|---|---|---|
+| 36 (vừa vào màn) | đục | **vô hình** |
+| 32 (điểm giao) | vừa tan hết | vừa hiện đủ |
+| 9 (phóng sát) | vô hình | đục |
+
+Thấy viền ngay lúc mới vào màn là sai — xem mục "Lỗi hay gặp".
+
 Không có dòng code fade nào cho viền — dùng lại y nguyên component của bảng.
 
 ### 5.8 Hints
@@ -1004,6 +1017,7 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 | Ngọc bị ám nâu đen | Ảnh gốc `Jewel_01` có sẵn màu, nhân với màu ô ra màu bẩn | Đổi sang ảnh tông trắng, 4.3 |
 | Tô xong không thấy ngọc | `Jewel Prefab` chưa gán, hoặc đang zoom quá xa | 5.8B — Console có cảnh báo nếu thiếu prefab |
 | Ngọc bị số hoặc gợi ý che | `Jewel_01` chưa đặt `Order in Layer` = 4 | 4.3 |
+| Thấy sọc viền ô ngay lúc mới vào màn | `GridLines > Level Size Is Opaque` chưa tick, hoặc `Transparent Size` khác 0 | 5.7B |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

@@ -30,7 +30,8 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private float _opaqueSize;
 
         [Tooltip("orthographicSize mà tại đó ảnh MẤT HẲN (alpha 0). " +
-                 "Zoom sát hơn mức này thì vẫn trong suốt, không mờ thêm nữa. " +
+                 "Để 0 nghĩa là dùng mức zoom lúc mới vào màn, tức mức xa nhất. " +
+                 "Zoom qua khỏi mức này thì vẫn trong suốt, không mờ thêm nữa. " +
                  "Đặt LỚN hơn Opaque Size thì chiều mờ đảo lại: đục khi phóng sát, " +
                  "mờ dần khi kéo ra xa.")]
         [SerializeField] private float _transparentSize = 12f;
@@ -101,9 +102,17 @@ namespace JewelPainter.Gameplay.Board
                 else transparent = levelSize;
             }
 
-            // Opaque Size để 0 thì lấy mức zoom lúc vào màn làm mốc đục.
+            // Mốc để 0 nghĩa là "dùng mức zoom lúc vào màn", và điều đó đúng với CẢ HAI
+            // mốc: lớp màu dùng nó làm mốc ĐỤC, lớp viền dùng nó làm mốc TRONG SUỐT.
+            //
+            // Trước đây chỉ thay cho mốc đục, nên lớp viền đặt Transparent Size = 0 bị
+            // hiểu là "trong suốt tại orthographicSize = 0" — một mức camera không bao
+            // giờ tới. Kết quả là chiều mờ của viền lộn ngược: hiện rõ lúc kéo xa nhất
+            // và mờ dần khi phóng to, đúng ngược với ý đồ.
             if (opaque <= 0f) opaque = _baseSize;
-            if (opaque <= 0f) return 1f;
+            if (transparent <= 0f) transparent = _baseSize;
+
+            if (opaque <= 0f || transparent <= 0f) return 1f;
 
             // Hai mốc trùng nhau thì không có dải để nội suy — giữ đục.
             if (Mathf.Approximately(opaque, transparent)) return 1f;
