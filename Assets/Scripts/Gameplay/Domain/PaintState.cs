@@ -59,6 +59,68 @@ namespace JewelPainter.Gameplay.Domain
             return (total - RemainingFor(paletteIndex)) / (float)total;
         }
 
+        /// Số byte cần để gói trạng thái tô của lưới này. Mỗi ô một BIT, nên bảng 64x64
+        /// (4096 ô) gói vừa 512 byte.
+        public int PaintedBitsLength => (_painted.Length + 7) / 8;
+
+        /// Đóng gói trạng thái tô để đem đi lưu.
+        public byte[] ToPaintedBits()
+        {
+            var bytes = new byte[PaintedBitsLength];
+
+            for (var i = 0; i < _painted.Length; i++)
+            {
+                if (_painted[i]) bytes[i >> 3] |= (byte)(1 << (i & 7));
+            }
+
+            return bytes;
+        }
+
+        /// false khi dữ liệu không khớp cỡ lưới hiện tại.
+        ///
+        /// Từ chối thay vì cố khôi phục một phần: người ta sinh lại lưới cho một màn là
+        /// chuyện thường, mà bản lưu cũ đắp lên lưới mới sẽ tô sai chỗ hàng loạt — mất
+        /// tiến độ còn dễ hiểu hơn là một bức tranh lem nhem không rõ vì sao.
+        public bool RestorePaintedBits(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length != PaintedBitsLength) return false;
+
+            for (var i = 0; i < _painted.Length; i++)
+            {
+                _painted[i] = (bytes[i >> 3] & (1 << (i & 7))) != 0;
+            }
+
+            RecountRemaining();
+            return true;
+        }
+
+        /// Đếm lại từ đầu sau khi nạp: _remaining giảm dần theo từng nước tô nên không
+        /// suy ngược ra được từ mảng _painted, phải quét lưới một lượt.
+        private void RecountRemaining()
+        {
+            _remainingTotal = 0;
+
+            foreach (var paletteIndex in _usedPaletteIndices)
+            {
+                _remaining[paletteIndex] = _totals[paletteIndex];
+            }
+
+            for (var y = 0; y < _grid.Height; y++)
+            {
+                for (var x = 0; x < _grid.Width; x++)
+                {
+                    var cell = _grid.GetCell(x, y);
+                    if (cell == PixelGrid.EmptyCell) continue;
+                    if (!_remaining.ContainsKey(cell)) continue;
+
+                    // Ô rỗng bị đánh dấu đã tô trong bản lưu hỏng thì bỏ qua ở nhánh
+                    // trên, không làm lệch số đếm.
+                    if (_painted[Index(x, y)]) _remaining[cell] -= 1;
+                    else _remainingTotal++;
+                }
+            }
+        }
+
         /// Ô CHƯA TÔ thứ `ordinal` của một màu (đếm từ 0), quét trái→phải, trên→dưới.
         /// false khi màu đó không có đủ ngần ấy ô chưa tô.
         ///

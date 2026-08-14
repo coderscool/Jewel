@@ -42,6 +42,7 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private bool _grayscale = true;
 
         private ILevelService _levelService;
+        private IPaintService _paintService;
 
         private Texture2D _unpaintedTexture;
         private Texture2D _paintedTexture;
@@ -64,9 +65,15 @@ namespace JewelPainter.Gameplay.Board
         public event Action OnBoardRebuilt;
 
         /// Bootstrap gọi. Chỉ đăng ký lắng nghe — bảng dựng khi màn chơi được nạp.
-        public void Init(ILevelService levelService)
+        ///
+        /// Cần IPaintService để dựng đúng những ô đã tô từ phiên trước. PaintManager
+        /// phải Init TRƯỚC lớp này, vì nó nạp lại tiến độ trong chính handler của
+        /// OnLevelStarted — Init sau thì bảng dựng khi trạng thái còn trống.
+        public void Init(ILevelService levelService, IPaintService paintService)
         {
             _levelService = levelService;
+            _paintService = paintService;
+
             _levelService.OnLevelStarted += HandleLevelStarted;
         }
 
@@ -195,13 +202,27 @@ namespace JewelPainter.Gameplay.Board
                 for (var x = 0; x < Grid.Width; x++)
                 {
                     var index = Grid.GetCell(x, y);
-                    var color = Transparent;
+
+                    var unpaintedColor = Transparent;
+                    var paintedColor = Transparent;
 
                     if (index != PixelGrid.EmptyCell)
                     {
                         if (index >= 0 && index < Colors.Count)
                         {
-                            color = _grayscale ? BoardColors.ToGrayscale(Colors[index]) : Colors[index];
+                            // Ô đã tô từ phiên trước đi thẳng sang lớp màu thật. Không
+                            // đợi RevealCell vì đâu có viên ngọc nào bay tới — người
+                            // chơi chỉ mở lại game và thấy tranh đúng như lúc rời đi.
+                            if (_paintService != null && _paintService.IsPainted(x, y))
+                            {
+                                paintedColor = Colors[index];
+                            }
+                            else
+                            {
+                                unpaintedColor = _grayscale
+                                    ? BoardColors.ToGrayscale(Colors[index])
+                                    : Colors[index];
+                            }
                         }
                         else if (!reportedOutOfRange)
                         {
@@ -212,11 +233,8 @@ namespace JewelPainter.Gameplay.Board
                         }
                     }
 
-                    WritePixel(_unpaintedPixels, x, y, color);
-
-                    // Vào màn là chưa ô nào được tô. Trạng thái tô không được lưu, nên
-                    // lớp này luôn bắt đầu từ trống trơn.
-                    WritePixel(_paintedPixels, x, y, Transparent);
+                    WritePixel(_unpaintedPixels, x, y, unpaintedColor);
+                    WritePixel(_paintedPixels, x, y, paintedColor);
                 }
             }
         }

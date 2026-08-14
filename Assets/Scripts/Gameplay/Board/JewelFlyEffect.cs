@@ -29,24 +29,45 @@ namespace JewelPainter.Gameplay.Board
                  "Đây là thứ giữ cho TỐC ĐỘ đều nhau giữa các cú bay xa gần khác nhau.")]
         [SerializeField] private float _referenceDistance = 8f;
 
-        [SerializeField] private float _minDuration = 0.3f;
+        [Tooltip("Sàn thời gian bay. Đây là ô chặn cảm giác 'ô gần bay vụt một cái là " +
+                 "xong' — mắt đọc nhịp theo THỜI GIAN chứ không theo quãng đường.")]
+        [SerializeField] private float _minDuration = 0.42f;
+
         [SerializeField] private float _maxDuration = 0.62f;
 
-        [Tooltip("Thời gian bay bám theo quãng đường CHẶT tới đâu. 1 là tỉ lệ thẳng — " +
-                 "quãng nửa thì thời gian nửa. 0.5 là căn bậc hai: quãng ngắn được chia " +
-                 "phần thời gian rộng rãi hơn tỉ lệ của nó. 0 là mọi quãng cùng một thời " +
-                 "gian.")]
+        [Tooltip("Thời gian bay bám theo quãng đường CHẶT tới đâu.\n\n" +
+                 "1 là tỉ lệ thẳng — quãng nửa thì thời gian nửa, và ô sát thanh màu bay " +
+                 "vụt một cái.\n" +
+                 "0.25 là mặc định: quãng xa vẫn lâu hơn quãng gần, nhưng chỉ chừng 1.5 " +
+                 "lần thay vì gấp đôi.\n" +
+                 "0 là MỌI quãng cùng một thời gian.")]
         [Range(0f, 1f)]
-        [SerializeField] private float _durationFalloff = 0.5f;
+        [SerializeField] private float _durationFalloff = 0.25f;
 
         [Tooltip("Xê dịch ngẫu nhiên thời gian bay, theo tỉ lệ. 0.08 là ±8%. Kéo tay tô " +
                  "một loạt ô thì các viên không đi thành hàng lối cứng nhắc nữa.")]
         [Range(0f, 0.4f)]
         [SerializeField] private float _durationVariance = 0.08f;
 
-        [Tooltip("Nhịp của quãng bay. OutCubic: vọt ra nhanh rồi hạ dần — phản hồi tức " +
-                 "thì mà vẫn đáp êm. InOutSine mềm hơn nhưng khởi động chậm.")]
+        [Tooltip("Nhịp của quãng bay XA. OutCubic: vọt ra nhanh rồi hạ dần — phản hồi " +
+                 "tức thì mà vẫn đáp êm.")]
         [SerializeField] private Ease _moveEase = Ease.OutCubic;
+
+        [Tooltip("Nhịp của quãng bay GẦN.\n\n" +
+                 "OutCubic có tốc độ ĐỈNH bằng 3 lần tốc độ trung bình, và cả cú vọt đó " +
+                 "dồn vào ngay lúc rời thanh màu. Quãng dài thì không sao vì còn cả đoạn " +
+                 "sau để hạ dần, nhưng quãng ngắn thì người chơi chỉ kịp thấy đúng cú " +
+                 "vọt — đó là cảm giác 'búng một cái'.\n\n" +
+                 "InOutSine có đỉnh chỉ 1.57 lần, và đỉnh nằm ở GIỮA quãng nên hai đầu " +
+                 "đều êm.")]
+        [SerializeField] private Ease _nearMoveEase = Ease.InOutSine;
+
+        [Tooltip("Quãng ngắn hơn ngần này PHẦN của Reference Distance thì dùng Near Move " +
+                 "Ease. 0.8 với Reference Distance 8 nghĩa là dưới 6.4 world unit.\n\n" +
+                 "Đổi nhịp đột ngột qua ngưỡng không nhìn ra được: mỗi cú bay là một sự " +
+                 "kiện riêng, không có hai cú cạnh nhau để mà so.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _nearEaseReach = 0.8f;
 
         [Header("Cỡ viên")]
         [Tooltip("Cỡ viên lúc rời thanh màu khi bay quãng XA (từ Reference Distance trở " +
@@ -194,7 +215,9 @@ namespace JewelPainter.Gameplay.Board
             // đường bay vẫn cong. DOMove nội suy thẳng giữa hai điểm.
             var sequence = DOTween.Sequence();
 
-            sequence.Insert(0f, flyer.transform.DOMove(target, duration).SetEase(_moveEase));
+            var moveEase = reach <= _nearEaseReach ? _nearMoveEase : _moveEase;
+
+            sequence.Insert(0f, flyer.transform.DOMove(target, duration).SetEase(moveEase));
 
             // Hai tween scale nối đuôi nhau, KHÔNG chồng thời gian: co về settleScale
             // suốt quãng bay, rồi nở về 1 ở đoạn cuối. Chồng nhau thì DOTween để tween

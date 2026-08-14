@@ -681,8 +681,31 @@ xa thì gần như không thấy.
 ### 5.5 PaintManager
 
 - [ ] Create Empty, tên `PaintManager`, `Add Component > Paint Manager`
+- [ ] Trên chính object đó, `Add Component > Paint Progress Store`
+- [ ] `Auto Save Seconds` = **5**
 
-Không gán gì, `GameEntryPoint` nối dây lúc chạy.
+Không gán gì thêm, `GameEntryPoint` nối dây lúc chạy.
+
+**Tiến độ tô được lưu lại.** Đóng game giữa chừng rồi mở lại thì bức tranh còn nguyên
+chỗ đang dở. Mỗi màn một key riêng trong PlayerPrefs (`painted_1`, `painted_2`...),
+và key của một màn bị **xoá ngay khi màn đó hoàn thành**.
+
+Trạng thái tô gói theo **bit** rồi mã hoá Base64: bảng 64×64 là 4096 ô nhưng chỉ tốn
+512 byte, ra khoảng 700 ký tự. Lưu từng ô thành một số nguyên riêng thì cùng bảng đó
+là 4096 key.
+
+`Auto Save Seconds` là chu kỳ ghi xuống đĩa khi có thay đổi. **Không** ghi mỗi lần tô
+một ô: `PlayerPrefs.Save` ghi cả file ra đĩa, gọi nó theo nhịp kéo tay tô là cách chắc
+chắn để game giật. Ngoài chu kỳ đó, nó còn ghi ở ba mốc mà mất dữ liệu là mất thật:
+app chuyển nền, mất tiêu điểm, và thoát hẳn.
+
+> Trên mobile, thoát app thường **không** gọi `OnApplicationQuit` — hệ điều hành chỉ
+> đưa app xuống nền rồi có thể giết bất cứ lúc nào. `OnApplicationPause` mới là mốc
+> đáng tin, và đó là lý do cả ba mốc đều được bắt.
+
+Sinh lại lưới cho một màn đã chơi dở thì bản lưu cũ **không khớp cỡ** và bị bỏ kèm một
+cảnh báo trong Console. Đó là cố ý: đắp bản lưu cũ lên lưới mới sẽ tô sai chỗ hàng
+loạt, mất tiến độ còn dễ hiểu hơn một bức tranh lem nhem không rõ vì sao.
 
 ### 5.5B LevelFlow
 
@@ -910,11 +933,13 @@ vẫn còn nguyên màu, không ai nhận ra có gì biến mất.
 |---|---|---|
 | `Duration` | `0.4` | thời gian bay ở quãng tham chiếu |
 | `Reference Distance` | `8` | quãng mà tại đó bay đúng `Duration` |
-| `Min Duration` | `0.3` | |
+| `Min Duration` | `0.42` | sàn thời gian bay |
 | `Max Duration` | `0.62` | |
-| `Duration Falloff` | `0.5` | thời gian bám theo quãng đường chặt tới đâu |
+| `Duration Falloff` | `0.25` | thời gian bám theo quãng đường chặt tới đâu |
 | `Duration Variance` | `0.08` | ±8%, để các viên không đi thành hàng lối |
-| `Move Ease` | `OutCubic` | vọt ra nhanh, hạ dần |
+| `Move Ease` | `OutCubic` | nhịp cho quãng **xa** — vọt ra nhanh, hạ dần |
+| `Near Move Ease` | `InOutSine` | nhịp cho quãng **gần** — êm cả hai đầu |
+| `Near Ease Reach` | `0.8` | dưới 0.8 × Reference Distance thì tính là gần |
 
 Ba ô đầu là thứ đáng chú ý nhất. Thời gian bay **cố định** làm ô ngay sát thanh màu
 bò lừ đừ còn ô ở mép bảng thì lao vun vút — mắt đọc ra ngay là hai chuyển động khác
@@ -949,9 +974,48 @@ Cột cuối là thứ đáng nhìn: nằm gọn trong 1.5–3.6 ở mọi quãn
 `Near Start Scale` bằng nó thì cột đó vọt từ 6.5 lên 15.4 — chênh gấp đôi, và đó chính
 là cảm giác giật ở những ô sát thanh màu.
 
-`Duration Falloff` = 0.5 (căn bậc hai) là phần thứ hai: quãng ngắn được chia phần thời
-gian rộng rãi hơn tỉ lệ của nó. Để 1 là tỉ lệ thẳng như cũ, để 0 là mọi quãng cùng
-một thời gian.
+**Ô gần "bay nhanh" chủ yếu là do EASING, không phải do thời gian.**
+
+`OutCubic` có tốc độ đỉnh bằng **3 lần** tốc độ trung bình, và cả cú vọt đó dồn vào
+ngay lúc rời thanh màu — nó đi 66% quãng đường trong 30% thời gian đầu. Quãng dài thì
+không sao vì còn cả đoạn sau để hạ dần. Quãng ngắn thì người chơi chỉ kịp thấy đúng
+cú vọt đó.
+
+`InOutSine` có đỉnh chỉ **1.57 lần**, và đỉnh nằm ở giữa quãng nên hai đầu đều êm.
+Vì vậy quãng gần dùng ease riêng:
+
+| Quãng | Trước: giây / tốc độ đỉnh | Sau: giây / ease / tốc độ đỉnh |
+|---|---|---|
+| 1.5 | 0.38 — 11.8 | 0.42 — InOutSine — **5.6** |
+| 3 | 0.38 — 23.7 | 0.42 — InOutSine — **11.2** |
+| 6 | 0.38 — 47.4 | 0.42 — InOutSine — **22.4** |
+| 10 | 0.42 — 70.9 | 0.42 — OutCubic — 70.9 |
+| 20 | 0.50 — 119.3 | 0.50 — OutCubic — 119.3 |
+| 40 | 0.60 — 200.6 | 0.60 — OutCubic — 200.6 |
+
+Quãng gần giảm còn **một nửa** tốc độ đỉnh, quãng xa không đổi một chút nào.
+
+Đổi ease đột ngột qua ngưỡng không nhìn ra được: mỗi cú bay là một sự kiện riêng,
+không có hai cú cạnh nhau để mà so. Thấy quãng tầm trung vẫn gắt thì nâng
+`Near Ease Reach` lên 1, lúc đó mọi quãng dưới Reference Distance đều dùng InOutSine.
+
+**`Duration Falloff` và `Min Duration` là cần gạt thứ hai.** Mắt đọc
+nhịp theo **thời gian**, không theo quãng đường — một cú bay 0.30 giây thấy vụt một
+cái là xong, dù nó chậm hơn hẳn về world unit mỗi giây.
+
+| Quãng | `1 / 0.26` (tỉ lệ thẳng) | `0.25 / 0.38` (mặc định) | `0 / 0.38` (bằng nhau) |
+|---|---|---|---|
+| 1.5 | 0.26 | 0.38 | 0.40 |
+| 3 | 0.26 | 0.38 | 0.40 |
+| 6 | 0.30 | 0.38 | 0.40 |
+| 10 | 0.50 | 0.42 | 0.40 |
+| 20 | 0.62 | 0.50 | 0.40 |
+| 40 | 0.62 | 0.60 | 0.40 |
+| **chênh lệch** | **2.4 lần** | **1.6 lần** | **1 lần** |
+
+Muốn **mọi cú bay đúng một nhịp** thì đặt `Duration Falloff` = **0** — lúc đó `Duration`
+(0.4) là thời gian của tất cả, và `Min`/`Max` không còn tác dụng. Đổi lại, ô ở mép bảng
+sẽ lao rất nhanh về tốc độ.
 
 `Settle Scale` là toàn bộ cảm giác "đáp êm": viên co xuống hơi nhỏ hơn ô rồi giãn về
 đúng cỡ trong 18% cuối. Không có pha này thì viên **dừng phựt** đúng kích thước cuối,
@@ -1189,6 +1253,8 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 | Ngọc bị số hoặc gợi ý che | `Jewel_01` chưa đặt `Order in Layer` = 4 | 4.3 |
 | Thấy sọc viền ô ngay lúc mới vào màn | `GridLines > Level Size Is Opaque` chưa tick, hoặc `Transparent Size` khác 0 | 5.7B |
 | Thắng màn thì khựng một nhịp | `Cell Step` quá nhỏ so với cỡ bảng | 5.8E |
+| Mở lại game mất hết phần đã tô | `Paint Progress Store` chưa gắn lên `PaintManager` | 5.5 |
+| Console báo bản lưu không khớp cỡ lưới | Đã sinh lại `GridData` cho màn đang chơi dở | bình thường, bản lưu cũ bị bỏ |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

@@ -24,6 +24,7 @@ namespace JewelPainter.Bootstrap
         private readonly SoundService _sound;
         private readonly LevelManager _levelManager;
         private readonly ILevelService _levelService;
+        private readonly PaintProgressStore _paintProgressStore;
         private readonly PaintManager _paintManager;
         private readonly IPaintService _paintService;
         private readonly HudView _hud;
@@ -50,6 +51,7 @@ namespace JewelPainter.Bootstrap
             SoundService sound,
             LevelManager levelManager,
             ILevelService levelService,
+            PaintProgressStore paintProgressStore,
             PaintManager paintManager,
             IPaintService paintService,
             HudView hud,
@@ -75,6 +77,7 @@ namespace JewelPainter.Bootstrap
             _sound = sound;
             _levelManager = levelManager;
             _levelService = levelService;
+            _paintProgressStore = paintProgressStore;
             _paintManager = paintManager;
             _paintService = paintService;
             _hud = hud;
@@ -101,11 +104,15 @@ namespace JewelPainter.Bootstrap
             _sound.Init(_save);
             _levelManager.Init(_progress);
 
+            // Kho tiến độ Init trước PaintManager: PaintManager nạp lại tiến độ qua nó
+            // ngay trong handler OnLevelStarted đầu tiên.
+            _paintProgressStore.Init(_save, _levelService);
+
             // PaintManager phải Init TRƯỚC BoardView: cả hai nghe OnLevelStarted, và
             // BoardView hỏi trạng thái tô ngay lúc dựng lại bảng.
-            _paintManager.Init(_levelService);
+            _paintManager.Init(_levelService, _paintProgressStore);
 
-            _boardView.Init(_levelService);
+            _boardView.Init(_levelService, _paintService);
             _numberLayer.Init(_boardView);
             _gridLines.Init(_boardView);
 

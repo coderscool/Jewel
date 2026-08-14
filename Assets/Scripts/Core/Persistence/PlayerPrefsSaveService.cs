@@ -19,6 +19,13 @@ namespace JewelPainter.Core.Persistence
 
         public void SetBool(string key, bool value) => PlayerPrefs.SetInt(key, value ? 1 : 0);
 
+        public string GetString(string key, string defaultValue = "")
+            => PlayerPrefs.GetString(key, defaultValue);
+
+        public void SetString(string key, string value) => PlayerPrefs.SetString(key, value);
+
+        public void DeleteKey(string key) => PlayerPrefs.DeleteKey(key);
+
         public void Save() => PlayerPrefs.Save();
     }
 }

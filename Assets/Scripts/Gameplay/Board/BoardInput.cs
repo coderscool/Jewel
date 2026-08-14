@@ -12,6 +12,10 @@ namespace JewelPainter.Gameplay.Board
     /// là di chuyển camera. Phân theo VỊ TRÍ BẤM chứ không theo số ngón, nên người chơi
     /// không phải học thao tác riêng — chỗ nào tô được thì tô, chỗ nào không thì kéo.
     ///
+    /// Nhiều ngón thì nét luôn thuộc về camera, và **vẫn thuộc về camera sau khi nhấc
+    /// bớt xuống còn một ngón** — người chơi zoom xong thường kéo tiếp bằng ngón còn
+    /// lại. Chỉ khi nhấc hết tay ra thì nét sau mới được quyền tô.
+    ///
     /// Ngoài ra: giữ tay yên trên một ô CHƯA TÔ đủ lâu thì chọn luôn màu của ô đó.
     /// Chỉ áp dụng cho nét thuộc về camera — nét thuộc về Paint nghĩa là ô đó đã đúng
     /// màu đang chọn, chạm vào là tô, không có gì để chọn nữa.
@@ -71,9 +75,22 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_camera == null) return;
 
-            if (!TryGetStrokePosition(out var screenPosition))
+            if (!TryReadPointer(out var screenPosition, out var canPaint))
             {
                 CurrentStroke = StrokeOwner.None;
+                _lastCell = NoCell;
+                ResetHold();
+                return;
+            }
+
+            if (!canPaint)
+            {
+                // Đang nhiều ngón, hoặc còn sót ngón sau một cử chỉ nhiều ngón.
+                //
+                // Trả về Camera chứ KHÔNG phải None: None khoá luôn cả việc kéo, và
+                // người chơi vừa pinch xong nhấc bớt một ngón sẽ thấy bảng đứng đơ dưới
+                // ngón còn lại. Nét này không bao giờ được tô, nhưng kéo thì vẫn được.
+                CurrentStroke = StrokeOwner.Camera;
                 _lastCell = NoCell;
                 ResetHold();
                 return;
@@ -174,15 +191,18 @@ namespace JewelPainter.Gameplay.Board
             return _paintService.CanPaint(cell.x, cell.y) ? StrokeOwner.Paint : StrokeOwner.Camera;
         }
 
-        /// false khi không có ngón nào, hoặc khi có từ hai ngón trở lên — lúc đó
-        /// BoardCamera lo việc zoom và di chuyển, không ai tô cả.
+        /// Trả false khi không còn gì chạm màn hình.
         ///
-        /// Sau một cử chỉ hai ngón, phải nhấc HẾT tay ra rồi mới nhận nét mới. Không có
-        /// chốt này thì nhấc bớt một ngón sau khi zoom xong là ngón còn lại lập tức
-        /// thành một nét đơn hợp lệ, và nó tô ngay vào ô nó đang tình cờ đứng.
-        private bool TryGetStrokePosition(out Vector2 screenPosition)
+        /// canPaint tách riêng khỏi việc "có con trỏ hay không" vì hai câu hỏi khác
+        /// nhau. Sau một cử chỉ nhiều ngón, ngón còn sót lại vẫn là một con trỏ hợp lệ
+        /// để KÉO, nhưng không được phép TÔ: người chơi nhấc bớt một ngón sau khi zoom
+        /// hoàn toàn không có ý tô vào cái ô mà ngón kia tình cờ đang đứng.
+        ///
+        /// Chốt chỉ mở khi nhấc HẾT tay ra.
+        private bool TryReadPointer(out Vector2 screenPosition, out bool canPaint)
         {
             screenPosition = default;
+            canPaint = false;
 
             var screen = Touchscreen.current;
             if (screen != null)
@@ -202,14 +222,14 @@ namespace JewelPainter.Gameplay.Board
                 if (pressedCount > 1)
                 {
                     _waitingForFullRelease = true;
-                    return false;
+                    screenPosition = firstPosition;
+                    return true;
                 }
 
                 if (pressedCount == 1)
                 {
-                    if (_waitingForFullRelease) return false;
-
                     screenPosition = firstPosition;
+                    canPaint = !_waitingForFullRelease;
                     return true;
                 }
 
@@ -221,6 +241,7 @@ namespace JewelPainter.Gameplay.Board
             if (mouse == null || !mouse.leftButton.isPressed) return false;
 
             screenPosition = mouse.position.ReadValue();
+            canPaint = true;
             return true;
         }
 

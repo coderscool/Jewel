@@ -57,15 +57,25 @@ namespace JewelPainter.UI.Views
             var colors = data.Colors;
             var used = _paintService.UsedPaletteIndices;
 
-            for (var i = 0; i < used.Count; i++)
+            // Đếm slot RIÊNG, không dùng chỉ số của vòng lặp.
+            //
+            // Dùng chỉ số vòng lặp thì mỗi màu bị bỏ qua để lại một slot trống ở giữa,
+            // mà GetSwatch tạo ô mới theo slot — nên nó vẫn phải sinh ra những ô đệm
+            // cho các slot bị nhảy cóc. Chúng chưa Bind bao giờ nhưng vẫn hiện, và
+            // người chơi thấy vài ô màu trắng trơn nằm đầu thanh.
+            //
+            // Trước khi có tính năng lưu thì lỗi này không lộ, vì lúc vào màn chưa màu
+            // nào xong sẵn để mà bị bỏ qua.
+            var slot = 0;
+
+            foreach (var paletteIndex in used)
             {
-                var paletteIndex = used[i];
                 if (paletteIndex < 0 || paletteIndex >= colors.Count) continue;
 
                 var remaining = _paintService.RemainingFor(paletteIndex);
                 if (remaining <= 0) continue;   // màu đã xong sẵn thì không dựng ô nào
 
-                var swatch = GetSwatch(i);
+                var swatch = GetSwatch(slot++);
                 swatch.Bind(paletteIndex, colors[paletteIndex], HandleSwatchClicked);
                 swatch.SetRemaining(remaining);
                 swatch.SetProgress(_paintService.ProgressFor(paletteIndex));
@@ -158,11 +168,17 @@ namespace JewelPainter.UI.Views
         }
 
         /// Tạo một lần rồi bật tắt để tái dùng — không Instantiate/Destroy mỗi màn.
+        ///
+        /// Ô mới sinh ra ở trạng thái TẮT: prefab vốn đang bật, nên ô nào tạo ra mà bên
+        /// gọi chưa kịp bật lên sẽ hiện nguyên si nội dung của prefab.
         private ColorSwatchView GetSwatch(int slot)
         {
             while (_swatches.Count <= slot)
             {
-                _swatches.Add(Instantiate(_swatchPrefab, _root));
+                var created = Instantiate(_swatchPrefab, _root);
+                created.gameObject.SetActive(false);
+
+                _swatches.Add(created);
             }
 
             return _swatches[slot];

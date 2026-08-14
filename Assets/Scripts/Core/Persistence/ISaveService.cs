@@ -13,6 +13,11 @@ namespace JewelPainter.Core.Persistence
         bool GetBool(string key, bool defaultValue = false);
         void SetBool(string key, bool value);
 
+        string GetString(string key, string defaultValue = "");
+        void SetString(string key, string value);
+
+        void DeleteKey(string key);
+
         void Save();
     }
 }

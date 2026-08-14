@@ -36,6 +36,8 @@ namespace JewelPainter.Bootstrap
 
             builder.RegisterComponentInHierarchy<HudView>();
 
+            builder.RegisterComponentInHierarchy<PaintProgressStore>();
+
             builder.RegisterComponentInHierarchy<PaintManager>()
                    .AsImplementedInterfaces().AsSelf();
 

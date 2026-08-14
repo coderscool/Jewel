@@ -13,6 +13,7 @@ namespace JewelPainter.Gameplay.Managers
         private static readonly int[] NoIndices = Array.Empty<int>();
 
         private ILevelService _levelService;
+        private PaintProgressStore _progressStore;
         private PaintState _state;
 
         public int SelectedPaletteIndex { get; private set; } = -1;
@@ -25,9 +26,11 @@ namespace JewelPainter.Gameplay.Managers
         public event Action<Vector2Int, int> OnCellPainted;
 
         /// Bootstrap đưa phụ thuộc xuống — không tự đi tìm.
-        public void Init(ILevelService levelService)
+        public void Init(ILevelService levelService, PaintProgressStore progressStore)
         {
             _levelService = levelService;
+            _progressStore = progressStore;
+
             _levelService.OnLevelStarted += HandleLevelStarted;
         }
 
@@ -45,6 +48,11 @@ namespace JewelPainter.Gameplay.Managers
             var grid = data != null ? data.ToGrid() : null;
 
             if (grid != null) _state = new PaintState(grid);
+
+            // Nạp lại tiến độ TRƯỚC khi bắn OnBoardReady: thanh màu và bảng đều dựng
+            // theo trạng thái đọc được lúc nhận sự kiện đó. Nạp sau thì chúng dựng theo
+            // bảng trống rồi mới bị sửa, và người chơi thấy một nhịp nhấp nháy.
+            if (_state != null) _progressStore?.Restore(levelId, _state);
 
             OnBoardReady?.Invoke();
         }
@@ -73,6 +81,8 @@ namespace JewelPainter.Gameplay.Managers
             if (SelectedPaletteIndex < 0) return false;
 
             if (!_state.TryPaint(x, y, SelectedPaletteIndex)) return false;
+
+            _progressStore?.MarkDirty();
 
             OnCellPainted?.Invoke(new Vector2Int(x, y), SelectedPaletteIndex);
             return true;
