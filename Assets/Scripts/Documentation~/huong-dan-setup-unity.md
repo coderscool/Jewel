@@ -817,6 +817,7 @@ nét đó thuộc về Paint và không có gì để chọn nữa.
 - [ ] `Camera` = Main Camera, `Number Prefab` = `CellNumber`, `Root` = chính nó
 - [ ] `Show At Zoom Progress` = **0.6**
 - [ ] `Min Cell Screen Pixels` = 32 (đường lui, xem dưới)
+- [ ] `Max Spawn Per Frame` = **48**
 
 `Show At Zoom Progress` đo theo **dải zoom của từng màn**: mốc trên là mức lúc vào màn
 (`Camera Max Size`), mốc dưới là `Fade Switch Size`. 0 là số hiện ngay khi vào màn,
@@ -829,6 +830,28 @@ có `Camera Max Size` lớn phải kéo sâu hơn hẳn mới thấy số.
 
 `Min Cell Screen Pixels` chỉ dùng khi `LevelConfig` để trống `Fade Switch Size` — lúc
 đó không có mốc dưới để chia tỉ lệ.
+
+**`Max Spawn Per Frame` không phải số chữ hiện ra mỗi frame.** Toàn bộ số trong tầm
+nhìn luôn hiện **cùng một lúc**; ô này chỉ chia phần việc *dựng* chữ ra nhiều frame.
+
+Mỗi `TextMeshPro` phải dựng lưới chữ của nó. Dựng hàng trăm cái trong một frame là một
+cú khựng thấy rõ, nên chúng được dựng dần ở `alpha` = 0 — người chơi không thấy gì —
+rồi khi cả vùng nhìn đã xong thì tất cả bật lên một lượt. Đổi alpha chỉ ghi lại màu
+đỉnh của lưới đã có sẵn, rẻ hơn hẳn nên làm đồng loạt được.
+
+Đánh đổi nằm ở **độ trễ trước khi số hiện**: bảng ~900 ô chia cho 48 là 19 frame,
+khoảng 0.3 giây. Nâng ô này lên thì số hiện sớm hơn nhưng mỗi frame nặng hơn — 48 chữ
+tốn chừng 5ms, vẫn lọt trong ngân sách 16ms của 60fps.
+
+**Ô `Spawn All In One Frame`** ở mục `Thử nghiệm` bỏ qua hạn mức hoàn toàn: dựng hết
+số trong đúng một frame, không có 0.3 giây chờ. Tick rồi zoom ra zoom vào là thấy khác
+liền, không cần chạy lại Play Mode.
+
+Đo trong Editor không nói lên gì — Editor chậm hơn build vài lần và có cả overhead của
+chính nó. Muốn biết máy thật chịu được không thì `Build Settings` → bật
+**Development Build** + **Autoconnect Profiler**, build lên máy, rồi xem
+`TextMeshPro.GenerateTextMesh` trong tab CPU đúng frame zoom qua ngưỡng hiện số. Máy
+yếu nhất bạn định hỗ trợ mới là máy đáng đo.
 
 ### 5.7B GridLines
 
@@ -1255,6 +1278,7 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 | Thắng màn thì khựng một nhịp | `Cell Step` quá nhỏ so với cỡ bảng | 5.8E |
 | Mở lại game mất hết phần đã tô | `Paint Progress Store` chưa gắn lên `PaintManager` | 5.5 |
 | Console báo bản lưu không khớp cỡ lưới | Đã sinh lại `GridData` cho màn đang chơi dở | bình thường, bản lưu cũ bị bỏ |
+| Số bò dần từ trên xuống thay vì hiện cùng lúc | Bản cũ. Nay số dựng ở alpha 0 rồi bật một lượt | 5.7 |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

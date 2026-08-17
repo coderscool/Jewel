@@ -1269,6 +1269,7 @@ MonoBehaviour:
   _numberColor: {r: 0, g: 0, b: 0, a: 1}
   _maxSpawnPerFrame: 24
   _visibleMarginCells: 2
+  _spawnAllInOneFrame: 1
 --- !u!1 &929957781
 GameObject:
   m_ObjectHideFlags: 0
@@ -1354,6 +1355,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fae6e0a105ea1324b8d607d714bebec7, type: 2}
   - {fileID: 11400000, guid: b863d7f8bc985b94ea125822eab04ff2, type: 2}
   - {fileID: 11400000, guid: 6c32b6281160f874180917165f3f180b, type: 2}
+  - {fileID: 11400000, guid: 51547948cbf16674586427ac3efef7d0, type: 2}
 --- !u!4 &986912015
 Transform:
   m_ObjectHideFlags: 0
@@ -2167,6 +2169,8 @@ MonoBehaviour:
   _durationFalloff: 0.5
   _durationVariance: 0.08
   _moveEase: 9
+  _nearMoveEase: 4
+  _nearEaseReach: 0.8
   _startScale: 2.6
   _nearStartScale: 1.2
   _settleScale: 0.92

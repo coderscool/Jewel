@@ -30,14 +30,26 @@ namespace JewelPainter.Gameplay.Board
                  "đã mờ đi, lúc đó nền sau nó gần như trong suốt nên một màu cố định là đủ.")]
         [SerializeField] private Color _numberColor = Color.black;
 
-        [Tooltip("Số chữ được sinh tối đa trong MỘT frame. Zoom liên tục có thể đẩy hàng " +
-                 "nghìn ô vào tầm nhìn cùng lúc; chia ra nhiều frame thì không có cú khựng " +
-                 "nào, đổi lại số ở rìa hiện chậm hơn vài frame.")]
-        [SerializeField] private int _maxSpawnPerFrame = 24;
+        [Tooltip("Số chữ được DỰNG tối đa trong một frame. Không phải số chữ hiện ra — " +
+                 "chữ dựng xong vẫn trong suốt cho tới khi cả vùng nhìn xong, rồi tất cả " +
+                 "hiện cùng lúc.\n\n" +
+                 "Nâng lên thì số hiện sớm hơn nhưng mỗi frame nặng hơn. 48 chữ mỗi frame " +
+                 "tốn chừng 5ms, vẫn lọt trong ngân sách 16ms của 60fps.")]
+        [SerializeField] private int _maxSpawnPerFrame = 48;
 
         [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn. Ô ở rìa không " +
                  "bị thu về rồi sinh lại liên tục mỗi khi camera nhích một chút.")]
         [SerializeField] private int _visibleMarginCells = 2;
+
+        [Header("Thử nghiệm")]
+        [Tooltip("Bỏ qua Max Spawn Per Frame: dựng TẤT CẢ số trong tầm nhìn trong đúng " +
+                 "một frame.\n\n" +
+                 "Bật lên để đo xem máy chịu được tới đâu. Số hiện ngay lập tức, không có " +
+                 "0.3 giây chờ — đổi lại nếu máy yếu thì sẽ thấy một cú khựng đúng lúc " +
+                 "zoom qua ngưỡng hiện số.\n\n" +
+                 "Đổi được ngay trong Play Mode: tick rồi zoom ra zoom vào là thấy khác " +
+                 "liền, không cần chạy lại.")]
+        [SerializeField] private bool _spawnAllInOneFrame;
 
         private readonly Dictionary<Vector2Int, TextMeshPro> _active = new();
         private readonly Stack<TextMeshPro> _pool = new();
@@ -54,6 +66,9 @@ namespace JewelPainter.Gameplay.Board
 
         private bool _needsBaseCapture = true;
         private bool _needsRefresh;
+
+        /// Có chữ nào đang dựng xong nhưng còn trong suốt, chờ được bật lên cùng lượt.
+        private bool _hasHiddenLabels;
 
         public void Init(BoardView boardView)
         {
@@ -108,6 +123,14 @@ namespace JewelPainter.Gameplay.Board
 
         /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này
         /// và còn việc dở, lúc đó LateUpdate sẽ gọi lại ở frame sau.
+        ///
+        /// Chữ dựng ra ở alpha 0 và chỉ được bật lên khi cả lượt đã xong. Người chơi thấy
+        /// TOÀN BỘ số trong tầm nhìn hiện cùng một lúc, thay vì thấy chúng bò dần từ trên
+        /// xuống theo hạn mức mỗi frame.
+        ///
+        /// Không thể bỏ hạn mức để dựng hết trong một frame: mỗi TextMeshPro phải dựng
+        /// lưới chữ, hàng trăm cái cùng lúc là một cú khựng thấy rõ. Đổi alpha thì chỉ
+        /// ghi lại màu đỉnh của lưới đã có sẵn — rẻ hơn hẳn, làm đồng loạt được.
         private bool Refresh()
         {
             if (!ShouldShowNumbers())
@@ -123,7 +146,10 @@ namespace JewelPainter.Gameplay.Board
 
             ReleaseOutside(visible);
 
-            var budget = Mathf.Max(1, _maxSpawnPerFrame);
+            // int.MaxValue thay vì rẽ nhánh riêng: lưới lớn nhất cũng chỉ vài nghìn ô
+            // nên phép trừ không bao giờ chạm đáy, và phần thân vòng lặp giữ nguyên một
+            // đường chạy duy nhất cho cả hai chế độ.
+            var budget = _spawnAllInOneFrame ? int.MaxValue : Mathf.Max(1, _maxSpawnPerFrame);
 
             for (var y = visible.yMin; y < visible.yMax; y++)
             {
@@ -140,8 +166,10 @@ namespace JewelPainter.Gameplay.Board
                     label.transform.position = layout.CellToWorldCenter(x, y);
                     label.color = _numberColor;
                     label.SetText("{0}", index + 1);
+                    label.alpha = 0f;
 
                     _active[cell] = label;
+                    _hasHiddenLabels = true;
 
                     // Duyệt lại từ đầu ở frame sau; ô đã có thì bỏ qua ngay bằng một phép
                     // tra dictionary, rẻ hơn nhiều so với Instantiate nên không đáng lo.
@@ -149,7 +177,25 @@ namespace JewelPainter.Gameplay.Board
                 }
             }
 
+            RevealAll();
             return true;
+        }
+
+        /// Bật hết chữ đang trong suốt lên cùng một lượt.
+        ///
+        /// Duyệt _active chứ không giữ danh sách riêng: chữ có thể bị Release trả về kho
+        /// giữa chừng, mà một danh sách riêng sẽ còn giữ tham chiếu tới nó và bật sáng
+        /// nhầm một chữ đã được dùng lại cho ô khác.
+        private void RevealAll()
+        {
+            if (!_hasHiddenLabels) return;
+
+            _hasHiddenLabels = false;
+
+            foreach (var label in _active.Values)
+            {
+                if (label.alpha < 1f) label.alpha = 1f;
+            }
         }
 
         /// Nới rộng tầm nhìn thêm vài ô để camera nhích một chút không làm ô ở rìa bị
@@ -220,6 +266,8 @@ namespace JewelPainter.Gameplay.Board
             foreach (var pair in _active) _toRelease.Add(pair.Key);
 
             foreach (var cell in _toRelease) Release(cell);
+
+            _hasHiddenLabels = false;
         }
 
         private void Release(Vector2Int cell)

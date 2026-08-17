@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf8129e7cdee5294da1fa75b22c2544c, type: 3}
+  m_Name: Level_5
+  m_EditorClassIdentifier: 
+  _levelId: 5
+  _targetImage: {fileID: -109096541456223411, guid: 9b86d2db264d46e4ab2f0e31fd6417f7, type: 3}
+  _gridData: {fileID: 11400000, guid: 91b3ee7f70c55f2419ca814062192054, type: 2}
+  _timeLimitSeconds: 0
+  _cameraMinSize: 9
+  _cameraMaxSize: 36
+  _fadeSwitchSize: 32
