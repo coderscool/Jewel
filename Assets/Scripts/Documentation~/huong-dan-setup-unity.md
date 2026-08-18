@@ -1299,7 +1299,12 @@ vẫn nằm đó, chỉ là không còn ai điều khiển. Phải xoá hẳn ob
   - `Add Component > Vertical Layout Group`, `Spacing` = 24
   - **Bỏ tick cả `Control Child Width` lẫn `Control Child Height`**
   - Tick `Child Force Expand Width`
+  - Tick **`Reverse Arrangement`** — màn 1 nằm DƯỚI CÙNG, danh sách mọc lên trên
   - `Add Component > Content Size Fitter`, `Vertical Fit` = **Preferred Size**
+
+`Reverse Arrangement` chỉ đảo thứ tự các ô bên trong `Content`, không đổi cách
+`Content` lớn lên. Phần cuộn tới màn hiện tại vẫn chạy đúng vì nó đọc vị trí thật của
+ô chứ không giả định ô nào ở đâu.
 
 > ⚠️ **`Control Child Width/Height` là cái bẫy ở đây.** Tick vào thì Layout Group tự
 > quyết kích thước ô, và nó hỏi ô đó "mày muốn rộng bao nhiêu". Root của
@@ -1317,10 +1322,54 @@ vẫn nằm đó, chỉ là không còn ai điều khiển. Phải xoá hẳn ob
   - `Item Prefab` = `HomeLevelItem`
   - `Item Root` = **`Content`** (không phải `LevelScroll`)
   - `Scroll Rect` = `LevelScroll`
+  - `Focus Alignment` = **1** (0 = sát mép trên, 0.5 = giữa, 1 = sát mép dưới)
+  - `Focus Scaler` = chính `HomeCanvas` (xem ngay dưới)
+- [ ] Chọn `HomeCanvas` → `Add Component > Scroll Focus Scaler`
+  - `Scroll Rect` = `LevelScroll`
+  - `Focus Alignment` = **1** — phải TRÙNG với ô cùng tên ở trên
+  - `Focus Scale` = **1.25**, `Falloff Pixels` = **500**
   - `Play Button` = `PlayButton`, `Play Level Text` = chữ "Level N" trong nút
   - `Collection Button`, `Settings Button` = hai nút ở trên
 
 Home **không tự mở lúc vào game** — nút Home trên HUD mới mở nó.
+
+**Mở Home là tự cuộn tới màn đang chơi.** Ô đó dừng ở đâu trong khung nhìn thì do
+`Focus Alignment` quyết định — mặc định **1**, tức sát mép dưới.
+
+Con số tính theo **cạnh** của ô chứ không theo tâm, nên 0 và 1 vẫn thấy trọn ô chứ
+không bị cắt mất một nửa:
+
+| `Focus Alignment` | Ô dừng ở |
+|---|---|
+| 0 | cạnh TRÊN ô chạm mép trên khung nhìn |
+| 0.5 | tâm ô ở giữa khung nhìn |
+| 1 | cạnh DƯỚI ô chạm mép dưới khung nhìn |
+
+#### Ô ở tiêu điểm phóng to
+
+`ScrollFocusScaler` phóng ô đang đứng ở tiêu điểm lên `Focus Scale`, và nhỏ dần theo
+khoảng cách tới đó.
+
+Cỡ là **hàm của vị trí cuộn**, không phải một tween chạy theo thời gian. Nhờ vậy nó tự
+mượt khi kéo tay, tự đúng khi thả cho quán tính trôi, và không bao giờ kẹt ở một cỡ dở
+dang vì bị ngắt giữa chừng.
+
+Hai ô cần để ý:
+
+**`Focus Alignment` phải trùng** với ô cùng tên trên `Home Screen View`. Lệch nhau thì
+lúc mở Home, ô được cuộn tới lại không phải ô được phóng to.
+
+**`Falloff Pixels`** là tầm ảnh hưởng. Nên đặt cỡ một ô cộng spacing — nhỏ quá thì ô
+đổi cỡ giật cục khi cuộn, lớn quá thì mọi ô đều hơi to và không ô nào ra dáng được
+chọn. Với ô cao 220 và spacing 200 thì 500 là hợp.
+
+> Phóng to bằng `localScale` **không đẩy các ô khác ra**: Layout Group xếp chỗ theo
+> kích thước rect, không theo scale. Ô to lên sẽ đè lên hàng xóm nếu `Spacing` không
+> đủ. Với spacing 200 và phóng 1.25 thì thoải mái.
+
+Việc cuộn chạy ở **frame sau** khi dựng xong danh sách, không phải cùng frame. Layout
+Group và Content Size Fitter tính lại kích thước ở cuối frame, và ngay sau đó ScrollRect
+tự kẹp lại vị trí cuộn theo kích thước mới — đặt vị trí sớm hơn là đặt xong bị ghi đè.
 
 `Sort Order` = 10 để Home nằm trên Canvas gameplay. Popup vẫn nằm trên Home vì
 `Popups` ở trong Canvas riêng — nếu popup bị Home che thì nâng `Sort Order` của Canvas
@@ -1481,6 +1530,7 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 | Màn hình chờ bị popup che | `LoadingCanvas` có `Sort Order` thấp hơn Canvas chứa `Popups` | 5.12 |
 | Popup bị màn hình Home che | Canvas chứa `Popups` có `Sort Order` thấp hơn `HomeCanvas` | 5.11 |
 | Ô Home chỉ hiện số màn, mất ảnh và ô xám | `Content` đang tick `Control Child Width` — xem cảnh báo ở 5.11 | 5.11 |
+| Mở Home không tự cuộn tới màn hiện tại | Chưa gán ô `Scroll Rect` trên `Home Screen View` | 5.11 |
 | Ô trong danh sách Home méo hình | `Thumbnail` chưa tick `Preserve Aspect` | 5.11 |
 | Coin bay được nửa đường thì mất | `Coins Parent` bị Mask hoặc không phủ kín màn hình | 4.6 |
 | Nút Continue không hiện | Chưa gán ô `Continue Button` — thiếu mảnh nào của phần tiền thì nút vẫn hiện bình thường | 4.6 |

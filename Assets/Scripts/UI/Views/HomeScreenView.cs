@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
@@ -36,6 +37,17 @@ namespace JewelPainter.UI.Views
                  "đang chơi.")]
         [SerializeField] private ScrollRect _scrollRect;
 
+        [Tooltip("Ô của màn đang chơi dừng ở đâu trong khung nhìn.\n\n" +
+                 "0 = sát MÉP TRÊN, 0.5 = giữa, 1 = sát MÉP DƯỚI.\n\n" +
+                 "Tính theo cạnh của ô chứ không theo tâm, nên 0 và 1 vẫn thấy trọn ô " +
+                 "chứ không bị cắt mất một nửa.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _focusAlignment = 1f;
+
+        [Tooltip("Phóng to ô đang ở vị trí tiêu điểm. Để trống thì mọi ô giữ nguyên cỡ. " +
+                 "Nhớ đặt Focus Alignment của nó TRÙNG với ô ngay trên.")]
+        [SerializeField] private ScrollFocusScaler _focusScaler;
+
         [Header("Nút")]
         [SerializeField] private Button _playButton;
         [SerializeField] private TMP_Text _playLevelText;
@@ -43,6 +55,11 @@ namespace JewelPainter.UI.Views
         [SerializeField] private Button _settingsButton;
 
         private readonly List<HomeLevelItemView> _items = new();
+
+        /// RectTransform của những ô ĐANG hiện, đưa cho ScrollFocusScaler. Giữ riêng
+        /// thay vì để nó tự đi tìm: chỉ ở đây mới biết ô nào đang dùng, ô nào đang tắt
+        /// chờ tái dùng.
+        private readonly List<RectTransform> _activeItemRects = new();
 
         /// Ảnh tự dựng lúc chạy, KHÔNG phải asset. Unity không dọn giúp — mỗi lần mở
         /// Home mà không huỷ bản cũ là bộ nhớ lớn thêm một nấc, không bao giờ trả lại.
@@ -86,7 +103,14 @@ namespace JewelPainter.UI.Views
             Rebuild();
         }
 
-        public void Hide() => SetVisible(false);
+        public void Hide()
+        {
+            // Huỷ luôn lần cuộn đang chờ tới frame sau: đóng Home rồi mà nó vẫn chạy thì
+            // lần mở kế tiếp bắt đầu bằng một cú nhảy vị trí không ai gọi.
+            StopAllCoroutines();
+
+            SetVisible(false);
+        }
 
         private void SetVisible(bool visible)
         {
@@ -106,6 +130,8 @@ namespace JewelPainter.UI.Views
             var currentLevel = _levelService.CurrentLevel;
             var slot = 0;
 
+            _activeItemRects.Clear();
+
             foreach (var config in _levelService.Levels)
             {
                 if (config == null) continue;
@@ -119,12 +145,17 @@ namespace JewelPainter.UI.Views
                 item.Bind(levelId, BuildThumbnail(config.GridData, levelId, isUnlocked, isCurrent), isUnlocked, isCurrent);
                 item.gameObject.SetActive(true);
 
-                if (isCurrent) _currentItemRect = (RectTransform)item.transform;
+                var rect = (RectTransform)item.transform;
+                _activeItemRects.Add(rect);
+
+                if (isCurrent) _currentItemRect = rect;
             }
 
             HideFrom(slot);
 
             if (_playLevelText != null) _playLevelText.SetText("Level {0}", currentLevel);
+
+            if (_focusScaler != null) _focusScaler.SetTargets(_activeItemRects);
 
             ScrollToCurrent();
         }
@@ -145,38 +176,75 @@ namespace JewelPainter.UI.Views
             return sprite;
         }
 
-        /// Cuộn sao cho ô của màn đang chơi nằm giữa khung nhìn.
-        ///
-        /// Phải đợi hết frame: Layout Group tính lại vị trí các ô ở cuối frame, hỏi toạ
-        /// độ ngay bây giờ là đọc vị trí của lần dựng trước.
         private void ScrollToCurrent()
         {
             if (_scrollRect == null || _currentItemRect == null) return;
+            if (!isActiveAndEnabled) return;
+
+            StopAllCoroutines();
+            StartCoroutine(ScrollToCurrentRoutine());
+        }
+
+        /// Cuộn sao cho ô của màn đang chơi nằm giữa khung nhìn.
+        ///
+        /// Phải đợi HẾT MỘT FRAME. Layout Group và Content Size Fitter tính lại kích
+        /// thước ở cuối frame, và ngay sau đó ScrollRect tự kẹp lại vị trí cuộn theo
+        /// kích thước mới. Đặt vị trí trong cùng frame với lúc dựng danh sách là đặt
+        /// xong bị ghi đè — đó là lý do bản trước không nhúc nhích.
+        private IEnumerator ScrollToCurrentRoutine()
+        {
+            yield return null;
+
+            if (_scrollRect == null || _currentItemRect == null) yield break;
 
             Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)_itemRoot);
 
             var content = _scrollRect.content;
-            if (content == null) return;
+            if (content == null) yield break;
 
-            var contentHeight = content.rect.height;
-            var viewportHeight = _scrollRect.viewport != null
-                ? _scrollRect.viewport.rect.height
-                : contentHeight;
+            var viewport = _scrollRect.viewport != null
+                ? _scrollRect.viewport
+                : (RectTransform)_scrollRect.transform;
 
-            var scrollable = contentHeight - viewportHeight;
+            var viewportHeight = viewport.rect.height;
+            var scrollable = content.rect.height - viewportHeight;
+
             if (scrollable <= 0f)
             {
+                // Danh sách ngắn hơn khung nhìn: không có gì để cuộn.
                 _scrollRect.verticalNormalizedPosition = 1f;
-                return;
+                yield break;
             }
 
-            // anchoredPosition.y của ô là số ÂM tính từ đỉnh content, nên đảo dấu để ra
-            // khoảng cách từ đỉnh xuống.
-            var offsetFromTop = -_currentItemRect.anchoredPosition.y - viewportHeight * 0.5f;
-            var normalized = 1f - Mathf.Clamp01(offsetFromTop / scrollable);
+            // Đo khoảng cách từ ĐỈNH content xuống tâm ô, trong hệ toạ độ của chính
+            // content. Cách này không quan tâm padding, spacing, pivot, anchor hay thứ tự
+            // đảo ngược — nó đọc chỗ ô đang thật sự đứng, còn mấy thứ kia chỉ là nguyên
+            // nhân đưa nó tới đó.
+            var itemLocalY = content.InverseTransformPoint(_currentItemRect.position).y;
+            var distanceFromTop = content.rect.yMax - itemLocalY;
 
-            _scrollRect.verticalNormalizedPosition = normalized;
+            // Đưa ô về đúng chỗ đã đặt trong khung nhìn.
+            //
+            // Số hạng giữa là phần tính theo CẠNH ô thay vì tâm ô: căn sát mép dưới mà
+            // chỉ đưa tâm ô tới đó thì nửa dưới của ô nằm ngoài màn. Cộng thêm nửa chiều
+            // cao ô đúng bằng lượng cần để cạnh dưới của nó chạm mép dưới khung nhìn.
+            //   alignment 0   → cạnh TRÊN ô chạm mép trên
+            //   alignment 0.5 → tâm ô ở giữa (số hạng giữa triệt tiêu)
+            //   alignment 1   → cạnh DƯỚI ô chạm mép dưới
+            var alignment = Mathf.Clamp01(_focusAlignment);
+            var itemHeight = _currentItemRect.rect.height;
+
+            var desired = distanceFromTop
+                          + itemHeight * (alignment - 0.5f)
+                          - viewportHeight * alignment;
+
+            var offsetFromTop = Mathf.Clamp(desired, 0f, scrollable);
+
+            // Ghi qua verticalNormalizedPosition chứ không ghi thẳng anchoredPosition:
+            // anchoredPosition đo từ điểm neo, mà Content của ScrollRect mặc định neo ở
+            // MÉP TRÊN viewport chứ không phải tâm. Bản trước gán thẳng vào đó nên lệch
+            // đúng nửa chiều cao khung nhìn — và lệch như nhau ở mọi giá trị padding.
+            _scrollRect.verticalNormalizedPosition = 1f - offsetFromTop / scrollable;
         }
 
         private void HandlePlayClicked()
