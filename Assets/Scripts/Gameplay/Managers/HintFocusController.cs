@@ -13,6 +13,7 @@ namespace JewelPainter.Gameplay.Managers
     {
         private IPaintService _paintService;
         private BoardCamera _boardCamera;
+        private HintMarkerEffect _markerEffect;
 
         /// Giá trị đã báo ra lần gần nhất. Giữ lại để chỉ bắn sự kiện khi thật sự đổi:
         /// OnCellPainted nổ liên tục suốt lúc kéo tay tô, mà nút thì chỉ đổi trạng thái
@@ -29,14 +30,17 @@ namespace JewelPainter.Gameplay.Managers
 
                 var selected = _paintService.SelectedPaletteIndex;
 
-                return selected >= 0 && _paintService.RemainingFor(selected) > 0;
+                // Chưa chọn màu vẫn cho BẤM: bấm vào sẽ hiện lời nhắc chọn màu. Nút xám
+                // ngắt không nói được gì, mà đó lại đúng lúc người chơi cần biết nhất.
+                return selected < 0 || _paintService.RemainingFor(selected) > 0;
             }
         }
 
-        public void Init(IPaintService paintService, BoardCamera boardCamera)
+        public void Init(IPaintService paintService, BoardCamera boardCamera, HintMarkerEffect markerEffect)
         {
             _paintService = paintService;
             _boardCamera = boardCamera;
+            _markerEffect = markerEffect;
 
             _paintService.OnBoardReady += RefreshAvailability;
             _paintService.OnColorSelected += HandleColorSelected;
@@ -56,6 +60,14 @@ namespace JewelPainter.Gameplay.Managers
 
         public bool UseHint()
         {
+            if (_paintService == null) return false;
+
+            if (_paintService.SelectedPaletteIndex < 0)
+            {
+                _paintService.RequireColor();
+                return false;
+            }
+
             if (!CanUseHint) return false;
             if (_boardCamera == null)
             {
@@ -74,6 +86,11 @@ namespace JewelPainter.Gameplay.Managers
             if (!_paintService.TryGetUnpaintedCell(paletteIndex, ordinal, out var cell)) return false;
 
             _boardCamera.FocusOn(cell);
+
+            // Hiệu ứng tự chờ camera bay tới nơi rồi mới thả icon — nó có ô Start Delay
+            // riêng, không đợi tín hiệu từ camera.
+            if (_markerEffect != null) _markerEffect.Play(cell);
+
             return true;
         }
 

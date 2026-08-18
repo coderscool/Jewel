@@ -112,6 +112,11 @@ namespace JewelPainter.Gameplay.Board
         private readonly Stack<SpriteRenderer> _pool = new();
         private readonly Dictionary<SpriteRenderer, Tween> _tweens = new();
         private readonly HashSet<Vector2Int> _inFlight = new();
+
+        /// Đếm số viên đang bay theo TỪNG MÀU. Cần đếm riêng vì "màu này đã xong chưa"
+        /// không suy được từ _inFlight — muốn biết thì phải tra màu của từng ô đang bay.
+        private readonly Dictionary<int, int> _inFlightByPalette = new();
+
         private readonly HashSet<string> _warnings = new();
 
         private BoardView _boardView;
@@ -146,10 +151,21 @@ namespace JewelPainter.Gameplay.Board
         /// Ô đang có viên bay tới thì JewelLayer chưa được hiện ngọc ở đó.
         public bool IsInFlight(Vector2Int cell) => _inFlight.Contains(cell);
 
+        /// Màu này còn viên nào đang bay giữa trời không.
+        ///
+        /// Khác hẳn RemainingFor của IPaintService: con số đó giảm ngay lúc BẤM, còn cái
+        /// này chỉ về 0 khi viên cuối cùng đã ĐÁP XUỐNG. Hiệu ứng ăn mừng phải hỏi cái
+        /// này, không thì nó nổ trong lúc vài viên vẫn đang trên đường.
+        public bool HasInFlight(int paletteIndex)
+        {
+            return _inFlightByPalette.TryGetValue(paletteIndex, out var count) && count > 0;
+        }
+
         private void HandleBoardRebuilt()
         {
             KillAllTweens();
             _inFlight.Clear();
+            _inFlightByPalette.Clear();
             Prewarm();
         }
 
@@ -205,6 +221,7 @@ namespace JewelPainter.Gameplay.Board
             flyer.transform.localScale = Vector3.one * Mathf.Lerp(_nearStartScale, _startScale, reach);
 
             _inFlight.Add(cell);
+            AddInFlight(paletteIndex, 1);
 
             var duration = ResolveDuration(distance);
             var settleTime = duration * Mathf.Clamp01(_settlePortion);
@@ -238,7 +255,12 @@ namespace JewelPainter.Gameplay.Board
             sequence.OnComplete(() =>
             {
                 Release(flyer);
+
+                // Gỡ khỏi sổ TRƯỚC khi bắn sự kiện: người nghe hỏi ngay "màu này còn
+                // viên nào đang bay không", mà lúc đó chính viên này đã hạ cánh rồi.
                 _inFlight.Remove(cell);
+                AddInFlight(paletteIndex, -1);
+
                 Land(cell, paletteIndex);
             });
 
@@ -299,6 +321,16 @@ namespace JewelPainter.Gameplay.Board
             OnJewelLanded?.Invoke(cell, paletteIndex);
         }
 
+        private void AddInFlight(int paletteIndex, int delta)
+        {
+            _inFlightByPalette.TryGetValue(paletteIndex, out var count);
+
+            count += delta;
+
+            if (count <= 0) _inFlightByPalette.Remove(paletteIndex);
+            else _inFlightByPalette[paletteIndex] = count;
+        }
+
         /// Tô là hành động lặp liên tục — cảnh báo mỗi lần sẽ ngập Console.
         private void WarnOnce(string message)
         {
@@ -351,6 +383,7 @@ namespace JewelPainter.Gameplay.Board
             }
 
             _tweens.Clear();
+            _inFlightByPalette.Clear();
         }
 
         /// MỘT nơi duy nhất trả viên về kho, cho cả hai đường (đáp xuống và đổi màn).

@@ -48,6 +48,7 @@ namespace JewelPainter.Bootstrap
                    .AsImplementedInterfaces().AsSelf();
 
             builder.RegisterComponentInHierarchy<WinPopupPresenter>();
+            builder.RegisterComponentInHierarchy<NotificationPresenter>();
 
             builder.RegisterComponentInHierarchy<HintFocusController>()
                    .AsImplementedInterfaces().AsSelf();
@@ -59,6 +60,7 @@ namespace JewelPainter.Bootstrap
             builder.RegisterComponentInHierarchy<BoardInput>();
             builder.RegisterComponentInHierarchy<BoardGridLines>();
             builder.RegisterComponentInHierarchy<HintLayer>();
+            builder.RegisterComponentInHierarchy<HintMarkerEffect>();
             builder.RegisterComponentInHierarchy<JewelFlyEffect>();
             builder.RegisterComponentInHierarchy<JewelLayer>();
             builder.RegisterComponentInHierarchy<JewelLandSparkle>();

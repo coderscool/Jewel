@@ -1,4 +1,6 @@
 using JewelPainter.Gameplay.Interfaces;
+using JewelPainter.UI.Definitions;
+using JewelPainter.UI.Interfaces;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
@@ -13,8 +15,7 @@ namespace JewelPainter.UI.Views
     /// tín hiệu của nó. Tìm ô nào, đưa camera đi đâu là chuyện của Gameplay.
     ///
     /// Cả HUD tự ẩn khi thắng màn và hiện lại khi màn mới bắt đầu, để popup thắng màn
-    /// đứng một mình trên bức tranh vừa hoàn thành. Mở Home cũng ẩn HUD, và bấm Play
-    /// trong Home nạp lại màn nên HUD tự hiện lại.
+    /// đứng một mình trên bức tranh vừa hoàn thành.
     public class HudView : MonoBehaviour
     {
         [SerializeField] private TMP_Text _levelText;
@@ -22,9 +23,10 @@ namespace JewelPainter.UI.Views
         [Tooltip("Nút gợi ý. Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
         [SerializeField] private Button _hintButton;
 
-        [Tooltip("Nút mở màn hình Home. Để trống cũng chạy.")]
+        [Tooltip("Nút bánh răng: mở popup Cài đặt. Đường về Home nằm TRONG popup đó.")]
         [FormerlySerializedAs("_collectionButton")]
-        [SerializeField] private Button _homeButton;
+        [FormerlySerializedAs("_homeButton")]
+        [SerializeField] private Button _settingsButton;
 
         [Tooltip("Object bị ẩn khi thắng màn. Để TRỐNG thì ẩn chính object này — cách " +
                  "đó vẫn chạy đúng, chỉ là không tách được phần nào của HUD ở lại.")]
@@ -33,19 +35,19 @@ namespace JewelPainter.UI.Views
         private ILevelService _levelService;
         private IHintService _hintService;
         private ILevelFlowService _levelFlow;
-        private HomeScreenView _home;
+        private IPopupService _popupService;
         private int _displayedLevel = -1;
 
         public void Init(
             ILevelService levelService,
             IHintService hintService,
             ILevelFlowService levelFlow,
-            HomeScreenView home)
+            IPopupService popupService)
         {
             _levelService = levelService;
             _hintService = hintService;
             _levelFlow = levelFlow;
-            _home = home;
+            _popupService = popupService;
 
             _levelService.OnLevelStarted += HandleLevelStarted;
             _hintService.OnHintAvailabilityChanged += SetHintAvailable;
@@ -53,7 +55,7 @@ namespace JewelPainter.UI.Views
 
             SetLevel(_levelService.CurrentLevel);
 
-            if (_homeButton != null) _homeButton.onClick.AddListener(HandleHomeClicked);
+            if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleSettingsClicked);
 
             // Ẩn cho tới khi có màn được nạp. Lúc mới vào game màn hình chờ đang che,
             // mà HUD thì chưa có gì để hiện ngoài chữ "Level 0".
@@ -72,7 +74,7 @@ namespace JewelPainter.UI.Views
             if (_hintService != null) _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
-            if (_homeButton != null) _homeButton.onClick.RemoveListener(HandleHomeClicked);
+            if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
         }
 
         private void HandleLevelStarted(int levelId)
@@ -89,7 +91,8 @@ namespace JewelPainter.UI.Views
         /// Ẩn chính object này vẫn an toàn dù handler nằm trên nó: sự kiện C# giữ tham
         /// chiếu tới instance, nên hàm vẫn chạy khi GameObject đang tắt — đó là cách
         /// HUD tự bật lại được ở màn sau.
-        private void SetVisible(bool visible)
+        /// public vì popup Cài đặt phải ẩn HUD trước khi mở Home.
+        public void SetVisible(bool visible)
         {
             var target = _content != null ? _content : gameObject;
 
@@ -98,15 +101,9 @@ namespace JewelPainter.UI.Views
 
         private void HandleHintClicked() => _hintService.UseHint();
 
-        /// Ẩn HUD ngay khi mở Home. Home phủ kín màn hình nhưng nút của HUD vẫn nhận
-        /// được cú chạm nếu Canvas của nó nằm trên — tắt hẳn thì không phải đi đoán thứ
-        /// tự Sort Order giữa hai Canvas.
-        private void HandleHomeClicked()
-        {
-            SetVisible(false);
-
-            if (_home != null) _home.Show();
-        }
+        /// Chỉ mở popup. Đường về Home nằm trong chính popup đó, và cũng chính nó lo
+        /// việc ẩn HUD — HUD không cần biết Home tồn tại.
+        private void HandleSettingsClicked() => _popupService.Show(PopupKey.Settings);
 
         /// Chưa chọn màu, hoặc màu đang chọn đã tô hết, thì nút xám đi — bấm vào không
         /// có gì xảy ra mà người chơi lại tưởng game đứng.

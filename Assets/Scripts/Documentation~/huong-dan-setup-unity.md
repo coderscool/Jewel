@@ -660,6 +660,72 @@ Nút sang màn kế **tự ẩn khi đang ở màn cuối**, và `LastLevelNotic
 Màn cuối cũng **không tăng tiến trình**: tăng rồi thì lần mở game sau nạp một màn không
 tồn tại và người chơi nhận được bảng trống.
 
+### 4.7 Popup Cài đặt (hai bản) và popup Nhắc nhở
+
+**Ba popup, hai class.** Hai bản Cài đặt dùng chung một class `SettingsPopupView`, chỉ
+khác nhau ở chỗ có gán nút Home hay không.
+
+#### Popup Cài đặt trong game — key `Settings`
+
+- [ ] `GameObject > UI > Panel`, tên `SettingsPopup`, `Add Component > Canvas Group`
+- [ ] Dựng bên trong: `MusicButton` (kèm hai icon con `MusicOn` / `MusicOff`),
+      `SoundButton` (kèm `SoundOn` / `SoundOff`), `HomeButton`, `CloseButton`
+- [ ] `Add Component > Settings Popup View`, gán đủ các ô trên
+- [ ] Kéo vào `Assets/Prefabs/`, xoá khỏi Hierarchy
+
+#### Popup Cài đặt ở Home — key `SettingsHome`
+
+- [ ] `Ctrl+D` nhân đôi prefab trên, đổi tên `SettingsHomePopup`
+- [ ] **Xoá `HomeButton`** và bỏ trống ô `Home Button`
+
+Đang đứng ở Home rồi thì không có gì để về. Để trống ô đó là đủ — `SettingsPopupView`
+tự bỏ qua.
+
+#### Popup Nhắc nhở — key `Notification`
+
+- [ ] `GameObject > UI > Panel`, tên `NotificationPopup`, `Add Component > Canvas Group`
+- [ ] Thêm `Text - TextMeshPro`, nội dung kiểu "Chọn một màu trước đã!"
+- [ ] `Add Component > Notification Popup View`
+  - `Message Text` = dòng chữ đó
+  - `Auto Hide Seconds` = **1.6**
+- [ ] Kéo vào `Assets/Prefabs/`, xoá khỏi Hierarchy
+
+Popup này **tự tắt**, không có nút đóng. Đây là một câu nhắc, không phải một câu hỏi —
+bắt người chơi bấm để bỏ qua thứ chính họ vừa gây ra là phạt họ hai lần.
+
+#### Khai vào PopupConfig
+
+- [ ] Mở `Assets/Settings/PopupConfig`, thêm ba phần tử:
+
+| Key | Prefab |
+|---|---|
+| `Settings` | `SettingsPopup` |
+| `SettingsHome` | `SettingsHomePopup` |
+| `Notification` | `NotificationPopup` |
+
+#### Presenter trong scene
+
+- [ ] Trên object `Popups`, `Add Component > Notification Presenter` — không gán gì
+
+#### Ba popup này mở lúc nào
+
+| Popup | Mở khi |
+|---|---|
+| `Settings` | bấm nút bánh răng trên HUD |
+| `SettingsHome` | bấm nút Cài đặt trên màn hình Home |
+| `Notification` | chạm vào ô tô được, hoặc bấm nút gợi ý, **mà chưa chọn màu** |
+
+**Nút trên HUD giờ mở popup Cài đặt, không mở thẳng Home nữa.** Đường về Home nằm
+trong chính popup đó. Ô `Settings Button` tự nhận lại nút cũ nhờ `[FormerlySerializedAs]`,
+bạn chỉ cần đổi tên object và ảnh nút.
+
+**Nút gợi ý không còn xám khi chưa chọn màu** — bấm được, và bấm thì hiện lời nhắc.
+Nút xám ngắt không nói được gì, mà đó lại đúng lúc người chơi cần biết nhất. Nó chỉ
+xám khi màu đang chọn đã tô hết.
+
+Hai đường dẫn tới lời nhắc — chạm ô và bấm gợi ý — gộp vào **một** sự kiện
+`IPaintService.OnColorRequired`, nên chỗ hiển thị chỉ phải nghe một chỗ.
+
 ---
 
 ## Phần 5 — Dựng scene
@@ -677,6 +743,7 @@ SampleScene
 │   ├── Numbers              ← vị trí (0, 0, 0)
 │   ├── GridLines            ← vị trí (0, 0, 0)
 │   ├── Hints                ← vị trí (0, 0, 0)
+│   ├── HintMarker           ← vị trí (0, 0, 0), xem mục 5.8F
 │   ├── Jewels               ← vị trí (0, 0, 0)
 │   ├── JewelLand            ← vị trí (0, 0, 0), xem mục 4.4
 │   ├── ColorComplete        ← vị trí (0, 0, 0), xem mục 4.4
@@ -1173,6 +1240,38 @@ hiện popup thắng màn (+ ẩn HUD) sau Popup Delay Seconds
 Bạn đổi `Sweep Duration` thành 3 giây thì luồng tự giãn theo, không phải nhớ sửa
 `Delay Seconds`.
 
+### 5.8F HintMarker — kính lúp thả xuống ô gợi ý
+
+Bấm nút gợi ý thì camera bay tới ô cần tô, rồi một icon kính lúp rơi xuống đúng ô đó.
+
+- [ ] Vẽ hoặc tải icon kính lúp, import `Sprite (2D and UI)`
+- [ ] `GameObject > 2D Object > Sprite`, tên `HintIcon`, gán ảnh,
+      `Order in Layer` = **13**
+- [ ] Kéo vào `Assets/Prefabs/`, xoá khỏi Hierarchy
+- [ ] Chuột phải `Board` → Create Empty, tên `HintMarker`, `Position` = (0, 0, 0)
+- [ ] `Add Component > Hint Marker Effect`, `Icon Prefab` = `HintIcon`,
+      `Root` = chính nó
+
+| Ô | Giá trị | Ý nghĩa |
+|---|---|---|
+| `Start Delay` | `0.45` | chờ camera bay tới nơi rồi mới thả |
+| `Drop Height` | `6` | rơi từ cao hơn ô bao nhiêu world unit |
+| `Drop Duration` | `0.32` | |
+| `Hold Seconds` | `0.7` | nằm lại bao lâu rồi mờ đi |
+| `Fade Duration` | `0.25` | |
+| `Scale` | `1.4` | cỡ icon so với một ô |
+| `Sorting Order` | `13` | trên ngọc (4), dưới viên đang bay (15) |
+
+**`Start Delay` phải LỚN HƠN `Focus Duration` của `Main Camera > Board Camera`** (mặc
+định 0.4). Thả sớm hơn thì icon rơi vào một ô đang trôi ngang qua màn hình, và người
+chơi mất dấu nó giữa đường.
+
+Hai thứ **không nối vào nhau** mà mỗi bên tự đếm giờ. Đổi lại là bạn phải canh tay,
+nhưng bù lại camera bị người chơi chạm huỷ giữa chừng cũng không kéo theo icon biến mất.
+
+Chỉ có **một** icon sống cùng lúc — bấm gợi ý liên tục thì lần sau ghi đè lần trước.
+Đây không phải hiệu ứng hàng loạt như ngọc bay nên không cần kho.
+
 ### 5.9 Canvas và HUD
 
 - [ ] `GameObject > UI > Canvas` (Unity tự tạo kèm `EventSystem`)
@@ -1184,8 +1283,8 @@ Bạn đổi `Sweep Duration` thành 3 giây thì luồng tự giãn theo, khôn
 - [ ] Gán `LevelText` vào ô `Level Text` của `Hud View`
 - [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `HintButton`, neo góc dưới phải
 - [ ] Gán `HintButton` vào ô `Hint Button` của `Hud View`
-- [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `HomeButton`, neo góc trên phải
-- [ ] Gán `HomeButton` vào ô `Home Button` của `Hud View`
+- [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `SettingsButton`, neo góc trên phải
+- [ ] Gán `SettingsButton` vào ô `Settings Button` của `Hud View`
 - [ ] Ô `Content` của `Hud View`: để **trống**
 
 Cả HUD **tự ẩn khi thắng màn** và hiện lại khi màn mới bắt đầu, để popup đứng một mình
@@ -1202,12 +1301,10 @@ giữ lại một phần HUD thì gom phần bị ẩn vào một object con r�
 Nút này tự xám đi khi chưa chọn màu. Muốn nó đổi hình thay vì chỉ mờ đi thì chỉnh
 `Transition` của `Button`, `HudView` chỉ đụng tới `interactable`.
 
-**Nút Home** mở màn hình Home và ẩn HUD đi. Bấm `Play` trong Home thì màn được nạp lại
-và HUD tự hiện lại theo sự kiện `OnLevelStarted` — không phải nối tay đường về.
+**Nút bánh răng** mở popup Cài đặt (mục 4.7). Đường về Home nằm trong chính popup đó,
+và cũng chính nó lo việc ẩn HUD — HUD không cần biết Home tồn tại.
 
-Popup Bộ sưu tập giờ mở từ **trong Home**, không còn nút riêng trên HUD. Nếu bạn đang
-setup theo bản cũ thì ô `Home Button` sẽ tự nhận lại nút Collection cũ nhờ
-`[FormerlySerializedAs]`, chỉ cần đổi tên object và nhãn nút.
+Popup Bộ sưu tập mở từ **trong Home**, không có nút riêng trên HUD.
 
 **Camera bay tới ô gợi ý** chỉnh ở `Main Camera > Board Camera`:
 
@@ -1534,6 +1631,9 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 | Ô trong danh sách Home méo hình | `Thumbnail` chưa tick `Preserve Aspect` | 5.11 |
 | Coin bay được nửa đường thì mất | `Coins Parent` bị Mask hoặc không phủ kín màn hình | 4.6 |
 | Nút Continue không hiện | Chưa gán ô `Continue Button` — thiếu mảnh nào của phần tiền thì nút vẫn hiện bình thường | 4.6 |
+| Icon gợi ý rơi lúc camera còn đang bay | `HintMarker > Start Delay` nhỏ hơn `Board Camera > Focus Duration` | 5.8F |
+| Bấm bánh răng ra dòng đỏ trong Console | Chưa khai `Settings` vào `PopupConfig` | 4.7 |
+| Popup nhắc nhở không tự tắt | `Auto Hide Seconds` đang để 0 | 4.7 |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

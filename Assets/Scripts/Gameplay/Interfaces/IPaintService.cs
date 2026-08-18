@@ -44,5 +44,15 @@ namespace JewelPainter.Gameplay.Interfaces
         event Action<int> OnColorSelected;
 
         event Action<Vector2Int, int> OnCellPainted;
+
+        /// Người chơi vừa làm một việc cần có màu đang chọn, mà chưa chọn màu nào.
+        ///
+        /// Gộp cả hai đường vào một sự kiện — chạm ô tô được, và bấm nút gợi ý — để chỗ
+        /// hiển thị chỉ phải nghe một chỗ.
+        event Action OnColorRequired;
+
+        /// Bên phát hiện gọi. Im lặng bỏ qua nếu thật ra đang có màu được chọn, nên bên
+        /// gọi không cần tự kiểm tra trước.
+        void RequireColor();
     }
 }

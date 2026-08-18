@@ -34,6 +34,7 @@ namespace JewelPainter.Bootstrap
         private readonly BoardInput _boardInput;
         private readonly BoardGridLines _gridLines;
         private readonly HintLayer _hintLayer;
+        private readonly HintMarkerEffect _hintMarker;
         private readonly LevelFlowController _levelFlow;
         private readonly JewelFlyEffect _jewelFlyEffect;
         private readonly JewelLayer _jewelLayer;
@@ -44,6 +45,7 @@ namespace JewelPainter.Bootstrap
         private readonly HintFocusController _hintFocus;
         private readonly IPopupService _popupService;
         private readonly WinPopupPresenter _winPopupPresenter;
+        private readonly NotificationPresenter _notificationPresenter;
         private readonly HomeScreenView _home;
         private readonly LoadingScreenView _loading;
 
@@ -63,6 +65,7 @@ namespace JewelPainter.Bootstrap
             BoardInput boardInput,
             BoardGridLines gridLines,
             HintLayer hintLayer,
+            HintMarkerEffect hintMarker,
             LevelFlowController levelFlow,
             JewelFlyEffect jewelFlyEffect,
             JewelLayer jewelLayer,
@@ -73,6 +76,7 @@ namespace JewelPainter.Bootstrap
             HintFocusController hintFocus,
             IPopupService popupService,
             WinPopupPresenter winPopupPresenter,
+            NotificationPresenter notificationPresenter,
             HomeScreenView home,
             LoadingScreenView loading)
         {
@@ -91,6 +95,7 @@ namespace JewelPainter.Bootstrap
             _boardInput = boardInput;
             _gridLines = gridLines;
             _hintLayer = hintLayer;
+            _hintMarker = hintMarker;
             _levelFlow = levelFlow;
             _jewelFlyEffect = jewelFlyEffect;
             _jewelLayer = jewelLayer;
@@ -101,6 +106,7 @@ namespace JewelPainter.Bootstrap
             _hintFocus = hintFocus;
             _popupService = popupService;
             _winPopupPresenter = winPopupPresenter;
+            _notificationPresenter = notificationPresenter;
             _home = home;
             _loading = loading;
         }
@@ -129,8 +135,9 @@ namespace JewelPainter.Bootstrap
 
             // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
             // ngay trong Init của mình, nên nó phải xong trước HUD.
-            _hintFocus.Init(_paintService, _boardCamera);
-            _hud.Init(_levelService, _hintFocus, _levelFlow, _home);
+            _hintMarker.Init(_boardView);
+            _hintFocus.Init(_paintService, _boardCamera, _hintMarker);
+            _hud.Init(_levelService, _hintFocus, _levelFlow, _popupService);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService);
@@ -147,8 +154,9 @@ namespace JewelPainter.Bootstrap
 
             // Init sau LevelFlow: nó đăng ký nghe sự kiện thắng màn của LevelFlow.
             _winPopupPresenter.Init(_levelFlow, _popupService);
+            _notificationPresenter.Init(_paintService, _popupService);
 
-            // Home dựng sẵn nhưng không tự mở — nút Home trên HUD mới mở nó.
+            // Home dựng sẵn nhưng không tự mở — nút Home trong popup Cài đặt mới mở nó.
             _home.Init(_levelService, _popupService, _paintProgressStore);
 
             // KHÔNG gọi LoadLevel thẳng ở đây. Màn hình chờ nhường một frame cho Canvas

@@ -158,6 +158,13 @@ namespace JewelPainter.Gameplay.Board
             _paintService.SelectColor(grid.GetCell(_holdCell.x, _holdCell.y));
         }
 
+        /// Ô này sẽ tô được nếu người chơi đã chọn đúng màu của nó. Khác CanPaint ở chỗ
+        /// KHÔNG xét màu đang chọn — đây đúng là câu hỏi cần đặt khi chưa chọn màu nào.
+        private bool IsPaintableWhenColorChosen(Vector2Int cell)
+        {
+            return _paintService.SelectedPaletteIndex < 0 && HasColorToPick(cell);
+        }
+
         /// Ô rỗng không có màu, ô đã tô thì màu của nó đã nằm sẵn trên bảng rồi.
         private bool HasColorToPick(Vector2Int cell)
         {
@@ -188,7 +195,14 @@ namespace JewelPainter.Gameplay.Board
 
             if (!TryGetCell(screenPosition, out var cell)) return StrokeOwner.Camera;
 
-            return _paintService.CanPaint(cell.x, cell.y) ? StrokeOwner.Paint : StrokeOwner.Camera;
+            if (_paintService.CanPaint(cell.x, cell.y)) return StrokeOwner.Paint;
+
+            // Chạm trúng một ô ĐÁNG LẼ tô được mà chưa chọn màu nào: nhắc một tiếng rồi
+            // vẫn giao nét cho camera. Im lặng ở đây là người chơi mới vào màn cứ quẹt
+            // mãi mà không hiểu vì sao không có gì xảy ra.
+            if (IsPaintableWhenColorChosen(cell)) _paintService.RequireColor();
+
+            return StrokeOwner.Camera;
         }
 
         /// Trả false khi không còn gì chạm màn hình.

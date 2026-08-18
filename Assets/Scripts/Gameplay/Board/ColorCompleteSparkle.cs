@@ -67,7 +67,14 @@ namespace JewelPainter.Gameplay.Board
 
         private void HandleJewelLanded(Vector2Int cell, int paletteIndex)
         {
+            // RemainingFor giảm ngay lúc người chơi BẤM, không phải lúc viên ngọc đáp.
+            // Kéo tay tô nhanh mấy ô cuối thì con số về 0 trong khi vài viên vẫn đang bay,
+            // và viên đầu tiên hạ cánh sẽ châm ngòi ăn mừng quá sớm — đó là lỗi bạn thấy.
+            //
+            // HasInFlight mới là câu hỏi đúng: màu này còn viên nào giữa trời không.
             if (_paintService.RemainingFor(paletteIndex) > 0) return;
+            if (_flyEffect != null && _flyEffect.HasInFlight(paletteIndex)) return;
+
             if (!_celebrated.Add(paletteIndex)) return;
 
             Burst(paletteIndex);

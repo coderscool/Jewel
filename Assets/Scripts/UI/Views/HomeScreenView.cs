@@ -256,7 +256,7 @@ namespace JewelPainter.UI.Views
 
         private void HandleCollectionClicked() => _popupService.Show(PopupKey.Collection);
 
-        private void HandleSettingsClicked() => _popupService.Show(PopupKey.Settings);
+        private void HandleSettingsClicked() => _popupService.Show(PopupKey.SettingsHome);
 
         /// Tạo một lần rồi bật tắt để tái dùng. Ô mới sinh ra ở trạng thái TẮT vì prefab
         /// vốn đang bật — ô nào tạo ra mà chưa kịp Bind sẽ hiện nguyên nội dung prefab.

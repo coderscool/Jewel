@@ -24,6 +24,14 @@ namespace JewelPainter.Gameplay.Managers
         public event Action OnBoardReady;
         public event Action<int> OnColorSelected;
         public event Action<Vector2Int, int> OnCellPainted;
+        public event Action OnColorRequired;
+
+        public void RequireColor()
+        {
+            if (SelectedPaletteIndex >= 0) return;
+
+            OnColorRequired?.Invoke();
+        }
 
         /// Bootstrap đưa phụ thuộc xuống — không tự đi tìm.
         public void Init(ILevelService levelService, PaintProgressStore progressStore)
