@@ -89,6 +89,29 @@ namespace JewelPainter.Gameplay.Managers
         /// PaintManager gọi mỗi lần một ô được tô.
         public void MarkDirty() => _isDirty = true;
 
+        /// Đọc trạng thái tô của một màn BẤT KỲ, kể cả màn chưa bao giờ được nạp.
+        /// null khi màn đó chưa có bản lưu. Màn hình Home dùng để vẽ ảnh tiến độ.
+        ///
+        /// Màn đang chơi thì lấy thẳng từ bộ nhớ, không đọc đĩa: bản trên đĩa có thể
+        /// cũ hơn tới vài giây vì việc ghi chạy theo chu kỳ.
+        public byte[] LoadBits(int levelId)
+        {
+            if (levelId == _levelId && _state != null) return _state.ToPaintedBits();
+            if (_save == null) return null;
+
+            var encoded = _save.GetString(KeyFor(levelId));
+            if (string.IsNullOrEmpty(encoded)) return null;
+
+            try
+            {
+                return Convert.FromBase64String(encoded);
+            }
+            catch (FormatException)
+            {
+                return null;
+            }
+        }
+
         /// Ghi ngay lập tức nếu đang có thay đổi chưa lưu.
         public void Flush()
         {

@@ -9,9 +9,8 @@ namespace JewelPainter.Gameplay.Managers
     /// Nối các mảnh đã có lại thành luồng thắng màn: phát hiện tô xong, chạy màn ăn
     /// mừng, chờ một nhịp, rồi báo ra ngoài rằng đã thắng.
     ///
-    /// KHÔNG tự sang màn kế. Người chơi bấm nút trong popup thì UI gọi GoToNextLevel.
-    /// Nhờ vậy Gameplay không cần biết popup tồn tại, mà bức tranh vừa hoàn thành cũng
-    /// được đứng yên bao lâu tuỳ người chơi.
+    /// KHÔNG tự sang màn kế. Người chơi bấm nút trong popup thì UI gọi AdvanceProgress
+    /// rồi mở Home. Nhờ vậy Gameplay không cần biết popup hay Home tồn tại.
     ///
     /// Tách khỏi LevelManager vì điều phối LUỒNG màn chơi là việc khác với giữ DỮ LIỆU
     /// màn chơi. LevelManager không cần biết điều gì khiến một màn kết thúc.
@@ -62,7 +61,7 @@ namespace JewelPainter.Gameplay.Managers
         }
 
         /// Popup thắng màn gọi khi người chơi bấm nút.
-        public void GoToNextLevel()
+        public void AdvanceProgress()
         {
             if (_levelService == null) return;
 
@@ -78,7 +77,6 @@ namespace JewelPainter.Gameplay.Managers
             }
 
             _levelService.CompleteCurrentLevel();
-            _levelService.LoadLevel(_levelService.CurrentLevel);
         }
 
         private void HandleLevelStarted(int levelId)

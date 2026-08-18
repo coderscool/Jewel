@@ -13,6 +13,10 @@ namespace JewelPainter.Gameplay.Config
         [SerializeField] private LevelGridData _gridData;
         [SerializeField] private int _timeLimitSeconds;
 
+        [Tooltip("Số tiền thưởng khi tô xong màn này. Popup thắng màn hiện con số này " +
+                 "và bắn hiệu ứng tiền bay.")]
+        [SerializeField] private int _rewardCoins = 10;
+
         [Header("Camera")]
         [Tooltip("Mức phóng sát nhất, tính bằng orthographicSize. Một ô rộng một world unit " +
                  "nên giá trị 4 là thấy 8 ô theo chiều dọc. Để 0 thì tự tính (thấy 5 ô).")]
@@ -30,6 +34,7 @@ namespace JewelPainter.Gameplay.Config
         public Sprite TargetImage => _targetImage;
         public LevelGridData GridData => _gridData;
         public int TimeLimitSeconds => _timeLimitSeconds;
+        public int RewardCoins => _rewardCoins;
 
         /// 0 hoặc âm nghĩa là để BoardCamera tự tính.
         public float CameraMinSize => _cameraMinSize;

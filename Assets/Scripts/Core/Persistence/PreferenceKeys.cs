@@ -4,6 +4,7 @@ namespace JewelPainter.Core.Persistence
     public static class PreferenceKeys
     {
         public const string Level = "level";
+        public const string Coins = "coins";
 
         /// Nối thêm Level Id vào sau: "painted_3". Mỗi màn một key riêng để xoá màn đã
         /// xong không đụng tới màn khác.

@@ -593,12 +593,60 @@ bức tranh vừa hoàn thành đứng yên bao lâu tuỳ người chơi.
 - [ ] Chuột phải nó → `UI > Button - TextMeshPro`, tên `NextButton`
 - [ ] Chuột phải nó → `UI > Text - TextMeshPro`, tên `LastLevelNotice`,
       nội dung kiểu "Hết màn rồi!", **tắt object này đi**
+- [ ] Chuột phải nó → `UI > Image`, tên `Banner` (băng CONGRATULATION), neo trên
+- [ ] Chuột phải nó → `UI > Text - TextMeshPro`, tên `RewardText` ("Reward: 10")
+- [ ] Chuột phải nó → `UI > Image`, tên `CoinIcon` ở góc trên phải, kèm một
+      `Text - TextMeshPro` tên `CoinTotalText` bên cạnh
+- [ ] Chuột phải nó → Create Empty, tên `CoinsParent`, **kéo giãn kín màn hình**
+- [ ] Chọn `WinPopup` → `Add Component > Coin Fly VFX`
+  - `Coin Prefab` = prefab một đồng tiền (RectTransform + Image, pivot 0.5/0.5)
+  - `Coins Parent` = `CoinsParent`
+  - `Coin Count` = 7, `Sorting Layer Name` để **trống**
 - [ ] Chọn `WinPopup` → `Add Component > Win Popup View`
   - `Canvas Group` = chính nó
-  - `Next Button` = `NextButton`
+  - `Continue Button` = `NextButton` (đổi tên thành `ContinueButton` cho khớp)
+  - `Banner` = `Banner`, `Banner Drop Distance` = 260, `Banner Duration` = 0.45
+  - `Button Duration` = 0.35
+  - `Coin Fly` = chính nó, `Coin From` = `RewardText`, `Coin Target` = `CoinIcon`
+  - `Reward Text` = `RewardText`, `Coin Total Text` = `CoinTotalText`
   - `Level Text` = `LevelText`, `Last Level Notice` = `LastLevelNotice`
-  - `Close Button` để trống, hoặc gán nếu muốn cho đóng mà không đi tiếp
 - [ ] Kéo vào `Assets/Prefabs/`, **xoá khỏi Hierarchy**
+
+**Nhịp của popup** — ba pha nối đuôi, không nổ cùng lúc:
+
+```
+băng rơi xuống + nảy nhẹ  (0.45s)
+   └─ tiền vãi ra rồi bay lên icon, số tổng tăng dần
+        └─ nút Continue phóng từ 0 lên 1  (0.35s)
+```
+
+Nút chỉ hiện **sau khi tiền bay xong**, nên không ai bấm mất hiệu ứng.
+
+> `Coins Parent` phải **phủ kín màn hình và không bị Mask hay Content Size Fitter nào
+> cắt**. Coin bay ra ngoài khung cha sẽ bị xén mất nửa đường. Để nó là con trực tiếp
+> của gốc popup, sibling index trên cùng.
+
+**Tiền được cộng NGAY lúc popup mở**, không đợi coin bay xong — hiệu ứng chỉ là hình
+ảnh, người chơi thoát app giữa chừng vẫn phải có tiền. Con số trên màn thì đi theo coin
+để nhìn cho khớp.
+
+**Nút Continue đưa về Home**, không vào thẳng màn kế. Nó đẩy tiến trình sang màn sau
+rồi mở Home; chính nút `Play` trong Home mới nạp màn.
+
+**Số tiền thưởng** đặt ở ô `Reward Coins` trong từng `LevelConfig` (mục 3.3), mặc định
+10.
+
+#### Phím tắt W — xem lại hiệu ứng
+
+Bấm **W** để mở lại popup thắng màn bất cứ lúc nào. Chỉnh nhịp của băng, tiền bay và
+nút Continue mà mỗi lần thử phải tô kín cả bảng thì không ai chỉnh nổi.
+
+Không phải setup gì: object tự sinh lúc chạy bằng `RuntimeInitializeOnLoadMethod`, và
+cả file nằm trong `#if UNITY_EDITOR || DEVELOPMENT_BUILD` nên build phát hành không có
+class đó, cũng không có tham chiếu "Missing Script" nào trỏ tới nó.
+
+> Mỗi lần bấm W là **cộng thật** thêm một lần tiền thưởng vào ví, vì popup cộng tiền
+> ngay lúc mở. Thử nhiều rồi muốn về 0 thì `Edit > Clear All PlayerPrefs`.
 
 **Khai vào PopupConfig**
 
@@ -639,6 +687,15 @@ SampleScene
 │   │   ├── HintButton
 │   │   └── CollectionButton
 │   └── Popups
+├── LoadingCanvas            ← che lúc mở game, xem mục 5.12
+│   └── LoadingRoot
+├── HomeCanvas               ← mở bằng nút Home trên HUD, xem mục 5.11
+│   └── HomeRoot
+│       ├── TopBar (Settings, Collection)
+│       ├── LevelScroll
+│       │   └── Viewport
+│       │       └── Content
+│       └── PlayButton
 ├── PaletteCanvas            ← động, tách riêng để khỏi rebuild Canvas tĩnh
 │   └── PaletteScroll
 │       └── Viewport
@@ -1127,8 +1184,8 @@ Bạn đổi `Sweep Duration` thành 3 giây thì luồng tự giãn theo, khôn
 - [ ] Gán `LevelText` vào ô `Level Text` của `Hud View`
 - [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `HintButton`, neo góc dưới phải
 - [ ] Gán `HintButton` vào ô `Hint Button` của `Hud View`
-- [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `CollectionButton`, neo góc trên phải
-- [ ] Gán `CollectionButton` vào ô `Collection Button` của `Hud View`
+- [ ] Chuột phải `Hud` → `UI > Button - TextMeshPro`, tên `HomeButton`, neo góc trên phải
+- [ ] Gán `HomeButton` vào ô `Home Button` của `Hud View`
 - [ ] Ô `Content` của `Hud View`: để **trống**
 
 Cả HUD **tự ẩn khi thắng màn** và hiện lại khi màn mới bắt đầu, để popup đứng một mình
@@ -1144,6 +1201,13 @@ giữ lại một phần HUD thì gom phần bị ẩn vào một object con r�
 
 Nút này tự xám đi khi chưa chọn màu. Muốn nó đổi hình thay vì chỉ mờ đi thì chỉnh
 `Transition` của `Button`, `HudView` chỉ đụng tới `interactable`.
+
+**Nút Home** mở màn hình Home và ẩn HUD đi. Bấm `Play` trong Home thì màn được nạp lại
+và HUD tự hiện lại theo sự kiện `OnLevelStarted` — không phải nối tay đường về.
+
+Popup Bộ sưu tập giờ mở từ **trong Home**, không còn nút riêng trên HUD. Nếu bạn đang
+setup theo bản cũ thì ô `Home Button` sẽ tự nhận lại nút Collection cũ nhờ
+`[FormerlySerializedAs]`, chỉ cần đổi tên object và nhãn nút.
 
 **Camera bay tới ô gợi ý** chỉnh ở `Main Camera > Board Camera`:
 
@@ -1187,6 +1251,140 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 32 ô màu bị nén vào bề rộng cố định.
 
 - [ ] **Lưu scene**
+
+---
+
+### 5.11 HomeCanvas — màn hình đầu game
+
+Vào game là thấy Home trước, bấm `Play` mới nạp màn. Mỗi ô trong danh sách hiện đúng
+trạng thái của màn đó:
+
+| Trạng thái | Hiện gì |
+|---|---|
+| Đã xong | tranh hoàn thiện, đủ màu |
+| Đang chơi | **ảnh tiến độ ngay lúc này** — giống hệt thứ đang thấy trong game |
+| Chưa mở | ô xám |
+
+#### Prefab một ô
+
+- [ ] `GameObject > UI > Image`, tên `HomeLevelItem`, `Height` = 220
+- [ ] Chuột phải nó → `UI > Image`, tên `Thumbnail`, kéo giãn kín ô cha
+- [ ] Chuột phải nó → `UI > Image`, tên `LockedPlaceholder`, màu xám, kéo giãn kín
+- [ ] Chuột phải nó → `UI > Text - TextMeshPro`, tên `LevelText`, đặt giữa ô
+- [ ] Chuột phải nó → `UI > Image`, tên `CurrentHighlight` (viền cho màn đang chơi),
+      **tắt object này đi**
+
+`LevelText` **chỉ hiện ở màn chưa mở khoá**. Màn đã mở thì chính bức tranh đã nói nó
+là màn nào, thêm con số đè lên chỉ che mất tranh.
+- [ ] Chọn `HomeLevelItem` → `Add Component > Home Level Item View`, gán bốn ô trên
+- [ ] Kéo vào `Assets/Prefabs/`, xoá khỏi Hierarchy
+
+`Thumbnail` nên đặt `Preserve Aspect` = tick. Ảnh sinh ra đúng tỉ lệ lưới (27×36 pixel
+cho bảng 27×36), tràn khung nếu ô vuông mà tranh thì chữ nhật.
+
+#### Canvas trong scene
+
+- [ ] `GameObject > UI > Canvas`, tên `HomeCanvas`, `Sort Order` = **10**
+- [ ] `Canvas Scaler`: Scale With Screen Size, 1080 × 1920
+- [ ] Chuột phải nó → Create Empty, tên `HomeRoot`, kéo giãn kín màn hình
+- [ ] Trong `HomeRoot` dựng: hai nút `SettingsButton` / `CollectionButton` ở trên,
+      một `Scroll View` tên `LevelScroll` ở giữa, một `PlayButton` ở dưới
+- [ ] `LevelScroll`: tắt `Horizontal`
+- [ ] `LevelScroll`: ô `Vertical Scrollbar` = **None**, rồi **xoá object
+      `Scrollbar Vertical`** trong `LevelScroll`
+
+Để ô `Vertical Scrollbar` trống mà vẫn giữ object `Scrollbar Vertical` thì thanh cuộn
+vẫn nằm đó, chỉ là không còn ai điều khiển. Phải xoá hẳn object.
+- [ ] `LevelScroll > Viewport > Content`:
+  - `Add Component > Vertical Layout Group`, `Spacing` = 24
+  - **Bỏ tick cả `Control Child Width` lẫn `Control Child Height`**
+  - Tick `Child Force Expand Width`
+  - `Add Component > Content Size Fitter`, `Vertical Fit` = **Preferred Size**
+
+> ⚠️ **`Control Child Width/Height` là cái bẫy ở đây.** Tick vào thì Layout Group tự
+> quyết kích thước ô, và nó hỏi ô đó "mày muốn rộng bao nhiêu". Root của
+> `HomeLevelItem` là một `Image` **không có sprite**, nên câu trả lời là **0** — ô co
+> lại còn bề rộng bằng không.
+>
+> Hậu quả rất dễ nhận ra: `Thumbnail` và `LockedPlaceholder` kéo giãn theo cha nên biến
+> mất cùng, còn `LevelText` neo giữa với kích thước cố định thì vẫn hiện. Thấy ô chỉ
+> còn mỗi con số là gần như chắc chắn do đây.
+>
+> Muốn dùng `Control Child Height` thì phải gắn `Layout Element` lên `HomeLevelItem` và
+> điền `Preferred Width` / `Preferred Height`.
+- [ ] Chọn `HomeCanvas` → `Add Component > Home Screen View`
+  - `Content` = `HomeRoot`
+  - `Item Prefab` = `HomeLevelItem`
+  - `Item Root` = **`Content`** (không phải `LevelScroll`)
+  - `Scroll Rect` = `LevelScroll`
+  - `Play Button` = `PlayButton`, `Play Level Text` = chữ "Level N" trong nút
+  - `Collection Button`, `Settings Button` = hai nút ở trên
+
+Home **không tự mở lúc vào game** — nút Home trên HUD mới mở nó.
+
+`Sort Order` = 10 để Home nằm trên Canvas gameplay. Popup vẫn nằm trên Home vì
+`Popups` ở trong Canvas riêng — nếu popup bị Home che thì nâng `Sort Order` của Canvas
+chứa `Popups` lên cao hơn 10.
+
+**Nút Settings sẽ báo lỗi đỏ trong Console** cho tới khi bạn khai một popup mang key
+`Settings` vào `PopupConfig`. Chưa làm popup đó thì cứ để ô `Settings Button` trống.
+
+#### Vì sao không cần tắt tay thứ gì
+
+`GameEntryPoint` **không nạp màn lúc khởi động** nữa. Chưa nạp màn thì bảng chưa có
+texture, `HudView` tự ẩn, thanh màu chưa dựng ô nào — cả ba tự im lặng, không phải đi
+tắt từng cái.
+
+Bấm `Play` thì Home ẩn đi và `LoadLevel` chạy, mọi lớp dựng lại theo sự kiện như
+thường lệ.
+
+#### Ảnh tiến độ được dựng thế nào
+
+`LevelThumbnailBuilder` vẽ một `Texture2D` **một pixel là một ô**, đúng cách BoardView
+vẽ bàn chơi. Bảng 27×36 ra ảnh 27×36 — vài KB, và `Image` phóng nó lên bao nhiêu tuỳ
+layout. Nhớ để `Filter Mode` của ảnh là Point (builder đã đặt sẵn).
+
+Ô "đã tô" đọc từ chính bản lưu ở mục 5.5. Màn đã xong thì không cần bản lưu — bản lưu
+của nó bị xoá ngay lúc nó xong, và "đã xong" theo định nghĩa là mọi ô đều đã tô.
+
+> Ảnh này **tự dựng lúc chạy, không phải asset**. Unity không dọn giúp. `HomeScreenView`
+> huỷ cả `Sprite` lẫn `Texture` mỗi lần dựng lại danh sách — `Destroy(sprite)` một mình
+> để lại texture mồ côi, vì `Sprite.Create` không sở hữu texture nó trỏ tới.
+
+### 5.12 LoadingCanvas — màn hình chờ lúc mở game
+
+Vào game là màn này che trước, nạp màn đang chơi dở, rồi tắt. Không qua Home.
+
+- [ ] `GameObject > UI > Canvas`, tên `LoadingCanvas`, `Sort Order` = **100**
+- [ ] `Canvas Scaler`: Scale With Screen Size, 1080 × 1920
+- [ ] Chuột phải nó → Create Empty, tên `LoadingRoot`, kéo giãn kín màn hình
+- [ ] Trong `LoadingRoot` đặt nền đục, logo, và một `Image` tên `ProgressFill` nếu muốn
+      thanh tiến trình — `Image Type` = **Filled**, `Fill Method` = Horizontal
+- [ ] Chọn `LoadingCanvas` → `Add Component > Loading Screen View`
+  - `Content` = `LoadingRoot`
+  - `Minimum Seconds` = **0.8**
+  - `Progress Fill` = `ProgressFill` (để trống cũng chạy)
+
+`Sort Order` = 100 để nó nằm trên tất cả, kể cả popup.
+
+**`Minimum Seconds` là thời lượng thật sự.** Việc nạp màn hiện chạy đồng bộ và gần như
+tức thì, nên màn chờ này chủ yếu để che cú dựng bàn và cho một nhịp chuyển. Khi nào có
+nạp asset thật thì chỗ chờ đã sẵn ở đây.
+
+**Vì sao code nhường một frame trước khi nạp:** `LoadLevel` chạy đồng bộ. Gọi thẳng
+trong cùng frame với lệnh bật màn chờ thì Canvas chưa kịp vẽ khung nào, và người chơi
+không thấy màn chờ — chỉ thấy game đứng hình một nhịp rồi vào màn.
+
+#### Luồng lúc mở game
+
+```
+GameEntryPoint.Start()
+   └─ LoadingCanvas hiện
+        └─ nhường 1 frame  ──►  LoadLevel(màn đang chơi dở)
+             └─ đủ Minimum Seconds  ──►  LoadingCanvas tắt
+```
+
+Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9).
 
 ---
 
@@ -1279,6 +1477,13 @@ Bỏ trống thì tô vẫn chạy, chỉ mất hiệu ứng bay.
 | Mở lại game mất hết phần đã tô | `Paint Progress Store` chưa gắn lên `PaintManager` | 5.5 |
 | Console báo bản lưu không khớp cỡ lưới | Đã sinh lại `GridData` cho màn đang chơi dở | bình thường, bản lưu cũ bị bỏ |
 | Số bò dần từ trên xuống thay vì hiện cùng lúc | Bản cũ. Nay số dựng ở alpha 0 rồi bật một lượt | 5.7 |
+| Không thấy màn hình chờ, game vào thẳng | `Loading Screen View` chưa gắn, hoặc `Minimum Seconds` = 0 | 5.12 |
+| Màn hình chờ bị popup che | `LoadingCanvas` có `Sort Order` thấp hơn Canvas chứa `Popups` | 5.12 |
+| Popup bị màn hình Home che | Canvas chứa `Popups` có `Sort Order` thấp hơn `HomeCanvas` | 5.11 |
+| Ô Home chỉ hiện số màn, mất ảnh và ô xám | `Content` đang tick `Control Child Width` — xem cảnh báo ở 5.11 | 5.11 |
+| Ô trong danh sách Home méo hình | `Thumbnail` chưa tick `Preserve Aspect` | 5.11 |
+| Coin bay được nửa đường thì mất | `Coins Parent` bị Mask hoặc không phủ kín màn hình | 4.6 |
+| Nút Continue không hiện | Chưa gán ô `Continue Button` — thiếu mảnh nào của phần tiền thì nút vẫn hiện bình thường | 4.6 |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

@@ -5,7 +5,8 @@
         "JewelPainter.Core",
         "JewelPainter.Gameplay",
         "JewelPainter.UI",
-        "VContainer"
+        "VContainer",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

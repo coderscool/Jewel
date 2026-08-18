@@ -16,7 +16,11 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Không còn màn nào mang id kế tiếp. Popup dựa vào đây để ẩn nút đi tiếp.
         bool IsLastLevel { get; }
 
-        /// Sang màn kế. Không làm gì nếu đang ở màn cuối.
-        void GoToNextLevel();
+        /// Ghi nhận đã qua màn: đẩy tiến trình sang màn kế. KHÔNG nạp màn.
+        ///
+        /// Tách rời việc nạp vì popup thắng màn giờ đưa người chơi về Home chứ không
+        /// vào thẳng màn sau — chính Home mới quyết định lúc nào nạp.
+        /// Không làm gì nếu đang ở màn cuối.
+        void AdvanceProgress();
     }
 }

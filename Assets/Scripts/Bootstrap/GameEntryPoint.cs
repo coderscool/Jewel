@@ -44,6 +44,8 @@ namespace JewelPainter.Bootstrap
         private readonly HintFocusController _hintFocus;
         private readonly IPopupService _popupService;
         private readonly WinPopupPresenter _winPopupPresenter;
+        private readonly HomeScreenView _home;
+        private readonly LoadingScreenView _loading;
 
         public GameEntryPoint(
             ISaveService save,
@@ -70,7 +72,9 @@ namespace JewelPainter.Bootstrap
             ColorPaletteBar paletteBar,
             HintFocusController hintFocus,
             IPopupService popupService,
-            WinPopupPresenter winPopupPresenter)
+            WinPopupPresenter winPopupPresenter,
+            HomeScreenView home,
+            LoadingScreenView loading)
         {
             _save = save;
             _progress = progress;
@@ -97,6 +101,8 @@ namespace JewelPainter.Bootstrap
             _hintFocus = hintFocus;
             _popupService = popupService;
             _winPopupPresenter = winPopupPresenter;
+            _home = home;
+            _loading = loading;
         }
 
         public void Start()
@@ -124,7 +130,7 @@ namespace JewelPainter.Bootstrap
             // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
             // ngay trong Init của mình, nên nó phải xong trước HUD.
             _hintFocus.Init(_paintService, _boardCamera);
-            _hud.Init(_levelService, _hintFocus, _popupService, _levelFlow);
+            _hud.Init(_levelService, _hintFocus, _levelFlow, _home);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService);
@@ -142,7 +148,13 @@ namespace JewelPainter.Bootstrap
             // Init sau LevelFlow: nó đăng ký nghe sự kiện thắng màn của LevelFlow.
             _winPopupPresenter.Init(_levelFlow, _popupService);
 
-            _levelService.LoadLevel(_progress.Level);
+            // Home dựng sẵn nhưng không tự mở — nút Home trên HUD mới mở nó.
+            _home.Init(_levelService, _popupService, _paintProgressStore);
+
+            // KHÔNG gọi LoadLevel thẳng ở đây. Màn hình chờ nhường một frame cho Canvas
+            // kịp vẽ rồi mới nạp; gọi thẳng thì cả việc hiện màn chờ lẫn việc dựng bàn
+            // rơi vào cùng một frame và người chơi không bao giờ thấy màn chờ.
+            _loading.Begin(_levelService);
         }
     }
 }

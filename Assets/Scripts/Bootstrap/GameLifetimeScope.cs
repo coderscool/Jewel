@@ -23,6 +23,7 @@ namespace JewelPainter.Bootstrap
 
             // Gameplay Domain — thuần C#, nhận ISaveService qua constructor
             builder.Register<PlayerProgress>(Lifetime.Singleton);
+            builder.Register<PlayerWallet>(Lifetime.Singleton);
 
             // MonoBehaviour có sẵn trong scene — Find một lần lúc khởi động, hợp lệ ở đây
             builder.RegisterComponentInHierarchy<SoundService>()
@@ -35,6 +36,8 @@ namespace JewelPainter.Bootstrap
                    .AsImplementedInterfaces().AsSelf();
 
             builder.RegisterComponentInHierarchy<HudView>();
+            builder.RegisterComponentInHierarchy<HomeScreenView>();
+            builder.RegisterComponentInHierarchy<LoadingScreenView>();
 
             builder.RegisterComponentInHierarchy<PaintProgressStore>();
 
