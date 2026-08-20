@@ -31,6 +31,7 @@ namespace JewelPainter.UI.Views
         [Tooltip("Object bị ẩn khi thắng màn. Để TRỐNG thì ẩn chính object này — cách " +
                  "đó vẫn chạy đúng, chỉ là không tách được phần nào của HUD ở lại.")]
         [SerializeField] private GameObject _content;
+        private HomeScreenView _home;
 
         private ILevelService _levelService;
         private IHintService _hintService;
@@ -42,12 +43,14 @@ namespace JewelPainter.UI.Views
             ILevelService levelService,
             IHintService hintService,
             ILevelFlowService levelFlow,
-            IPopupService popupService)
+            IPopupService popupService,
+            HomeScreenView home)
         {
             _levelService = levelService;
             _hintService = hintService;
             _levelFlow = levelFlow;
             _popupService = popupService;
+            _home = home;
 
             _levelService.OnLevelStarted += HandleLevelStarted;
             _hintService.OnHintAvailabilityChanged += SetHintAvailable;
@@ -55,7 +58,7 @@ namespace JewelPainter.UI.Views
 
             SetLevel(_levelService.CurrentLevel);
 
-            if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleSettingsClicked);
+            if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleHomeClicked);
 
             // Ẩn cho tới khi có màn được nạp. Lúc mới vào game màn hình chờ đang che,
             // mà HUD thì chưa có gì để hiện ngoài chữ "Level 0".
@@ -74,7 +77,7 @@ namespace JewelPainter.UI.Views
             if (_hintService != null) _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
-            if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
+            if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleHomeClicked);
         }
 
         private void HandleLevelStarted(int levelId)
@@ -100,6 +103,13 @@ namespace JewelPainter.UI.Views
         }
 
         private void HandleHintClicked() => _hintService.UseHint();
+
+        private void HandleHomeClicked()
+        {
+            SetVisible(false);
+
+            if (_home != null) _home.Show();
+        }
 
         /// Chỉ mở popup. Đường về Home nằm trong chính popup đó, và cũng chính nó lo
         /// việc ẩn HUD — HUD không cần biết Home tồn tại.

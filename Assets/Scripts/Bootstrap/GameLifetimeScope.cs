@@ -48,7 +48,7 @@ namespace JewelPainter.Bootstrap
                    .AsImplementedInterfaces().AsSelf();
 
             builder.RegisterComponentInHierarchy<WinPopupPresenter>();
-            builder.RegisterComponentInHierarchy<NotificationPresenter>();
+            //builder.RegisterComponentInHierarchy<NotificationPresenter>();
 
             builder.RegisterComponentInHierarchy<HintFocusController>()
                    .AsImplementedInterfaces().AsSelf();
