@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Domain;
 using TMPro;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace JewelPainter.Gameplay.Board
@@ -40,6 +41,15 @@ namespace JewelPainter.Gameplay.Board
         [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn. Ô ở rìa không " +
                  "bị thu về rồi sinh lại liên tục mỗi khi camera nhích một chút.")]
         [SerializeField] private int _visibleMarginCells = 2;
+
+        [Tooltip("Dải trễ quanh ngưỡng hiện số, tính theo phần của KHOẢNG từ ngưỡng tới " +
+                 "mức zoom xa nhất. 0.08 nghĩa là đã hiện rồi thì phải kéo ra thêm 8% quãng " +
+                 "đó mới tắt.\n\n" +
+                 "Không có dải này thì zoom qua lại quanh đúng ngưỡng là cả nghìn chữ bị " +
+                 "tắt rồi bật lại mỗi frame — cú giật nặng nhất khi zoom liên tục. " +
+                 "Để 0 là tắt dải trễ.")]
+        [Range(0f, 0.5f)]
+        [SerializeField] private float _showHysteresis = 0.08f;
 
         [Header("Thử nghiệm")]
         [Tooltip("Bỏ qua Max Spawn Per Frame: dựng TẤT CẢ số trong tầm nhìn trong đúng " +
@@ -92,6 +102,10 @@ namespace JewelPainter.Gameplay.Board
         /// Có chữ nào đang dựng xong nhưng còn trong suốt, chờ được bật lên cùng lượt.
         private bool _hasHiddenLabels;
 
+        /// Lần xét gần nhất kết luận là ĐANG hiện số. Dải trễ cần biết trạng thái cũ để
+        /// nới ngưỡng theo đúng chiều.
+        private bool _numbersShown;
+
         public void Init(BoardView boardView)
         {
             _boardView = boardView;
@@ -107,6 +121,8 @@ namespace JewelPainter.Gameplay.Board
         {
             ReleaseAll();
             Prewarm();
+
+            _numbersShown = false;
 
             _needsBaseCapture = true;
             _lastOrthographicSize = -1f;   // ép tính lại ở LateUpdate kế tiếp
@@ -177,6 +193,13 @@ namespace JewelPainter.Gameplay.Board
             return _lastCameraPosition != _camera.transform.position;
         }
 
+        /// Nhãn đo cho Profiler. Không có nhãn thì cả ba lớp đều nằm lẫn trong
+        /// LateUpdate và không tách được lớp nào tốn bao nhiêu.
+        ///
+        /// static readonly để tên chỉ được cấp phát một lần cho cả chương trình.
+        /// Bản build phát hành không bật ENABLE_PROFILER thì nhãn tự tiêu biến.
+        private static readonly ProfilerMarker RefreshMarker = new("JewelPainter.Numbers.Refresh");
+
         /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này
         /// và còn việc dở, lúc đó LateUpdate sẽ gọi lại ở frame sau.
         ///
@@ -189,6 +212,8 @@ namespace JewelPainter.Gameplay.Board
         /// ghi lại màu đỉnh của lưới đã có sẵn — rẻ hơn hẳn, làm đồng loạt được.
         private bool Refresh()
         {
+            using var _ = RefreshMarker.Auto();
+
             if (!ShouldShowNumbers())
             {
                 ReleaseAll();
@@ -271,26 +296,58 @@ namespace JewelPainter.Gameplay.Board
             return rect;
         }
 
+        /// Có hiện số ở mức zoom hiện tại không, KÈM DẢI TRỄ.
+        ///
+        /// Không có dải trễ thì zoom qua lại quanh đúng ngưỡng là cả nghìn chữ bị tắt
+        /// rồi bật lại mỗi frame — mỗi lần bật tắt là một lần SetActive duyệt cây con và
+        /// gửi thông điệp vòng đời. Đó là cú giật nặng nhất khi zoom liên tục.
+        ///
+        /// Đã hiện thì phải kéo ra QUÁ ngưỡng thêm một khoảng mới tắt. Nhờ vậy dao động
+        /// nhỏ quanh ngưỡng không kích hoạt lần bật tắt nào.
+        private bool ShouldShowNumbers()
+        {
+            var threshold = ResolveShowSize();
+            if (threshold <= 0f) return false;
+
+            // Nới ngưỡng ra khi đang hiện, giữ nguyên khi đang ẩn.
+            //
+            // Nới theo KHOẢNG CÒN LẠI tới mức zoom xa nhất, không nhân theo tỉ lệ của
+            // chính ngưỡng. Nhân tỉ lệ thì dải trễ dễ vượt quá mức xa nhất camera có thể
+            // tới — ví dụ ngưỡng 33.6 nhân 8% ra 36.29, mà camera chỉ kéo ra được tới 36,
+            // nên số đã hiện là không bao giờ ẩn lại được nữa.
+            var ceiling = Mathf.Max(threshold, _baseSize);
+            var limit = _numbersShown
+                ? Mathf.Lerp(threshold, ceiling, Mathf.Clamp01(_showHysteresis))
+                : threshold;
+
+            _numbersShown = _camera.orthographicSize <= limit;
+
+            return _numbersShown;
+        }
+
+        /// orthographicSize mà tại đó số bắt đầu hiện.
+        ///
         /// Tính theo dải zoom của màn: từ mức lúc vào màn xuống tới mức lớp màu tan hết.
         /// Nhờ đo tương đối nên màn nào cũng cho cảm giác như nhau — ngưỡng pixel cố định
         /// thì màn có Camera Max Size lớn phải kéo sâu hơn hẳn mới thấy số.
         ///
         /// LevelConfig để trống Fade Switch Size thì không có mốc dưới để chia tỉ lệ,
-        /// lúc đó quay về ngưỡng pixel.
-        private bool ShouldShowNumbers()
+        /// lúc đó quay về ngưỡng pixel — quy đổi ra cùng một đơn vị để chỗ trên chỉ phải
+        /// so sánh một lần.
+        private float ResolveShowSize()
         {
             var config = _boardView.Config;
             var fadeSwitchSize = config != null ? config.FadeSwitchSize : 0f;
 
             if (fadeSwitchSize > 0f && _baseSize > 0f)
             {
-                var showSize = Mathf.Lerp(_baseSize, fadeSwitchSize, _showAtZoomProgress);
-
-                return _camera.orthographicSize <= showSize;
+                return Mathf.Lerp(_baseSize, fadeSwitchSize, _showAtZoomProgress);
             }
 
-            return BoardLayout.CellScreenPixels(Screen.height, _camera.orthographicSize)
-                   >= _minCellScreenPixels;
+            if (_minCellScreenPixels <= 0f) return 0f;
+
+            // cellPixels = Screen.height / (2 * size), nên đảo lại ra size.
+            return Screen.height / (2f * _minCellScreenPixels);
         }
 
         private Rect CameraWorldRect()

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace JewelPainter.Gameplay.Board
@@ -124,9 +125,18 @@ namespace JewelPainter.Gameplay.Board
             return _lastCameraPosition != _camera.transform.position;
         }
 
+        /// Nhãn đo cho Profiler. Không có nhãn thì cả ba lớp đều nằm lẫn trong
+        /// LateUpdate và không tách được lớp nào tốn bao nhiêu.
+        ///
+        /// static readonly để tên chỉ được cấp phát một lần cho cả chương trình.
+        /// Bản build phát hành không bật ENABLE_PROFILER thì nhãn tự tiêu biến.
+        private static readonly ProfilerMarker RefreshMarker = new("JewelPainter.Hints.Refresh");
+
         /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này.
         private bool Refresh()
         {
+            using var _ = RefreshMarker.Auto();
+
             var selected = _paintService.SelectedPaletteIndex;
             if (selected < 0)
             {
@@ -245,11 +255,12 @@ namespace JewelPainter.Gameplay.Board
             foreach (var cell in _toRelease) Release(cell);
         }
 
+        /// Tắt RENDERER chứ không tắt GameObject — xem chú thích cùng chỗ ở JewelLayer.
         private void Release(Vector2Int cell)
         {
             if (!_active.TryGetValue(cell, out var marker)) return;
 
-            marker.gameObject.SetActive(false);
+            marker.enabled = false;
             _pool.Push(marker);
             _active.Remove(cell);
         }
@@ -259,7 +270,7 @@ namespace JewelPainter.Gameplay.Board
             if (_pool.Count > 0)
             {
                 var pooled = _pool.Pop();
-                pooled.gameObject.SetActive(true);
+                pooled.enabled = true;
                 return pooled;
             }
 
@@ -278,7 +289,7 @@ namespace JewelPainter.Gameplay.Board
             while (_pool.Count < target)
             {
                 var marker = Instantiate(_hintPrefab, _root);
-                marker.gameObject.SetActive(false);
+                marker.enabled = false;
                 _pool.Push(marker);
             }
         }

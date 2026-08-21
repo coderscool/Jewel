@@ -568,7 +568,7 @@ Cắt bớt chi phí:
 
 Cách kiểm chứng, đừng đoán:
 
-- [ ] `Build Settings` → bật **Development Build** + **Autoconnect Profiler**
+- [ ] `File > Build Profiles` → bật **Development Build** + **Autoconnect Profiler**
 - [ ] Build lên máy thật, mở `Window > Analysis > Profiler`
 - [ ] Xem dòng **ParticleSystem.Update** trong tab CPU khi zoom xa nhất
 
@@ -954,6 +954,13 @@ tới đó.
 > ⚠️ **Không gắn `Board Color Fade` lên `Painted`.** Chính việc lớp đó không bị làm mờ
 > là toàn bộ lý do nó tồn tại.
 
+> ⚠️ **`Painted` phải có Position (0, 0, 0) và Scale (1, 1, 1).** Lệch một chút thôi là
+> màu đã tô vẽ trượt khỏi ô của nó: có ô hiện màu của hàng xóm, có ô trông như chưa
+> được tô dù đã có ngọc, và mép ô nào cũng chỉ phủ một phần.
+>
+> Triệu chứng đó khó lần ra bằng mắt vì mọi thứ khác vẫn đúng. `BoardView` tự kiểm lúc
+> vào màn và in cảnh báo kèm số đo lệch nếu phát hiện.
+
 `Order in Layer` = -1 cho lớp chưa tô là để **không phải đụng vào các lớp khác**:
 GridLines vẫn ở 1, gợi ý ở 2, số ở 3, ngọc ở 4.
 
@@ -991,6 +998,7 @@ nét đó thuộc về Paint và không có gì để chọn nữa.
 - [ ] `Min Cell Screen Pixels` = 32 (đường lui, xem dưới)
 - [ ] `Max Spawn Per Frame` = **48**
 - [ ] `Prewarm Per Number` = **64**
+- [ ] `Show Hysteresis` = **0.08**
 
 `Show At Zoom Progress` đo theo **dải zoom của từng màn**: mốc trên là mức lúc vào màn
 (`Camera Max Size`), mốc dưới là `Fade Switch Size`. 0 là số hiện ngay khi vào màn,
@@ -1040,6 +1048,24 @@ dùng 9, dựng cả 16 là phí một phần ba số chữ.
 
 > Đổi lại: `Number Color` giờ chỉ áp dụng lúc chữ được TẠO. Chỉnh ô đó trong Play Mode
 > sẽ không thấy gì đổi — vào lại màn thì mới ăn.
+
+#### `Show Hysteresis` — dải trễ quanh ngưỡng hiện số
+
+Không có dải này thì zoom qua lại quanh **đúng** ngưỡng là cả nghìn chữ bị tắt rồi bật
+lại **mỗi frame**. Mỗi lần bật tắt là một lần `SetActive` duyệt cây con và gửi thông
+điệp vòng đời — đây là cú giật nặng nhất khi zoom liên tục.
+
+Dải trễ tính theo **phần của khoảng từ ngưỡng tới mức zoom xa nhất**, không phải theo
+tỉ lệ của chính ngưỡng. Với ngưỡng 33.6, `Camera Max Size` 36 và dải trễ 8%:
+
+```
+đang ẩn   →  hiện khi orthographicSize ≤ 33.60
+đang hiện →  tắt  khi orthographicSize > 33.79
+```
+
+> ⚠️ Nhân theo tỉ lệ của ngưỡng (33.6 × 1.08 = **36.29**) là sai: con số đó **lớn hơn
+> mức camera có thể kéo ra** (36), nên số đã hiện thì không bao giờ ẩn lại được nữa.
+> Đó là lý do dải trễ phải đo theo khoảng còn lại, không đo theo ngưỡng.
 
 **Ô `Spawn All In One Frame`** ở mục `Thử nghiệm` bỏ qua hạn mức hoàn toàn: dựng hết
 số trong đúng một frame. Với kho chia theo số thì giờ nó khả thi hơn hẳn — 3.6ms cho
@@ -1160,6 +1186,21 @@ Việc dựng sẵn chạy lúc vào màn, khi màn hình chờ đang che, nên 
 Chỉ sinh ngọc cho ô **đang lọt trong tầm nhìn**, nên bảng tô kín 4000 ô vẫn chỉ có
 chừng trăm viên tồn tại. Kéo camera thì viên trôi ra ngoài được thu về, viên mới lấy
 ra dùng lại.
+
+#### Bật/tắt renderer, không bật/tắt GameObject
+
+`JewelLayer` và `HintLayer` gạt `SpriteRenderer.enabled` thay vì `SetActive`.
+
+`SetActive` phải duyệt cả cây con, gửi thông điệp vòng đời và cập nhật lại cấu trúc
+culling — đắt gấp nhiều lần so với gạt một cờ bool. Zoom qua lại liên tục là hàng trăm
+lần bật tắt mỗi frame.
+
+An toàn vì hai prefab đó chỉ có đúng một `SpriteRenderer`: tắt renderer với tắt object
+là một về mặt hình ảnh. Prefab nào có thêm con thì cách này không còn tương đương.
+
+> Lớp số **vẫn dùng `SetActive`**. `TextMeshPro.enabled` gọi `OnEnable` của chính
+> component, và TMP đánh dấu cần dựng lại lưới chữ trong đó — đúng thứ mà kho chia theo
+> số đang tránh. Lớp số dựa vào `Show Hysteresis` để bật tắt ít lần hơn.
 
 Cull được là nhờ texture của bảng vẫn giữ màu bên dưới — viên ngọc bị gỡ thì ô đó
 vẫn còn nguyên màu, không ai nhận ra có gì biến mất.
@@ -1707,6 +1748,54 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 
 ---
 
+## Phần 6B — Đo hiệu năng
+
+### Đo nhanh ngay trong Play Mode
+
+Không cần build. `Window > Analysis > Profiler`, bấm Play, tick `Record`.
+
+Ba lớp nặng nhất đã được **gắn nhãn sẵn**, nên chúng hiện thành dòng riêng trong tab
+CPU thay vì lẫn vào `LateUpdate`:
+
+| Nhãn | Lớp |
+|---|---|
+| `JewelPainter.Numbers.Refresh` | lớp số |
+| `JewelPainter.Hints.Refresh` | lớp gợi ý |
+| `JewelPainter.Jewels.Refresh` | lớp ngọc |
+
+Cách xem: chọn module **CPU Usage** → chế độ **Hierarchy** → zoom qua lại vài giây →
+`Pause` → kéo tới frame cao nhất → sắp cột `Time ms` giảm dần.
+
+> ⚠️ **Con số tuyệt đối trong Editor không dùng được.** Editor chậm hơn build vài lần,
+> lại cộng thêm Scene view, domain reload và cấp phát chỉ có trong Editor. Một frame
+> 30ms ở đây có thể là 6ms trên máy thật.
+>
+> Thứ dùng được là **thứ hạng**: lớp nào chiếm phần lớn nhất thì trên máy thật cũng
+> vậy. Đủ để biết sửa chỗ nào.
+>
+> Đóng cửa sổ Scene lại trước khi đo, để Unity không vẽ hai lần.
+
+### Đo thật trên máy
+
+Khi cần con số tin được:
+
+- [ ] `File > Build Profiles` (Unity 6 không còn `Build Settings`)
+- [ ] Chọn nền tảng, tick **Development Build**
+- [ ] Tick **Autoconnect Profiler** — chỉ hiện sau khi tick ô trên
+- [ ] **Đừng** tick `Deep Profiling Support`: nó đo mọi lời gọi hàm nên bóp méo đúng
+      con số cần tìm
+- [ ] `Build And Run`, rồi mở Profiler trong Editor
+
+Không tự nối được thì chọn thiết bị bằng tay ở dropdown góc trên Profiler.
+
+### So sánh trước và sau khi sửa
+
+Cài package **Profile Analyzer** (`Window > Package Manager > Unity Registry`). Nó cho
+lưu lại một loạt frame rồi **so hai bản ghi cạnh nhau**, trả lời được câu "sửa xong có
+thật sự nhanh hơn không" — thứ mà nhìn biểu đồ chạy thời gian thực không nói được.
+
+---
+
 ## Phần 7 — Lỗi hay gặp
 
 | Lỗi | Nguyên nhân | Xử lý |
@@ -1760,6 +1849,9 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 | Chọn màu bị khựng một nhịp | `Prewarm From Largest Color` chưa tick và `Prewarm Count` quá nhỏ | 5.8 |
 | Zoom ra nhanh thấy ngọc mọc dần | `Jewels > Max Spawn Per Frame` khác 0 | 5.8B |
 | Vào màn lâu hơn trước | Ba lớp đều dựng sẵn object; bỏ tick các ô `Prewarm From...` nếu máy yếu | 5.7, 5.8, 5.8B |
+| Zoom qua lại liên tục vẫn giật | Xem `Show Hysteresis` (5.7); nâng lên 0.15–0.2 nếu vẫn còn | 5.7 |
+| Zoom ra hết cỡ mà số vẫn không ẩn | `Show Hysteresis` quá lớn so với khoảng từ ngưỡng tới `Camera Max Size` — hạ xuống | 5.7 |
+| Ô có ngọc mà không có màu, hoặc màu không phủ hết ô | Hai lớp bảng lệch nhau. Console báo rõ khi vào màn | 5.6 |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

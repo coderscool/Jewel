@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
+using Unity.Profiling;
 using UnityEngine;
 
 namespace JewelPainter.Gameplay.Board
@@ -121,9 +122,18 @@ namespace JewelPainter.Gameplay.Board
             return _lastCameraPosition != _camera.transform.position;
         }
 
+        /// Nhãn đo cho Profiler. Không có nhãn thì cả ba lớp đều nằm lẫn trong
+        /// LateUpdate và không tách được lớp nào tốn bao nhiêu.
+        ///
+        /// static readonly để tên chỉ được cấp phát một lần cho cả chương trình.
+        /// Bản build phát hành không bật ENABLE_PROFILER thì nhãn tự tiêu biến.
+        private static readonly ProfilerMarker RefreshMarker = new("JewelPainter.Jewels.Refresh");
+
         /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này.
         private bool Refresh()
         {
+            using var _ = RefreshMarker.Auto();
+
             if (CellScreenPixels() < _minCellScreenPixels)
             {
                 ReleaseAll();
@@ -230,11 +240,19 @@ namespace JewelPainter.Gameplay.Board
             foreach (var cell in _toRelease) Release(cell);
         }
 
+        /// Tắt RENDERER chứ không tắt GameObject.
+        ///
+        /// SetActive phải duyệt cả cây con, gửi thông điệp vòng đời và cập nhật lại cấu
+        /// trúc culling — đắt gấp nhiều lần so với gạt một cờ bool. Zoom qua lại liên
+        /// tục là hàng trăm lần bật tắt mỗi frame, và đó chính là chỗ khung hình tụt.
+        ///
+        /// Object chỉ có đúng một SpriteRenderer nên tắt renderer với tắt object là một
+        /// về mặt hình ảnh.
         private void Release(Vector2Int cell)
         {
             if (!_active.TryGetValue(cell, out var jewel)) return;
 
-            jewel.gameObject.SetActive(false);
+            jewel.enabled = false;
             _pool.Push(jewel);
             _active.Remove(cell);
         }
@@ -244,7 +262,7 @@ namespace JewelPainter.Gameplay.Board
             if (_pool.Count > 0)
             {
                 var pooled = _pool.Pop();
-                pooled.gameObject.SetActive(true);
+                pooled.enabled = true;
                 return pooled;
             }
 
@@ -264,7 +282,7 @@ namespace JewelPainter.Gameplay.Board
             while (_pool.Count < target)
             {
                 var jewel = Instantiate(_jewelPrefab, _root);
-                jewel.gameObject.SetActive(false);
+                jewel.enabled = false;
                 _pool.Push(jewel);
             }
         }

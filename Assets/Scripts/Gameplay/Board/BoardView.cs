@@ -172,6 +172,8 @@ namespace JewelPainter.Gameplay.Board
             Colors = colors;
             Layout = new BoardLayout(grid.Width, grid.Height);
 
+            WarnOnLayerMisalignment();
+
             BuildPixels();
 
             _unpaintedTexture = CreateTexture(grid.Width, grid.Height, _unpaintedPixels);
@@ -237,6 +239,36 @@ namespace JewelPainter.Gameplay.Board
                     WritePixel(_paintedPixels, x, y, paintedColor);
                 }
             }
+        }
+
+        /// Hai lớp texture phải nằm CHỒNG KHÍT lên nhau.
+        ///
+        /// Chúng là hai SpriteRenderer riêng, dựng từ cùng một cách nên cùng kích thước
+        /// world. Nhưng nếu object con `Painted` bị lệch vị trí hoặc khác scale thì màu
+        /// đã tô vẽ trượt khỏi ô của nó: có ô hiện màu của hàng xóm, có ô trông như
+        /// không được tô, và mép ô nào cũng chỉ phủ một phần.
+        ///
+        /// Triệu chứng đó rất khó lần ra bằng mắt vì mọi thứ khác vẫn đúng — ngọc vẫn
+        /// hiện, số vẫn hiện, chỉ riêng lớp màu lệch đi. Nên báo thẳng ra Console.
+        private void WarnOnLayerMisalignment()
+        {
+            if (_unpaintedRenderer == null || _paintedRenderer == null) return;
+
+            var a = _unpaintedRenderer.transform;
+            var b = _paintedRenderer.transform;
+
+            var offset = b.position - a.position;
+            var scaleRatio = b.lossyScale - a.lossyScale;
+
+            // Bỏ qua sai lệch cỡ một phần nghìn ô — đó là sai số dấu phẩy động, không
+            // phải người ta đặt nhầm.
+            if (offset.sqrMagnitude < 0.0001f && scaleRatio.sqrMagnitude < 0.0001f) return;
+
+            Debug.LogWarning(
+                $"Hai lớp bảng KHÔNG chồng khít: '{b.name}' lệch {offset} và chênh scale " +
+                $"{scaleRatio} so với '{a.name}'. Màu đã tô sẽ vẽ trượt khỏi ô của nó. " +
+                "Đặt Position của object lớp đã tô về (0, 0, 0) và Scale về (1, 1, 1).",
+                _paintedRenderer);
         }
 
         private static Texture2D CreateTexture(int width, int height, Color32[] pixels)
