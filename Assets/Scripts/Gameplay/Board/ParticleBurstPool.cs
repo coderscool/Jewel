@@ -48,12 +48,17 @@ namespace JewelPainter.Gameplay.Board
 
         public bool HasPrefab => _prefab != null;
 
-        public void Play(Vector2 world)
+        /// false khi đã chạm trần đồng thời, hoặc thiếu prefab.
+        ///
+        /// Trả về kết quả thay vì im lặng bỏ qua: bên gọi cần biết để XẾP LẠI HÀNG. Nuốt
+        /// lặng lẽ nghĩa là hiệu ứng mất hẳn, mà thứ duy nhất người dùng thấy là "sao nó
+        /// không loé hết".
+        public bool Play(Vector2 world)
         {
-            if (_maxConcurrent > 0 && _active.Count >= _maxConcurrent) return;
+            if (_maxConcurrent > 0 && _active.Count >= _maxConcurrent) return false;
 
             var system = Rent();
-            if (system == null) return;
+            if (system == null) return false;
 
             system.transform.position = world;
 
@@ -63,6 +68,7 @@ namespace JewelPainter.Gameplay.Board
             system.Play(true);
 
             _active.Add(new ActiveBurst { System = system, Elapsed = 0f });
+            return true;
         }
 
         /// Dựng sẵn lúc vào màn. Instantiate cả trăm hệ hạt đúng vào frame cần dùng là

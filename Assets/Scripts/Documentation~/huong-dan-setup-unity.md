@@ -460,33 +460,59 @@ giữa ô.
 - [ ] Chuột phải `Board` → Create Empty, tên `ColorComplete`, `Position` = (0, 0, 0)
 - [ ] `Add Component > Particle Burst Pool`
   - `Prefab` = `ColorCompleteBurst`, `Root` = chính nó
-  - `Prewarm Count` = **200**, `Max Concurrent` = **400**
+  - `Prewarm Count` = **300**, `Max Concurrent` = **0** (bỏ trần)
   - `Min Alive Seconds` = **0.3** — phải **lớn hơn** `Start Delay` lớn nhất ở trên
 - [ ] `Add Component > Color Complete Sparkle`
   - `Camera` = Main Camera, `Burst Pool` = **chính object này**
-  - `Max Per Frame` = **40**
-  - `Visible Cells Only` = tick
+  - `Max Per Frame` = **0** — cả màu loé cùng một lúc
+  - `Visible Cells Only` = tick, `Log Burst Count` = bỏ tick
   - `Min Cell Screen Pixels` = 14
 
-**`Max Per Frame` là nhịp rải ra, KHÔNG phải giới hạn.** Ô nào chưa tới lượt thì nằm
-chờ frame sau — không ô nào bị bỏ. Toàn bộ màu vẫn loé hết trong chớp mắt:
+**`Max Per Frame` = 0 là cả màu loé cùng một lúc.** Đặt một số dương thì hiệu ứng rải
+ra nhiều frame cho nhẹ máy — đó là nhịp rải, KHÔNG phải giới hạn: ô chưa tới lượt nằm
+chờ frame sau, không ô nào bị bỏ.
 
-| Nhịp | Màu 120 ô | Màu 300 ô |
-|---|---|---|
-| 12/frame | 10 frame (167ms) | 25 frame (417ms) |
-| **40/frame** | **3 frame (50ms)** | **8 frame (133ms)** |
-| 120/frame | 1 frame (17ms) | 3 frame (50ms) |
+| Nhịp | Màu 300 ô |
+|---|---|
+| **0 (cùng lúc)** | **1 frame** |
+| 40/frame | 8 frame (133ms) |
+| 12/frame | 25 frame (417ms) |
 
-> ⚠️ **`Max Concurrent` của kho mới là trần cứng.** Vượt nó thì hiệu ứng bị **nuốt hẳn**,
-> không xếp hàng lại. Vì mỗi lần loé sống khoảng 0.6 giây — lâu hơn cả lượt rải — nên
-> số hệ hạt sống cùng lúc leo gần bằng **tổng số ô của màu đó**.
+> ⚠️ **Loé cùng lúc thì `Prewarm Count` của kho phải đủ lớn.** Kho thiếu hàng thì phải
+> `Instantiate` bù ngay trong frame đó — cả trăm Particle System trong một frame là cú
+> khựng thấy rõ, đúng vào khoảnh khắc đáng lẽ phải đã mắt nhất.
 >
-> Đặt `Max Concurrent` **lớn hơn số ô của màu nhiều ô nhất trong màn**. Mặc định mới là
-> 400. Để 0 là bỏ trần.
+> Đặt `Prewarm Count` **lớn hơn số ô của màu nhiều ô nhất trong màn**, và `Max Concurrent`
+> cũng vậy (hoặc để 0). Việc dựng sẵn chạy lúc vào màn, khi màn hình chờ đang che.
 
-`Visible Cells Only` bỏ tick thì loé cả ô ngoài màn hình — trung thực với ý "mọi ô đều
-loé", nhưng tốn hệ hạt cho thứ không ai nhìn thấy, và chúng chiếm mất chỗ trong trần
-`Max Concurrent` của những ô đang thấy.
+**`Max Concurrent` của kho quyết định nó loé XONG nhanh hay chậm**, không còn quyết
+định loé được bao nhiêu ô. Chạm trần thì ô đó nằm chờ trong hàng, không bị mất:
+
+| `Max Concurrent` | Màu 200 ô |
+|---|---|
+| 400 | đủ 200 ô, xong sau 83ms |
+| 160 | đủ 200 ô, xong sau 617ms |
+| 32 | đủ 200 ô, xong sau **3.6 giây** — lê thê thấy rõ |
+
+Vì mỗi lần loé sống khoảng 0.6 giây, đặt trần thấp hơn số ô của màu là hiệu ứng phải
+chia làm nhiều đợt nối nhau. Đặt `Max Concurrent` **lớn hơn số ô của màu nhiều ô nhất
+trong màn** thì cả màu loé cùng một lượt. Để 0 là bỏ trần.
+
+**`Visible Cells Only` là thủ phạm hay gặp nhất của "sao nó không loé hết".** Tô xong
+một màu thì thường bạn đang zoom sát, nên phần lớn ô của màu đó nằm ngoài khung hình và
+không được xếp hàng. Bỏ tick thì loé cả những ô đó — đổi lại tốn hệ hạt cho thứ không
+ai nhìn thấy.
+
+Bật **`Log Burst Count`** để biết chắc. Nó in ra Console tổng số ô của màu trên lưới và
+số ô thật sự xếp hàng:
+
+```
+[ColorComplete] màu 1: 214 ô trên lưới, 38 ô xếp hàng loé.
+Thiếu 176 ô nằm ngoài khung hình — bỏ tick Visible Cells Only nếu muốn loé cả những ô đó.
+```
+
+Hai con số khớp nhau mà vẫn thấy thiếu thì nguyên nhân nằm ở `Max Concurrent`, không
+phải ở đây.
 
 Mỗi hiệu ứng có **kho riêng** vì hai prefab khác nhau. Đừng dùng chung một
 `ParticleBurstPool` cho cả `JewelLand` lẫn `ColorComplete` — kho chỉ giữ được một prefab.
@@ -964,6 +990,7 @@ nét đó thuộc về Paint và không có gì để chọn nữa.
 - [ ] `Show At Zoom Progress` = **0.6**
 - [ ] `Min Cell Screen Pixels` = 32 (đường lui, xem dưới)
 - [ ] `Max Spawn Per Frame` = **48**
+- [ ] `Prewarm Per Number` = **64**
 
 `Show At Zoom Progress` đo theo **dải zoom của từng màn**: mốc trên là mức lúc vào màn
 (`Camera Max Size`), mốc dưới là `Fade Switch Size`. 0 là số hiện ngay khi vào màn,
@@ -989,9 +1016,34 @@ rồi khi cả vùng nhìn đã xong thì tất cả bật lên một lượt. �
 khoảng 0.3 giây. Nâng ô này lên thì số hiện sớm hơn nhưng mỗi frame nặng hơn — 48 chữ
 tốn chừng 5ms, vẫn lọt trong ngân sách 16ms của 60fps.
 
+#### Vì sao zoom lần sau không còn khựng
+
+Thứ gây khựng là `SetText`: nó buộc `TextMeshPro` **dựng lại lưới chữ**, tốn cỡ 0.1ms
+mỗi chữ. Chín trăm chữ là 90ms — một cú khựng thấy rõ.
+
+Kho chữ vì thế **chia theo từng số**, không dùng chung một ngăn. Kho dùng chung thì chữ
+lấy ra gần như luôn mang sai số nên lần nào cũng phải dựng lại. Chia theo số thì chữ
+"3" lấy ra đã sẵn là "3" — chỉ cần đặt vị trí và bật lên.
+
+| | Lần zoom đầu | Các lần sau |
+|---|---|---|
+| Kho dùng chung (bản cũ) | 90ms | **90ms** |
+| Kho chia theo số | 90ms | **3.6ms** |
+| Kho chia theo số + `Prewarm Per Number` | ~0ms | 3.6ms |
+
+**`Prewarm Per Number`** dựng sẵn chữ cho mọi số màn này dùng, ngay lúc vào màn — tức
+lúc **màn hình chờ đang che**, nên người chơi không thấy. Đặt cỡ số ô nhiều nhất của
+một màu thì cú zoom đầu tiên cũng mượt. Để 0 là tắt.
+
+Nó chỉ dựng cho số **thật sự có trong lưới**: bảng màu có thể khai 16 màu mà ảnh chỉ
+dùng 9, dựng cả 16 là phí một phần ba số chữ.
+
+> Đổi lại: `Number Color` giờ chỉ áp dụng lúc chữ được TẠO. Chỉnh ô đó trong Play Mode
+> sẽ không thấy gì đổi — vào lại màn thì mới ăn.
+
 **Ô `Spawn All In One Frame`** ở mục `Thử nghiệm` bỏ qua hạn mức hoàn toàn: dựng hết
-số trong đúng một frame, không có 0.3 giây chờ. Tick rồi zoom ra zoom vào là thấy khác
-liền, không cần chạy lại Play Mode.
+số trong đúng một frame. Với kho chia theo số thì giờ nó khả thi hơn hẳn — 3.6ms cho
+900 chữ vẫn lọt ngân sách 16ms.
 
 Đo trong Editor không nói lên gì — Editor chậm hơn build vài lần và có cả overhead của
 chính nó. Muốn biết máy thật chịu được không thì `Build Settings` → bật
@@ -1067,6 +1119,8 @@ Rồi dựng object trong scene:
 - [ ] `Add Component > Hint Layer`
 - [ ] `Camera` = Main Camera, `Hint Prefab` = `CellHint`, `Root` = chính nó
 - [ ] `Min Cell Screen Pixels` = **5**, `Prewarm Count` = 400
+- [ ] `Prewarm From Largest Color` = **tick**
+- [ ] `Max Spawn Per Frame` = **0** — tất cả marker hiện cùng một lúc
 
 **Vì sao ngưỡng ở đây thấp hơn hẳn lớp số và lớp ngọc (14):** ngọc bị cull thì ô vẫn
 còn màu trong texture nên không ai nhận ra, còn marker bị cull là **mất hẳn dấu hiệu**.
@@ -1076,12 +1130,32 @@ biến mất đúng lúc cần nhất.
 Đổi lại, zoom xa thì nhiều marker cùng tồn tại. Thấy khựng thì nâng
 `Min Cell Screen Pixels` lên, chấp nhận mất gợi ý ở mức zoom xa nhất.
 
+#### Vì sao chọn màu không còn khựng
+
+Marker là `SpriteRenderer`, lấy từ kho chỉ tốn một lần bật object và đặt vị trí — rẻ
+hơn hẳn chữ `TextMeshPro` vốn phải dựng lại lưới. Nên hạn mức mỗi frame ở đây tồn tại
+chỉ vì **một lý do**: kho thiếu hàng thì phải `Instantiate` bù ngay lúc đó.
+
+Giải quyết bằng cách làm kho không bao giờ thiếu, rồi bỏ hạn mức:
+
+**`Prewarm From Largest Color`** dựng sẵn đủ marker cho màu nhiều ô nhất của màn. Đó
+đúng là trường hợp xấu nhất — chọn màu nào thì chỉ ô của màu đó mới có marker, nên
+không màu nào cần nhiều hơn màu đông ô nhất. Bảng lớn tới đâu kho cũng đủ, khỏi chỉnh
+tay từng màn. `Prewarm Count` khi đó chỉ còn là mức sàn.
+
+**`Max Spawn Per Frame` = 0** cho tất cả marker hiện trong một frame. An toàn vì kho đã
+có sẵn hàng.
+
+Việc dựng sẵn chạy lúc vào màn, khi màn hình chờ đang che, nên người chơi không thấy.
+
 ### 5.8B Jewels
 
 - [ ] Chuột phải `Board` → Create Empty, tên `Jewels`, `Position` = (0, 0, 0)
 - [ ] `Add Component > Jewel Layer`
 - [ ] `Camera` = Main Camera, `Jewel Prefab` = `Jewel_01`, `Root` = chính nó
 - [ ] `Min Cell Screen Pixels` = 14, `Prewarm Count` = 200
+- [ ] `Prewarm From Board Size` = **tick**
+- [ ] `Max Spawn Per Frame` = **0** — cả vùng mới hiện trọn ngay
 
 Chỉ sinh ngọc cho ô **đang lọt trong tầm nhìn**, nên bảng tô kín 4000 ô vẫn chỉ có
 chừng trăm viên tồn tại. Kéo camera thì viên trôi ra ngoài được thu về, viên mới lấy
@@ -1089,6 +1163,29 @@ ra dùng lại.
 
 Cull được là nhờ texture của bảng vẫn giữ màu bên dưới — viên ngọc bị gỡ thì ô đó
 vẫn còn nguyên màu, không ai nhận ra có gì biến mất.
+
+#### Vì sao zoom nhanh không còn thấy ngọc mọc dần
+
+Zoom ra nhanh đẩy hàng trăm ô vào tầm nhìn cùng lúc. Hạn mức 24 marker mỗi frame nghĩa
+là 300 ô phải mất 13 frame — đủ chậm để mắt bắt được, và thứ người chơi thấy là ngọc
+lần lượt mọc lên thay vì bức tranh đã sẵn ở đó.
+
+Cùng cách chữa như lớp gợi ý: làm kho không bao giờ thiếu rồi bỏ hạn mức.
+
+**`Prewarm From Board Size`** dựng sẵn đủ ngọc cho **mọi ô có màu** của màn. Đó là
+trường hợp xấu nhất — tranh tô kín và kéo ra thấy trọn bảng thì mọi ô đều cần một viên.
+
+Cái giá là bộ nhớ và thời gian vào màn:
+
+| Bảng | Số viên dựng sẵn | Thời gian |
+|---|---|---|
+| 27×36 | ~970 | ~19ms |
+| 64×64 | ~4090 | ~80ms |
+
+Việc đó chạy lúc màn hình chờ đang che nên không ai thấy. Máy yếu mà thấy vào màn lâu
+thì bỏ tick, quay lại `Prewarm Count` cố định và chấp nhận hạn mức mỗi frame.
+
+**`Max Spawn Per Frame` = 0** cho cả vùng mới hiện trọn trong một frame.
 
 ### 5.8C JewelFly
 
@@ -1644,6 +1741,7 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 | Thắng màn thì khựng một nhịp | `Cell Step` quá nhỏ so với cỡ bảng | 5.8E |
 | Mở lại game mất hết phần đã tô | `Paint Progress Store` chưa gắn lên `PaintManager` | 5.5 |
 | Console báo bản lưu không khớp cỡ lưới | Đã sinh lại `GridData` cho màn đang chơi dở | bình thường, bản lưu cũ bị bỏ |
+| Đổi `Number Color` lúc đang chạy không thấy gì | Màu chỉ áp dụng lúc tạo chữ — vào lại màn | 5.7 |
 | Số bò dần từ trên xuống thay vì hiện cùng lúc | Bản cũ. Nay số dựng ở alpha 0 rồi bật một lượt | 5.7 |
 | Không thấy màn hình chờ, game vào thẳng | `Loading Screen View` chưa gắn, hoặc `Minimum Seconds` = 0 | 5.12 |
 | Màn hình chờ bị popup che | `LoadingCanvas` có `Sort Order` thấp hơn Canvas chứa `Popups` | 5.12 |
@@ -1656,7 +1754,12 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 | Icon gợi ý rơi lúc camera còn đang bay | `HintMarker > Start Delay` nhỏ hơn `Board Camera > Focus Duration` | 5.8F |
 | Bấm bánh răng ra dòng đỏ trong Console | Chưa khai `Settings` vào `PopupConfig` | 4.7 |
 | Popup nhắc nhở không tự tắt | `Auto Hide Seconds` đang để 0 | 4.7 |
-| Tô xong một màu nhưng chỉ một phần ô loé | `Max Concurrent` của kho nhỏ hơn số ô của màu đó | 4.6 |
+| Tô xong một màu, các ô loé lần lượt chứ không cùng lúc | `Max Per Frame` khác 0, hoặc `Max Concurrent` nhỏ hơn số ô của màu | 4.6 |
+| Khựng một nhịp đúng lúc một màu vừa xong | `Prewarm Count` của kho nhỏ hơn số ô của màu đó | 4.6 |
+| Chọn màu thì marker hiện lần lượt chứ không cùng lúc | `Hints > Max Spawn Per Frame` khác 0 | 5.8 |
+| Chọn màu bị khựng một nhịp | `Prewarm From Largest Color` chưa tick và `Prewarm Count` quá nhỏ | 5.8 |
+| Zoom ra nhanh thấy ngọc mọc dần | `Jewels > Max Spawn Per Frame` khác 0 | 5.8B |
+| Vào màn lâu hơn trước | Ba lớp đều dựng sẵn object; bỏ tick các ô `Prewarm From...` nếu máy yếu | 5.7, 5.8, 5.8B |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

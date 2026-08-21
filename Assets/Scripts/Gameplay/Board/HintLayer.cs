@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 
@@ -25,12 +26,22 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private float _minCellScreenPixels = 5f;
 
         [Tooltip("Số marker dựng sẵn lúc vào màn. Chọn màu là lúc duy nhất sinh hàng " +
-                 "loạt object cùng lúc — dựng sẵn thì cú đó chỉ là lấy đồ khỏi kho.")]
+                 "loạt object cùng lúc — dựng sẵn thì cú đó chỉ là lấy đồ khỏi kho.\n\n" +
+                 "Chỉ là mức SÀN nếu ô dưới được tick.")]
         [SerializeField] private int _prewarmCount = 400;
 
-        [Tooltip("Số marker được sinh tối đa trong MỘT frame. Đây là lớp nặng nhất vì " +
-                 "chọn màu là sinh hàng loạt cùng lúc; chia ra nhiều frame thì không khựng.")]
-        [SerializeField] private int _maxSpawnPerFrame = 32;
+        [Tooltip("Dựng sẵn đủ marker cho MÀU NHIỀU Ô NHẤT của màn, thay vì một con số " +
+                 "cố định.\n\n" +
+                 "Đây đúng là số marker tối đa cần tới: chọn màu nào thì chỉ ô của màu đó " +
+                 "mới có marker, nên màu đông ô nhất chính là trường hợp xấu nhất. Nhờ vậy " +
+                 "bảng lớn tới đâu kho cũng không bao giờ thiếu, khỏi chỉnh tay từng màn.")]
+        [SerializeField] private bool _prewarmFromLargestColor = true;
+
+        [Tooltip("Số marker được sinh tối đa trong MỘT frame.\n\n" +
+                 "**Để 0 là tất cả hiện cùng một lúc** — đây là mặc định, và nó an toàn vì " +
+                 "kho đã dựng sẵn đủ hàng: lấy ra chỉ là bật object và đặt vị trí.\n\n" +
+                 "Đặt số dương chỉ cần khi kho có thể thiếu và phải Instantiate bù.")]
+        [SerializeField] private int _maxSpawnPerFrame;
 
         [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn, để ô ở rìa " +
                  "không bị thu về rồi sinh lại liên tục khi camera nhích.")]
@@ -39,6 +50,7 @@ namespace JewelPainter.Gameplay.Board
         private readonly Dictionary<Vector2Int, SpriteRenderer> _active = new();
         private readonly Stack<SpriteRenderer> _pool = new();
         private readonly List<Vector2Int> _toRelease = new();
+        private readonly Dictionary<int, int> _colorCounts = new();
 
         private BoardView _boardView;
         private IPaintService _paintService;
@@ -136,7 +148,10 @@ namespace JewelPainter.Gameplay.Board
 
             ReleaseOutside(visible);
 
-            var budget = Mathf.Max(1, _maxSpawnPerFrame);
+            // 0 nghĩa là không giới hạn — marker lấy từ kho dựng sẵn nên rẻ, không cần
+            // chia frame. int.MaxValue thay vì rẽ nhánh riêng: lưới lớn nhất cũng chỉ
+            // vài nghìn ô nên phép trừ không bao giờ chạm đáy.
+            var budget = _maxSpawnPerFrame > 0 ? _maxSpawnPerFrame : int.MaxValue;
 
             for (var y = visible.yMin; y < visible.yMax; y++)
             {
@@ -258,12 +273,50 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_hintPrefab == null) return;
 
-            while (_pool.Count < _prewarmCount)
+            var target = Mathf.Max(_prewarmCount, LargestColorCellCount());
+
+            while (_pool.Count < target)
             {
                 var marker = Instantiate(_hintPrefab, _root);
                 marker.gameObject.SetActive(false);
                 _pool.Push(marker);
             }
+        }
+
+        /// Số ô của màu chiếm nhiều ô nhất trong màn — cũng chính là số marker tối đa
+        /// có thể cần tới cùng lúc.
+        ///
+        /// Quét cả lưới một lượt. Chạy đúng một lần mỗi khi vào màn, và lúc đó màn hình
+        /// chờ đang che, nên vài nghìn phép tra dictionary không ai thấy.
+        private int LargestColorCellCount()
+        {
+            if (!_prewarmFromLargestColor) return 0;
+
+            var grid = _boardView != null ? _boardView.Grid : null;
+            if (grid == null) return 0;
+
+            _colorCounts.Clear();
+
+            for (var y = 0; y < grid.Height; y++)
+            {
+                for (var x = 0; x < grid.Width; x++)
+                {
+                    var index = grid.GetCell(x, y);
+                    if (index == PixelGrid.EmptyCell) continue;
+
+                    _colorCounts.TryGetValue(index, out var count);
+                    _colorCounts[index] = count + 1;
+                }
+            }
+
+            var largest = 0;
+
+            foreach (var pair in _colorCounts)
+            {
+                if (pair.Value > largest) largest = pair.Value;
+            }
+
+            return largest;
         }
     }
 }

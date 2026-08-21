@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 
@@ -23,12 +24,23 @@ namespace JewelPainter.Gameplay.Board
                  "Màu của ô vẫn hiện vì nó nằm trong texture của bảng.")]
         [SerializeField] private float _minCellScreenPixels = 14f;
 
-        [Tooltip("Số ngọc dựng sẵn lúc vào màn, nên đủ phủ một màn hình.")]
+        [Tooltip("Số ngọc dựng sẵn lúc vào màn. Chỉ là mức SÀN nếu ô dưới được tick.")]
         [SerializeField] private int _prewarmCount = 200;
 
-        [Tooltip("Số ngọc được sinh tối đa trong MỘT frame. Zoom liên tục đẩy nhiều ô vào " +
-                 "tầm nhìn cùng lúc; chia ra nhiều frame thì không có cú khựng nào.")]
-        [SerializeField] private int _maxSpawnPerFrame = 24;
+        [Tooltip("Dựng sẵn đủ ngọc cho MỌI Ô CÓ MÀU của màn, thay vì một con số cố định.\n\n" +
+                 "Đây đúng là trường hợp xấu nhất: tranh tô kín và kéo ra thấy trọn bảng " +
+                 "thì mọi ô đều cần một viên. Dựng sẵn từng đó thì zoom nhanh cỡ nào kho " +
+                 "cũng không phải Instantiate bù.\n\n" +
+                 "Cái giá là bộ nhớ và thời gian vào màn: bảng 64x64 là 4096 SpriteRenderer, " +
+                 "dựng mất cỡ 80ms. Việc đó chạy lúc màn hình chờ đang che.")]
+        [SerializeField] private bool _prewarmFromBoardSize = true;
+
+        [Tooltip("Số ngọc được sinh tối đa trong MỘT frame.\n\n" +
+                 "**Để 0 là tất cả hiện cùng một lúc** — đây là mặc định. Zoom ra nhanh " +
+                 "thì cả vùng mới hiện trọn ngay, không thấy ngọc lần lượt mọc lên.\n\n" +
+                 "An toàn khi kho đã dựng sẵn đủ: lấy ra chỉ là bật object, đặt vị trí và " +
+                 "gán màu.")]
+        [SerializeField] private int _maxSpawnPerFrame;
 
         [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn, để ô ở rìa " +
                  "không bị thu về rồi sinh lại liên tục khi camera nhích.")]
@@ -124,7 +136,10 @@ namespace JewelPainter.Gameplay.Board
 
             ReleaseOutside(visible);
 
-            var budget = Mathf.Max(1, _maxSpawnPerFrame);
+            // 0 nghĩa là không giới hạn — ngọc lấy từ kho dựng sẵn nên rẻ, không cần
+            // chia frame. int.MaxValue thay vì rẽ nhánh riêng: lưới lớn nhất cũng chỉ
+            // vài nghìn ô nên phép trừ không bao giờ chạm đáy.
+            var budget = _maxSpawnPerFrame > 0 ? _maxSpawnPerFrame : int.MaxValue;
 
             for (var y = visible.yMin; y < visible.yMax; y++)
             {
@@ -239,17 +254,41 @@ namespace JewelPainter.Gameplay.Board
             return null;
         }
 
-        /// Dựng sẵn lúc vào màn, lúc màn hình đang chuyển cảnh nên không ai thấy.
+        /// Dựng sẵn lúc vào màn, lúc màn hình chờ đang che nên không ai thấy.
         private void Prewarm()
         {
             if (_jewelPrefab == null) return;
 
-            while (_pool.Count < _prewarmCount)
+            var target = Mathf.Max(_prewarmCount, ColoredCellCount());
+
+            while (_pool.Count < target)
             {
                 var jewel = Instantiate(_jewelPrefab, _root);
                 jewel.gameObject.SetActive(false);
                 _pool.Push(jewel);
             }
+        }
+
+        /// Số ô CÓ MÀU của màn — cũng chính là số viên ngọc tối đa có thể cần cùng lúc,
+        /// khi tranh đã tô kín và người chơi kéo ra thấy trọn bảng.
+        private int ColoredCellCount()
+        {
+            if (!_prewarmFromBoardSize) return 0;
+
+            var grid = _boardView != null ? _boardView.Grid : null;
+            if (grid == null) return 0;
+
+            var count = 0;
+
+            for (var y = 0; y < grid.Height; y++)
+            {
+                for (var x = 0; x < grid.Width; x++)
+                {
+                    if (grid.GetCell(x, y) != PixelGrid.EmptyCell) count++;
+                }
+            }
+
+            return count;
         }
     }
 }

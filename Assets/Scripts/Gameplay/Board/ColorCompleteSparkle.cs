@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 
@@ -18,11 +19,14 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private Camera _camera;
         [SerializeField] private ParticleBurstPool _burstPool;
 
-        [Tooltip("Số ô loé trong MỖI FRAME. Đây là nhịp rải ra, KHÔNG phải giới hạn — " +
-                 "ô nào chưa tới lượt thì nằm chờ frame sau, không ô nào bị bỏ.\n\n" +
-                 "Toàn bộ màu vẫn loé hết trong chớp mắt: 200 ô chia cho 40 là 5 frame, " +
-                 "chưa tới một phần mười giây.")]
-        [SerializeField] private int _maxPerFrame = 40;
+        [Tooltip("Số ô loé trong MỖI FRAME.\n\n" +
+                 "**Để 0 là cả màu loé cùng một lúc** — đây là mặc định.\n\n" +
+                 "Đặt một số dương thì hiệu ứng rải ra nhiều frame cho nhẹ máy. Đó là " +
+                 "nhịp rải, KHÔNG phải giới hạn: ô chưa tới lượt nằm chờ frame sau, " +
+                 "không ô nào bị bỏ.\n\n" +
+                 "Loé cùng lúc thì nhớ đặt Prewarm Count của kho đủ lớn, không thì cả " +
+                 "trăm hệ hạt phải Instantiate ngay trong frame đó.")]
+        [SerializeField] private int _maxPerFrame;
 
         [Tooltip("Chỉ loé những ô đang lọt trong khung hình. Bỏ tick thì loé cả ô ngoài " +
                  "màn — trung thực với ý 'mọi ô đều loé' nhưng tốn hệ hạt cho thứ không " +
@@ -32,6 +36,11 @@ namespace JewelPainter.Gameplay.Board
         [Tooltip("Ô chiếu lên màn hình nhỏ hơn ngần này pixel thì bỏ qua: ở cỡ đó " +
                  "cả trăm đốm sáng chỉ còn là một mảng nhiễu.")]
         [SerializeField] private float _minCellScreenPixels = 14f;
+
+        [Tooltip("In ra Console số ô của màu vừa xong và số ô thật sự được xếp hàng loé. " +
+                 "Bật khi thấy 'nó không loé hết' — hai con số lệch nhau bao nhiêu sẽ chỉ " +
+                 "thẳng ra nguyên nhân.")]
+        [SerializeField] private bool _logBurstCount;
 
         /// Những ô đã xếp hàng chờ tới lượt loé.
         private readonly List<Vector2Int> _pending = new();
@@ -115,6 +124,8 @@ namespace JewelPainter.Gameplay.Board
                 ? layout.VisibleCells(CameraWorldRect())
                 : new RectInt(0, 0, grid.Width, grid.Height);
 
+            var queued = 0;
+
             for (var y = area.yMin; y < area.yMax; y++)
             {
                 for (var x = area.xMin; x < area.xMax; x++)
@@ -122,8 +133,34 @@ namespace JewelPainter.Gameplay.Board
                     if (grid.GetCell(x, y) != paletteIndex) continue;
 
                     _pending.Add(new Vector2Int(x, y));
+                    queued++;
                 }
             }
+
+            if (_logBurstCount) LogBurstCount(paletteIndex, grid, queued);
+        }
+
+        /// Đếm TỔNG số ô của màu này trên cả lưới rồi so với số ô thật sự xếp hàng.
+        /// Hai con số lệch nhau nghĩa là có ô bị loại — mà chỉ có một lý do để loại:
+        /// nó nằm ngoài khung hình.
+        private void LogBurstCount(int paletteIndex, PixelGrid grid, int queued)
+        {
+            var total = 0;
+
+            for (var y = 0; y < grid.Height; y++)
+            {
+                for (var x = 0; x < grid.Width; x++)
+                {
+                    if (grid.GetCell(x, y) == paletteIndex) total++;
+                }
+            }
+
+            Debug.Log($"[ColorComplete] màu {paletteIndex + 1}: {total} ô trên lưới, " +
+                      $"{queued} ô xếp hàng loé. " +
+                      (total == queued
+                          ? "Khớp."
+                          : $"Thiếu {total - queued} ô nằm ngoài khung hình — bỏ tick " +
+                            "Visible Cells Only nếu muốn loé cả những ô đó."));
         }
 
         /// Rút hàng chờ theo nhịp mỗi frame.
@@ -141,15 +178,21 @@ namespace JewelPainter.Gameplay.Board
                 return;
             }
 
-            var budget = Mathf.Max(1, _maxPerFrame);
+            // 0 nghĩa là không giới hạn. int.MaxValue thay vì rẽ nhánh riêng: một màu
+            // nhiều nhất cũng chỉ vài nghìn ô nên phép trừ không bao giờ chạm đáy.
+            var budget = _maxPerFrame > 0 ? _maxPerFrame : int.MaxValue;
 
             while (_pending.Count > 0 && budget-- > 0)
             {
                 var last = _pending.Count - 1;
                 var cell = _pending[last];
-                _pending.RemoveAt(last);
 
-                _burstPool.Play(layout.CellToWorldCenter(cell.x, cell.y));
+                // Kho đầy thì DỪNG, giữ nguyên ô này trong hàng chờ. Mỗi lần loé chỉ
+                // sống chưa tới một giây nên chỗ sẽ trống ra — chờ thêm vài frame còn
+                // hơn mất hẳn hiệu ứng của ô đó.
+                if (!_burstPool.Play(layout.CellToWorldCenter(cell.x, cell.y))) return;
+
+                _pending.RemoveAt(last);
             }
         }
 

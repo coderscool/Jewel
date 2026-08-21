@@ -51,8 +51,30 @@ namespace JewelPainter.Gameplay.Board
                  "liền, không cần chạy lại.")]
         [SerializeField] private bool _spawnAllInOneFrame;
 
-        private readonly Dictionary<Vector2Int, TextMeshPro> _active = new();
-        private readonly Stack<TextMeshPro> _pool = new();
+        [Tooltip("Dựng sẵn bao nhiêu chữ cho MỖI SỐ lúc vào màn. Việc này chạy lúc màn " +
+                 "hình chờ đang che, nên người chơi không thấy.\n\n" +
+                 "Đặt cỡ số ô nhiều nhất của một màu thì cú zoom ĐẦU TIÊN cũng mượt. " +
+                 "Để 0 là tắt, lúc đó lần zoom đầu vẫn phải dựng chữ.")]
+        [SerializeField] private int _prewarmPerNumber = 64;
+
+        /// Một chữ đang hiện, kèm SỐ nó đang mang. Phải nhớ con số vì lúc trả về kho
+        /// cần biết trả vào ngăn nào — mà lúc đó lưới có thể đã đổi sang màn khác.
+        private struct Label
+        {
+            public TextMeshPro Text;
+            public int Number;
+        }
+
+        private readonly Dictionary<Vector2Int, Label> _active = new();
+
+        /// Kho chia theo TỪNG SỐ, không dùng chung một ngăn.
+        ///
+        /// Đây là chỗ tiết kiệm lớn nhất. SetText buộc TextMeshPro dựng lại lưới chữ —
+        /// đó chính là thứ gây khựng. Kho dùng chung thì chữ lấy ra gần như luôn mang
+        /// sai số nên lần nào cũng phải dựng lại. Chia theo số thì chữ "3" lấy ra đã
+        /// sẵn là "3": chỉ cần đặt vị trí và bật lên, không đụng tới lưới chữ.
+        private readonly Dictionary<int, Stack<TextMeshPro>> _poolByNumber = new();
+
         private readonly List<Vector2Int> _toRelease = new();
 
         private BoardView _boardView;
@@ -84,8 +106,42 @@ namespace JewelPainter.Gameplay.Board
         private void HandleBoardRebuilt()
         {
             ReleaseAll();
+            Prewarm();
+
             _needsBaseCapture = true;
             _lastOrthographicSize = -1f;   // ép tính lại ở LateUpdate kế tiếp
+        }
+
+        /// Dựng sẵn chữ cho mọi số màn này dùng, lúc màn hình chờ đang che.
+        ///
+        /// Chỉ dựng cho số THẬT SỰ có trong lưới: bảng màu có thể khai 16 màu mà ảnh
+        /// chỉ dùng 9, dựng cả 16 là phí một phần ba số chữ.
+        private void Prewarm()
+        {
+            if (_numberPrefab == null || _prewarmPerNumber <= 0) return;
+
+            var grid = _boardView.Grid;
+            var colors = _boardView.Colors;
+
+            if (grid == null || colors == null) return;
+
+            for (var y = 0; y < grid.Height; y++)
+            {
+                for (var x = 0; x < grid.Width; x++)
+                {
+                    var index = grid.GetCell(x, y);
+                    if (index < 0 || index >= colors.Count) continue;
+
+                    var number = index + 1;
+                    var pool = PoolFor(number);
+
+                    if (pool.Count >= _prewarmPerNumber) continue;
+
+                    var label = CreateLabel(number);
+                    label.gameObject.SetActive(false);
+                    pool.Push(label);
+                }
+            }
         }
 
         private void LateUpdate()
@@ -162,13 +218,15 @@ namespace JewelPainter.Gameplay.Board
                     if (index == PixelGrid.EmptyCell) continue;
                     if (index < 0 || index >= colors.Count) continue;
 
-                    var label = Rent();
+                    var number = index + 1;
+                    var label = Rent(number);
+
+                    // KHÔNG gọi SetText ở đây: chữ lấy ra từ ngăn của số này đã mang sẵn
+                    // đúng nội dung. Đây là toàn bộ lý do kho được chia theo số.
                     label.transform.position = layout.CellToWorldCenter(x, y);
-                    label.color = _numberColor;
-                    label.SetText("{0}", index + 1);
                     label.alpha = 0f;
 
-                    _active[cell] = label;
+                    _active[cell] = new Label { Text = label, Number = number };
                     _hasHiddenLabels = true;
 
                     // Duyệt lại từ đầu ở frame sau; ô đã có thì bỏ qua ngay bằng một phép
@@ -192,9 +250,9 @@ namespace JewelPainter.Gameplay.Board
 
             _hasHiddenLabels = false;
 
-            foreach (var label in _active.Values)
+            foreach (var entry in _active.Values)
             {
-                if (label.alpha < 1f) label.alpha = 1f;
+                if (entry.Text.alpha < 1f) entry.Text.alpha = 1f;
             }
         }
 
@@ -272,23 +330,51 @@ namespace JewelPainter.Gameplay.Board
 
         private void Release(Vector2Int cell)
         {
-            if (!_active.TryGetValue(cell, out var label)) return;
+            if (!_active.TryGetValue(cell, out var entry)) return;
 
-            label.gameObject.SetActive(false);
-            _pool.Push(label);
+            entry.Text.gameObject.SetActive(false);
+            PoolFor(entry.Number).Push(entry.Text);
+
             _active.Remove(cell);
         }
 
-        private TextMeshPro Rent()
+        private TextMeshPro Rent(int number)
         {
-            if (_pool.Count > 0)
+            var pool = PoolFor(number);
+
+            if (pool.Count > 0)
             {
-                var pooled = _pool.Pop();
+                var pooled = pool.Pop();
                 pooled.gameObject.SetActive(true);
                 return pooled;
             }
 
-            return Instantiate(_numberPrefab, _root);
+            return CreateLabel(number);
+        }
+
+        /// Đổ chữ và màu MỘT LẦN duy nhất, ngay lúc tạo. Từ đó về sau chữ này chỉ đổi
+        /// vị trí và alpha — hai thứ không buộc dựng lại lưới chữ.
+        ///
+        /// Đổi Number Color trong Inspector lúc đang chạy vì thế không có tác dụng với
+        /// chữ đã tạo. Đổi rồi thì vào lại màn.
+        private TextMeshPro CreateLabel(int number)
+        {
+            var label = Instantiate(_numberPrefab, _root);
+
+            label.color = _numberColor;
+            label.SetText("{0}", number);
+
+            return label;
+        }
+
+        private Stack<TextMeshPro> PoolFor(int number)
+        {
+            if (_poolByNumber.TryGetValue(number, out var pool)) return pool;
+
+            pool = new Stack<TextMeshPro>();
+            _poolByNumber[number] = pool;
+
+            return pool;
         }
     }
 }
