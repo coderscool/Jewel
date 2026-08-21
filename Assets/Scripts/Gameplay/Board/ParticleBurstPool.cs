@@ -24,8 +24,13 @@ namespace JewelPainter.Gameplay.Board
 
         [SerializeField] private int _prewarmCount = 32;
 
-        [Tooltip("Số hiệu ứng sống cùng lúc tối đa. Vượt quá thì bỏ qua lần gọi mới.")]
-        [SerializeField] private int _maxConcurrent = 160;
+        [Tooltip("Số hiệu ứng sống cùng lúc tối đa. Vượt quá thì BỎ QUA lần gọi mới — " +
+                 "hiệu ứng đó mất hẳn, không xếp hàng lại.\n\n" +
+                 "Đây là trần cứng cuối cùng. Muốn cả một màu cùng loé thì phải đặt LỚN " +
+                 "HƠN số ô của màu nhiều ô nhất trong màn, không thì phần vượt bị nuốt " +
+                 "dù bên gọi đã rải đều ra nhiều frame.\n\n" +
+                 "Để 0 là không giới hạn.")]
+        [SerializeField] private int _maxConcurrent = 400;
 
         [Tooltip("Chờ ít nhất ngần này giây rồi mới tin IsAlive để thu về. Đặt LỚN HƠN " +
                  "Start Delay lớn nhất trong prefab, không thì hệ hạt bị thu ngay trước " +
@@ -45,7 +50,7 @@ namespace JewelPainter.Gameplay.Board
 
         public void Play(Vector2 world)
         {
-            if (_active.Count >= _maxConcurrent) return;
+            if (_maxConcurrent > 0 && _active.Count >= _maxConcurrent) return;
 
             var system = Rent();
             if (system == null) return;

@@ -460,11 +460,33 @@ giữa ô.
 - [ ] Chuột phải `Board` → Create Empty, tên `ColorComplete`, `Position` = (0, 0, 0)
 - [ ] `Add Component > Particle Burst Pool`
   - `Prefab` = `ColorCompleteBurst`, `Root` = chính nó
-  - `Prewarm Count` = 60, `Max Concurrent` = 160
+  - `Prewarm Count` = **200**, `Max Concurrent` = **400**
   - `Min Alive Seconds` = **0.3** — phải **lớn hơn** `Start Delay` lớn nhất ở trên
 - [ ] `Add Component > Color Complete Sparkle`
   - `Camera` = Main Camera, `Burst Pool` = **chính object này**
-  - `Max Per Burst` = 120, `Min Cell Screen Pixels` = 14
+  - `Max Per Frame` = **40**
+  - `Visible Cells Only` = tick
+  - `Min Cell Screen Pixels` = 14
+
+**`Max Per Frame` là nhịp rải ra, KHÔNG phải giới hạn.** Ô nào chưa tới lượt thì nằm
+chờ frame sau — không ô nào bị bỏ. Toàn bộ màu vẫn loé hết trong chớp mắt:
+
+| Nhịp | Màu 120 ô | Màu 300 ô |
+|---|---|---|
+| 12/frame | 10 frame (167ms) | 25 frame (417ms) |
+| **40/frame** | **3 frame (50ms)** | **8 frame (133ms)** |
+| 120/frame | 1 frame (17ms) | 3 frame (50ms) |
+
+> ⚠️ **`Max Concurrent` của kho mới là trần cứng.** Vượt nó thì hiệu ứng bị **nuốt hẳn**,
+> không xếp hàng lại. Vì mỗi lần loé sống khoảng 0.6 giây — lâu hơn cả lượt rải — nên
+> số hệ hạt sống cùng lúc leo gần bằng **tổng số ô của màu đó**.
+>
+> Đặt `Max Concurrent` **lớn hơn số ô của màu nhiều ô nhất trong màn**. Mặc định mới là
+> 400. Để 0 là bỏ trần.
+
+`Visible Cells Only` bỏ tick thì loé cả ô ngoài màn hình — trung thực với ý "mọi ô đều
+loé", nhưng tốn hệ hạt cho thứ không ai nhìn thấy, và chúng chiếm mất chỗ trong trần
+`Max Concurrent` của những ô đang thấy.
 
 Mỗi hiệu ứng có **kho riêng** vì hai prefab khác nhau. Đừng dùng chung một
 `ParticleBurstPool` cho cả `JewelLand` lẫn `ColorComplete` — kho chỉ giữ được một prefab.
@@ -1634,6 +1656,7 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 | Icon gợi ý rơi lúc camera còn đang bay | `HintMarker > Start Delay` nhỏ hơn `Board Camera > Focus Duration` | 5.8F |
 | Bấm bánh răng ra dòng đỏ trong Console | Chưa khai `Settings` vào `PopupConfig` | 4.7 |
 | Popup nhắc nhở không tự tắt | `Auto Hide Seconds` đang để 0 | 4.7 |
+| Tô xong một màu nhưng chỉ một phần ô loé | `Max Concurrent` của kho nhỏ hơn số ô của màu đó | 4.6 |
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |

@@ -18,13 +18,23 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private Camera _camera;
         [SerializeField] private ParticleBurstPool _burstPool;
 
-        [Tooltip("Số ô loé tối đa trong một lần. Vượt quá thì cắt — mắt không đếm được " +
-                 "hơn chừng này đốm sáng nổ cùng lúc, nhưng máy thì vẫn phải vẽ đủ.")]
-        [SerializeField] private int _maxPerBurst = 120;
+        [Tooltip("Số ô loé trong MỖI FRAME. Đây là nhịp rải ra, KHÔNG phải giới hạn — " +
+                 "ô nào chưa tới lượt thì nằm chờ frame sau, không ô nào bị bỏ.\n\n" +
+                 "Toàn bộ màu vẫn loé hết trong chớp mắt: 200 ô chia cho 40 là 5 frame, " +
+                 "chưa tới một phần mười giây.")]
+        [SerializeField] private int _maxPerFrame = 40;
+
+        [Tooltip("Chỉ loé những ô đang lọt trong khung hình. Bỏ tick thì loé cả ô ngoài " +
+                 "màn — trung thực với ý 'mọi ô đều loé' nhưng tốn hệ hạt cho thứ không " +
+                 "ai nhìn thấy, và chúng chiếm mất chỗ của những ô đang thấy.")]
+        [SerializeField] private bool _visibleCellsOnly = true;
 
         [Tooltip("Ô chiếu lên màn hình nhỏ hơn ngần này pixel thì bỏ qua: ở cỡ đó " +
                  "cả trăm đốm sáng chỉ còn là một mảng nhiễu.")]
         [SerializeField] private float _minCellScreenPixels = 14f;
+
+        /// Những ô đã xếp hàng chờ tới lượt loé.
+        private readonly List<Vector2Int> _pending = new();
 
         /// Màu đã loé rồi thì thôi. Cần chốt lại vì lúc ô cuối của một màu được tô xong,
         /// vài viên ngọc cùng màu vẫn đang bay — mỗi viên đáp xuống lại thấy
@@ -58,6 +68,7 @@ namespace JewelPainter.Gameplay.Board
         private void HandleBoardRebuilt()
         {
             _celebrated.Clear();
+            _pending.Clear();
 
             if (_burstPool == null) return;
 
@@ -80,6 +91,11 @@ namespace JewelPainter.Gameplay.Board
             Burst(paletteIndex);
         }
 
+        /// Xếp mọi ô của màu vừa xong vào hàng chờ. Việc loé do Update rút dần.
+        ///
+        /// Trước đây hàm này bắn thẳng và CẮT BỎ phần vượt hạn mức, nên màu nhiều ô chỉ
+        /// loé được một phần rồi thôi. Xếp hàng thì không ô nào bị mất, mà frame vẫn
+        /// không phải gánh cả trăm hệ hạt cùng lúc.
         private void Burst(int paletteIndex)
         {
             if (_burstPool == null || !_burstPool.HasPrefab)
@@ -95,19 +111,45 @@ namespace JewelPainter.Gameplay.Board
             if (layout == null || grid == null) return;
             if (CellScreenPixels() < _minCellScreenPixels) return;
 
-            var visible = layout.VisibleCells(CameraWorldRect());
-            var budget = Mathf.Max(1, _maxPerBurst);
+            var area = _visibleCellsOnly
+                ? layout.VisibleCells(CameraWorldRect())
+                : new RectInt(0, 0, grid.Width, grid.Height);
 
-            for (var y = visible.yMin; y < visible.yMax; y++)
+            for (var y = area.yMin; y < area.yMax; y++)
             {
-                for (var x = visible.xMin; x < visible.xMax; x++)
+                for (var x = area.xMin; x < area.xMax; x++)
                 {
                     if (grid.GetCell(x, y) != paletteIndex) continue;
 
-                    _burstPool.Play(layout.CellToWorldCenter(x, y));
-
-                    if (--budget <= 0) return;
+                    _pending.Add(new Vector2Int(x, y));
                 }
+            }
+        }
+
+        /// Rút hàng chờ theo nhịp mỗi frame.
+        ///
+        /// Rút từ CUỐI danh sách để xoá không phải dịch cả đuôi. Thứ tự loé vì thế đi
+        /// ngược từ dưới phải lên — không ai nhận ra, vì cả màu loé xong trong vài frame.
+        private void Update()
+        {
+            if (_pending.Count == 0 || _burstPool == null) return;
+
+            var layout = _boardView.Layout;
+            if (layout == null)
+            {
+                _pending.Clear();
+                return;
+            }
+
+            var budget = Mathf.Max(1, _maxPerFrame);
+
+            while (_pending.Count > 0 && budget-- > 0)
+            {
+                var last = _pending.Count - 1;
+                var cell = _pending[last];
+                _pending.RemoveAt(last);
+
+                _burstPool.Play(layout.CellToWorldCenter(cell.x, cell.y));
             }
         }
 
