@@ -312,6 +312,8 @@ namespace JewelPainter.Gameplay.Board
             _unpaintedRenderer.sprite = _unpaintedSprite;
             _paintedRenderer.sprite = _paintedSprite;
 
+            PushCellCountToMaterial();
+
             _isTextureDirty = false;
 
             OnBoardRebuilt?.Invoke();
@@ -397,6 +399,39 @@ namespace JewelPainter.Gameplay.Board
                 "Đặt Position của object lớp đã tô về (0, 0, 0) và Scale về (1, 1, 1).",
                 _paintedRenderer);
         }
+
+        /// Đưa kích thước lưới sang shader BoardGloss, để nó biết một ô rộng bao nhiêu
+        /// phần của bảng mà đặt điểm sáng vào giữa ô.
+        ///
+        /// Shader tự suy được con số này từ _MainTex_TexelSize — texture bảng đúng một
+        /// pixel một ô. Nhưng SpriteRenderer gán texture qua đường riêng của nó, và Unity
+        /// không đảm bảo đổ _TexelSize theo đường đó. Đẩy tường minh thì hết cửa hỏng.
+        ///
+        /// Đi qua MaterialPropertyBlock chứ không đụng `.material`: đọc `.material` sinh
+        /// một bản sao material cho riêng renderer này, và bản sao đó rò ra mỗi lần vào màn.
+        ///
+        /// Material không dùng shader BoardGloss thì thuộc tính này bị bỏ qua, không lỗi.
+        private void PushCellCountToMaterial()
+        {
+            if (_paintedRenderer == null || Grid == null) return;
+
+            // Tạo ở LẦN GỌI ĐẦU, không phải ở khởi tạo trường.
+            //
+            // Trường static có giá trị khởi tạo sẵn sẽ chạy trong type initializer, mà
+            // Unity kích hoạt nó từ ngữ cảnh constructor của MonoBehaviour — nơi cấm gọi
+            // mọi API dựng object của engine. Kết quả là TypeInitializationException nuốt
+            // trọn cả class: không chỉ dòng này hỏng, mà BoardView không dùng được nữa.
+            _materialProperties ??= new MaterialPropertyBlock();
+
+            _paintedRenderer.GetPropertyBlock(_materialProperties);
+            _materialProperties.SetVector(CellCountId, new Vector4(Grid.Width, Grid.Height, 0f, 0f));
+            _paintedRenderer.SetPropertyBlock(_materialProperties);
+        }
+
+        private static readonly int CellCountId = Shader.PropertyToID("_CellCount");
+
+        /// Dùng chung một khối cho mọi lần gọi — cấp phát mới mỗi lần là rác không cần thiết.
+        private static MaterialPropertyBlock _materialProperties;
 
         private static Texture2D CreateTexture(int width, int height, Color32[] pixels)
         {

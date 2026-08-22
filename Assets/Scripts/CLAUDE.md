@@ -53,6 +53,12 @@ Bootstrap → UI → Gameplay → Core
 - Đổi tên class hoặc field đã `[SerializeField]` sẽ **mất giá trị đã gán**. Cần giữ thì dùng `[FormerlySerializedAs]`.
 - Commit **cả file `.meta`**.
 - Sửa asmdef báo lỗi thì **sửa chỗ vi phạm chiều phụ thuộc**, đừng thêm reference để dập lỗi.
+- Trường `static` của MonoBehaviour **không được khởi tạo bằng thứ dựng object của engine** —
+  `MaterialPropertyBlock`, `Texture2D`, `Material`, `Mesh`, `GameObject`. Unity chạy type
+  initializer từ ngữ cảnh constructor của MonoBehaviour, nơi cấm các API đó, và
+  `TypeInitializationException` làm hỏng **cả class** chứ không riêng dòng sai. Tạo ở lần
+  gọi đầu (`_field ??= new(...)`) hoặc trong `Awake`. Đọc hằng số và ID thì được:
+  `Shader.PropertyToID`, `ProfilerMarker` vẫn an toàn.
 
 ## Cấm
 

@@ -1,0 +1,86 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: BoardGloss
+  m_Shader: {fileID: 4800000, guid: b6d5949eb1e05eb4cbe696963d4355ca, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _AlphaTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MainTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _MaskTex:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _BandAngle: 45
+    - _BandBoost: 0.6
+    - _BandCenter: 0.5
+    - _BandWidth: 0.55
+    - _BevelSharpness: 0
+    - _BevelStrength: 0
+    - _BevelWidth: 0.01
+    - _EnableExternalAlpha: 0
+    - _FaceCurve: 0
+    - _GlintStrength: 1
+    - _Gloss: 0
+    - _GlossRadius: 0.34
+    - _GlossSoftness: 0.5
+    - _GlossStrength: 0.45
+    - _LightAngle: 120
+    - _RimLight: 0.28
+    - _SeamDepth: 0.35
+    - _SeamWidth: 0.05
+    - _ShadeDepth: 1
+    - _ShadeStrength: 0.22
+    - _ShadowDepth: 0
+    - _SheenLength: 0.3
+    - _SheenSoftness: 0.2
+    - _SheenStrength: 0.4
+    - _SheenWidth: 0.12
+    - _SpecRadius: 0.187
+    - _SpecSharpness: 0.6
+    - _SpecStrength: 0
+    - _Vibrance: 0.22
+    - _ZWrite: 0
+    m_Colors:
+    - _CellCount: {r: 0, g: 0, b: 0, a: 0}
+    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _GlintColor: {r: 1, g: 1, b: 1, a: 1}
+    - _GlossCenter: {r: 0.3, g: 0.7, b: 0, a: 0}
+    - _GlossColor: {r: 1, g: 1, b: 1, a: 1}
+    - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
+    - _SheenCenter: {r: 0.5, g: 0.68, b: 0, a: 0}
+    - _SheenColor: {r: 1, g: 1, b: 1, a: 1}
+    - _SpecCenter: {r: 0.3, g: 0.72, b: 0, a: 0}
+    - _SpecColor: {r: 1, g: 1, b: 1, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
