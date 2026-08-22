@@ -31,12 +31,13 @@ namespace JewelPainter.Gameplay.Board
                  "đã mờ đi, lúc đó nền sau nó gần như trong suốt nên một màu cố định là đủ.")]
         [SerializeField] private Color _numberColor = Color.black;
 
-        [Tooltip("Số chữ được DỰNG tối đa trong một frame. Không phải số chữ hiện ra — " +
-                 "chữ dựng xong vẫn trong suốt cho tới khi cả vùng nhìn xong, rồi tất cả " +
-                 "hiện cùng lúc.\n\n" +
-                 "Nâng lên thì số hiện sớm hơn nhưng mỗi frame nặng hơn. 48 chữ mỗi frame " +
-                 "tốn chừng 5ms, vẫn lọt trong ngân sách 16ms của 60fps.")]
-        [SerializeField] private int _maxSpawnPerFrame = 48;
+        [Tooltip("Số chữ được LẤY RA tối đa trong một frame. Không phải số chữ hiện ra — " +
+                 "chữ lấy ra vẫn tắt renderer cho tới khi cả vùng nhìn xong, rồi tất cả " +
+                 "bật cùng lúc.\n\n" +
+                 "Từ khi Prewarm From Board Size dựng đủ chữ cho cả lưới, lấy ra chỉ còn là " +
+                 "đặt vị trí — rẻ hơn hẳn thời còn phải Instantiate. Nâng con số này lên " +
+                 "vài trăm là an toàn, và số sẽ hiện gần như tức thì thay vì bò dần ra.")]
+        [SerializeField] private int _maxSpawnPerFrame = 400;
 
         [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn. Ô ở rìa không " +
                  "bị thu về rồi sinh lại liên tục mỗi khi camera nhích một chút.")]
@@ -63,15 +64,27 @@ namespace JewelPainter.Gameplay.Board
 
         [Tooltip("Dựng sẵn bao nhiêu chữ cho MỖI SỐ lúc vào màn. Việc này chạy lúc màn " +
                  "hình chờ đang che, nên người chơi không thấy.\n\n" +
-                 "Đặt cỡ số ô nhiều nhất của một màu thì cú zoom ĐẦU TIÊN cũng mượt. " +
-                 "Để 0 là tắt, lúc đó lần zoom đầu vẫn phải dựng chữ.")]
+                 "Chỉ là mức SÀN nếu ô dưới được tick. Để 0 và bỏ tick ô dưới là tắt hẳn, " +
+                 "lúc đó lần zoom đầu vẫn phải dựng chữ.")]
         [SerializeField] private int _prewarmPerNumber = 64;
 
-        /// Một chữ đang hiện, kèm SỐ nó đang mang. Phải nhớ con số vì lúc trả về kho
-        /// cần biết trả vào ngăn nào — mà lúc đó lưới có thể đã đổi sang màn khác.
+        [Tooltip("Dựng sẵn ĐÚNG số ô mang mỗi con số trong lưới, thay vì một con số cố định.\n\n" +
+                 "Ở mức zoom mà số hiện ra thì gần như cả bảng nằm trong khung hình, nên " +
+                 "số chữ cần cùng lúc CHÍNH LÀ số ô của lưới. Một con số cứng không biết " +
+                 "điều đó: bảng 27x36 còn tạm đủ, sang 32x45 là thiếu hàng trăm chữ và " +
+                 "chúng phải Instantiate ngay giữa lúc đang zoom — đó là cú khựng bạn thấy.\n\n" +
+                 "Đổi lại thời gian vào màn dài thêm chút, nhưng lúc đó màn hình chờ đang che.")]
+        [SerializeField] private bool _prewarmFromBoardSize = true;
+
+        /// Một chữ, kèm SỐ nó đang mang và renderer của nó.
+        ///
+        /// Nhớ con số vì lúc trả về kho cần biết trả vào ngăn nào — mà lúc đó lưới có thể
+        /// đã đổi sang màn khác. Nhớ renderer để khỏi GetComponent mỗi lần bật tắt: một
+        /// lượt zoom đụng tới cả nghìn chữ.
         private struct Label
         {
             public TextMeshPro Text;
+            public MeshRenderer Renderer;
             public int Number;
         }
 
@@ -83,9 +96,12 @@ namespace JewelPainter.Gameplay.Board
         /// đó chính là thứ gây khựng. Kho dùng chung thì chữ lấy ra gần như luôn mang
         /// sai số nên lần nào cũng phải dựng lại. Chia theo số thì chữ "3" lấy ra đã
         /// sẵn là "3": chỉ cần đặt vị trí và bật lên, không đụng tới lưới chữ.
-        private readonly Dictionary<int, Stack<TextMeshPro>> _poolByNumber = new();
+        private readonly Dictionary<int, Stack<Label>> _poolByNumber = new();
 
         private readonly List<Vector2Int> _toRelease = new();
+
+        /// Số ô mang mỗi con số trong lưới màn hiện tại. Dùng để dựng sẵn đúng lượng cần.
+        private readonly Dictionary<int, int> _cellCountByNumber = new();
 
         private BoardView _boardView;
         private Vector3 _lastCameraPosition;
@@ -99,8 +115,11 @@ namespace JewelPainter.Gameplay.Board
         private bool _needsBaseCapture = true;
         private bool _needsRefresh;
 
-        /// Có chữ nào đang dựng xong nhưng còn trong suốt, chờ được bật lên cùng lượt.
+        /// Có chữ nào đã đặt xong vị trí nhưng còn tắt renderer, chờ bật lên cùng lượt.
         private bool _hasHiddenLabels;
+
+        /// Prefab sai kiểu — lớp số tự tắt hẳn thay vì ném lỗi mỗi frame.
+        private bool _prefabRejected;
 
         /// Lần xét gần nhất kết luận là ĐANG hiện số. Dải trễ cần biết trạng thái cũ để
         /// nới ngưỡng theo đúng chiều.
@@ -117,8 +136,31 @@ namespace JewelPainter.Gameplay.Board
             if (_boardView != null) _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
         }
 
+        /// Chặn prefab sai NGAY tại cửa, một lần cho cả màn.
+        ///
+        /// Nhờ cửa này mà Release và RevealAll — hai hàm chạy cả nghìn lượt mỗi frame lúc
+        /// zoom — được phép coi Renderer là luôn có, khỏi kiểm null. Kiểm null trên
+        /// UnityEngine.Object là một lần gọi xuống engine hỏi object còn sống không, đắt
+        /// hơn hẳn so sánh tham chiếu thường.
+        private bool ValidatePrefab()
+        {
+            if (_prefabRejected) return false;
+            if (_numberPrefab == null) return false;
+            if (_numberPrefab.GetComponent<MeshRenderer>() != null) return true;
+
+            _prefabRejected = true;
+
+            Debug.LogError($"{nameof(BoardNumberLayer)}: Number Prefab không có MeshRenderer nên " +
+                           "lớp số bị tắt. Prefab phải là TextMeshPro (bản 3D đặt thẳng trong " +
+                           "world), không phải TextMeshProUGUI (bản dành cho Canvas).", this);
+
+            return false;
+        }
+
         private void HandleBoardRebuilt()
         {
+            if (!ValidatePrefab()) return;
+
             ReleaseAll();
             Prewarm();
 
@@ -132,36 +174,59 @@ namespace JewelPainter.Gameplay.Board
         ///
         /// Chỉ dựng cho số THẬT SỰ có trong lưới: bảng màu có thể khai 16 màu mà ảnh
         /// chỉ dùng 9, dựng cả 16 là phí một phần ba số chữ.
+        ///
+        /// Lượng dựng cho mỗi số lấy từ chính lưới, không phải một hằng số. Ở mức zoom mà
+        /// số hiện ra thì gần như cả bảng nằm trong khung hình, nên số ô của một con số
+        /// CHÍNH LÀ số chữ cần cùng lúc cho con số đó. Dùng hằng số thì bảng càng lớn
+        /// càng thiếu, mà phần thiếu phải Instantiate ngay giữa lúc người chơi đang zoom.
         private void Prewarm()
         {
-            if (_numberPrefab == null || _prewarmPerNumber <= 0) return;
+            if (_numberPrefab == null) return;
 
             var grid = _boardView.Grid;
             var colors = _boardView.Colors;
 
             if (grid == null || colors == null) return;
 
+            CountCellsByNumber(grid, colors.Count);
+
+            foreach (var pair in _cellCountByNumber)
+            {
+                var number = pair.Key;
+
+                // Con số cứng thành mức SÀN, để vẫn chỉnh tay lên được nếu cần.
+                var target = _prewarmFromBoardSize
+                    ? Mathf.Max(_prewarmPerNumber, pair.Value)
+                    : _prewarmPerNumber;
+
+                var pool = PoolFor(number);
+
+                while (pool.Count < target) pool.Push(CreateLabel(number));
+            }
+        }
+
+        private void CountCellsByNumber(PixelGrid grid, int colorCount)
+        {
+            _cellCountByNumber.Clear();
+
             for (var y = 0; y < grid.Height; y++)
             {
                 for (var x = 0; x < grid.Width; x++)
                 {
                     var index = grid.GetCell(x, y);
-                    if (index < 0 || index >= colors.Count) continue;
+                    if (index < 0 || index >= colorCount) continue;
 
                     var number = index + 1;
-                    var pool = PoolFor(number);
 
-                    if (pool.Count >= _prewarmPerNumber) continue;
-
-                    var label = CreateLabel(number);
-                    label.gameObject.SetActive(false);
-                    pool.Push(label);
+                    _cellCountByNumber.TryGetValue(number, out var count);
+                    _cellCountByNumber[number] = count + 1;
                 }
             }
         }
 
         private void LateUpdate()
         {
+            if (_prefabRejected) return;
             if (_boardView == null || _boardView.Layout == null) return;
 
             if (_needsBaseCapture)
@@ -203,13 +268,12 @@ namespace JewelPainter.Gameplay.Board
         /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này
         /// và còn việc dở, lúc đó LateUpdate sẽ gọi lại ở frame sau.
         ///
-        /// Chữ dựng ra ở alpha 0 và chỉ được bật lên khi cả lượt đã xong. Người chơi thấy
+        /// Chữ lấy ra còn tắt renderer, chỉ bật lên khi cả lượt đã xong. Người chơi thấy
         /// TOÀN BỘ số trong tầm nhìn hiện cùng một lúc, thay vì thấy chúng bò dần từ trên
         /// xuống theo hạn mức mỗi frame.
         ///
-        /// Không thể bỏ hạn mức để dựng hết trong một frame: mỗi TextMeshPro phải dựng
-        /// lưới chữ, hàng trăm cái cùng lúc là một cú khựng thấy rõ. Đổi alpha thì chỉ
-        /// ghi lại màu đỉnh của lưới đã có sẵn — rẻ hơn hẳn, làm đồng loạt được.
+        /// Hạn mức giờ chỉ còn là van an toàn. Việc nặng — Instantiate và dựng lưới chữ —
+        /// đã dời hết sang Prewarm, nên vòng này chỉ đặt vị trí và gạt một cờ bool.
         private bool Refresh()
         {
             using var _ = RefreshMarker.Auto();
@@ -248,10 +312,9 @@ namespace JewelPainter.Gameplay.Board
 
                     // KHÔNG gọi SetText ở đây: chữ lấy ra từ ngăn của số này đã mang sẵn
                     // đúng nội dung. Đây là toàn bộ lý do kho được chia theo số.
-                    label.transform.position = layout.CellToWorldCenter(x, y);
-                    label.alpha = 0f;
+                    label.Text.transform.position = layout.CellToWorldCenter(x, y);
 
-                    _active[cell] = new Label { Text = label, Number = number };
+                    _active[cell] = label;
                     _hasHiddenLabels = true;
 
                     // Duyệt lại từ đầu ở frame sau; ô đã có thì bỏ qua ngay bằng một phép
@@ -264,11 +327,15 @@ namespace JewelPainter.Gameplay.Board
             return true;
         }
 
-        /// Bật hết chữ đang trong suốt lên cùng một lượt.
+        /// Bật hết chữ đang ẩn lên cùng một lượt.
         ///
         /// Duyệt _active chứ không giữ danh sách riêng: chữ có thể bị Release trả về kho
         /// giữa chừng, mà một danh sách riêng sẽ còn giữ tham chiếu tới nó và bật sáng
         /// nhầm một chữ đã được dùng lại cho ô khác.
+        ///
+        /// Gạt renderer chứ không đổi alpha. Đặt alpha buộc TextMeshPro ghi lại màu đỉnh
+        /// và xếp lưới chữ vào hàng dựng lại — làm thế với cả nghìn chữ trong một frame
+        /// là đúng cú khựng mà hàm này sinh ra để tránh.
         private void RevealAll()
         {
             if (!_hasHiddenLabels) return;
@@ -277,7 +344,7 @@ namespace JewelPainter.Gameplay.Board
 
             foreach (var entry in _active.Values)
             {
-                if (entry.Text.alpha < 1f) entry.Text.alpha = 1f;
+                entry.Renderer.enabled = true;
             }
         }
 
@@ -299,8 +366,8 @@ namespace JewelPainter.Gameplay.Board
         /// Có hiện số ở mức zoom hiện tại không, KÈM DẢI TRỄ.
         ///
         /// Không có dải trễ thì zoom qua lại quanh đúng ngưỡng là cả nghìn chữ bị tắt
-        /// rồi bật lại mỗi frame — mỗi lần bật tắt là một lần SetActive duyệt cây con và
-        /// gửi thông điệp vòng đời. Đó là cú giật nặng nhất khi zoom liên tục.
+        /// rồi bật lại mỗi frame, kéo theo ngần ấy lần vào ra dictionary và gạt renderer.
+        /// Đó là cú giật nặng nhất khi zoom liên tục.
         ///
         /// Đã hiện thì phải kéo ra QUÁ ngưỡng thêm một khoảng mới tắt. Nhờ vậy dao động
         /// nhỏ quanh ngưỡng không kích hoạt lần bật tắt nào.
@@ -385,50 +452,61 @@ namespace JewelPainter.Gameplay.Board
             _hasHiddenLabels = false;
         }
 
+        /// Tắt RENDERER chứ không tắt GameObject — cùng lý do đã ghi ở JewelLayer.Release:
+        /// SetActive phải duyệt cây con, gửi thông điệp vòng đời và cập nhật lại cấu trúc
+        /// culling, đắt gấp nhiều lần một cờ bool. Lớp số là lớp đông object nhất trong
+        /// ba lớp, nên đây cũng là chỗ ăn nhiều nhất khi zoom qua lại liên tục.
         private void Release(Vector2Int cell)
         {
             if (!_active.TryGetValue(cell, out var entry)) return;
 
-            entry.Text.gameObject.SetActive(false);
-            PoolFor(entry.Number).Push(entry.Text);
+            entry.Renderer.enabled = false;
+            PoolFor(entry.Number).Push(entry);
 
             _active.Remove(cell);
         }
 
-        private TextMeshPro Rent(int number)
+        /// Lấy ra ở trạng thái ẨN. Refresh chỉ đặt vị trí; cả lượt xong thì RevealAll mới
+        /// bật đồng loạt, nên người chơi không thấy chữ bò dần ra theo từng frame.
+        private Label Rent(int number)
         {
             var pool = PoolFor(number);
 
-            if (pool.Count > 0)
-            {
-                var pooled = pool.Pop();
-                pooled.gameObject.SetActive(true);
-                return pooled;
-            }
-
-            return CreateLabel(number);
+            return pool.Count > 0 ? pool.Pop() : CreateLabel(number);
         }
 
         /// Đổ chữ và màu MỘT LẦN duy nhất, ngay lúc tạo. Từ đó về sau chữ này chỉ đổi
-        /// vị trí và alpha — hai thứ không buộc dựng lại lưới chữ.
+        /// vị trí và cờ renderer — hai thứ không buộc dựng lại lưới chữ.
+        ///
+        /// ForceMeshUpdate ngay tại đây để lưới chữ được dựng LÚC NÀY, trong lượt dựng sẵn
+        /// mà màn hình chờ đang che. Không gọi thì TextMeshPro để dành việc đó tới frame
+        /// đầu tiên chữ được vẽ — tức đúng frame người chơi zoom qua ngưỡng hiện số.
         ///
         /// Đổi Number Color trong Inspector lúc đang chạy vì thế không có tác dụng với
         /// chữ đã tạo. Đổi rồi thì vào lại màn.
-        private TextMeshPro CreateLabel(int number)
+        private Label CreateLabel(int number)
         {
-            var label = Instantiate(_numberPrefab, _root);
+            var text = Instantiate(_numberPrefab, _root);
 
-            label.color = _numberColor;
-            label.SetText("{0}", number);
+            text.color = _numberColor;
+            text.SetText("{0}", number);
+            text.ForceMeshUpdate();
 
-            return label;
+            // Không cần kiểm null: HandleBoardRebuilt đã chặn prefab thiếu MeshRenderer
+            // trước khi tới đây. Nhờ vậy Release và RevealAll — hai hàm chạy cả nghìn lượt
+            // mỗi frame khi zoom — không phải kiểm tra gì, mà kiểm null trên UnityEngine.Object
+            // không rẻ như so sánh tham chiếu thường.
+            var renderer = text.GetComponent<MeshRenderer>();
+            renderer.enabled = false;
+
+            return new Label { Text = text, Renderer = renderer, Number = number };
         }
 
-        private Stack<TextMeshPro> PoolFor(int number)
+        private Stack<Label> PoolFor(int number)
         {
             if (_poolByNumber.TryGetValue(number, out var pool)) return pool;
 
-            pool = new Stack<TextMeshPro>();
+            pool = new Stack<Label>();
             _poolByNumber[number] = pool;
 
             return pool;

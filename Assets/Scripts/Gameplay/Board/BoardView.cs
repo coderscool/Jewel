@@ -41,6 +41,21 @@ namespace JewelPainter.Gameplay.Board
                  "Tắt để đối chiếu với ảnh gốc.")]
         [SerializeField] private bool _grayscale = true;
 
+        [Header("Chẩn đoán")]
+        [Tooltip("Sau mỗi lần upload, đọc NGƯỢC từ texture ra để kiểm những ô vừa lộ màu.\n\n" +
+                 "Dùng khi gặp cảnh 'ô đã tô mà không có màu'. Ba nguồn được đối chiếu: " +
+                 "trạng thái luật chơi, mảng pixel trên CPU, và texture đã nằm trên GPU. " +
+                 "Chỗ nào lệch chính là chỗ hỏng.\n\n" +
+                 "Tốn một lần đọc pixel cho mỗi ô vừa tô. Tắt khi phát hành.")]
+        [SerializeField] private bool _verifyReveals;
+
+        [Tooltip("Cứ ngần này giây thì quét lại TOÀN BỘ bảng một lượt, đối chiếu ba nguồn " +
+                 "như trên. Để 0 là tắt.\n\n" +
+                 "Khác với ô trên ở chỗ nó bắt được cả những ô ghi ĐÚNG lúc tô rồi mới hỏng " +
+                 "về sau. Nếu ô trên báo sạch mà ô này báo lệch, thì thủ phạm nằm ở đoạn " +
+                 "sau — có thứ gì đó ghi đè lên texture.")]
+        [SerializeField] private float _auditIntervalSeconds;
+
         private ILevelService _levelService;
         private IPaintService _paintService;
 
@@ -52,6 +67,15 @@ namespace JewelPainter.Gameplay.Board
         private Color32[] _paintedPixels;
 
         private bool _isTextureDirty;
+
+        /// Những ô vừa lộ màu, chờ được đối chiếu sau lần upload kế tiếp.
+        private readonly List<Vector2Int> _revealedSinceUpload = new();
+
+        /// Hai lượt quét gần nhất. Không readonly vì hai tập được hoán đổi cho nhau.
+        private HashSet<Vector2Int> _previousMismatches = new();
+        private HashSet<Vector2Int> _currentMismatches = new();
+
+        private float _nextAuditTime;
 
         public BoardLayout Layout { get; private set; }
         public PixelGrid Grid { get; private set; }
@@ -88,15 +112,20 @@ namespace JewelPainter.Gameplay.Board
         /// Kéo tay tô mười ô trong một frame vẫn chỉ upload hai texture một lần.
         private void LateUpdate()
         {
-            if (!_isTextureDirty) return;
+            if (_isTextureDirty)
+            {
+                _isTextureDirty = false;
 
-            _isTextureDirty = false;
+                _unpaintedTexture.SetPixels32(_unpaintedPixels);
+                _unpaintedTexture.Apply(false);
 
-            _unpaintedTexture.SetPixels32(_unpaintedPixels);
-            _unpaintedTexture.Apply(false);
+                _paintedTexture.SetPixels32(_paintedPixels);
+                _paintedTexture.Apply(false);
 
-            _paintedTexture.SetPixels32(_paintedPixels);
-            _paintedTexture.Apply(false);
+                VerifyReveals();
+            }
+
+            AuditBoard();
         }
 
         private void HandleLevelStarted(int levelId) => Rebuild();
@@ -120,6 +149,104 @@ namespace JewelPainter.Gameplay.Board
             WritePixel(_unpaintedPixels, cell.x, cell.y, Transparent);
 
             _isTextureDirty = true;
+
+            if (_verifyReveals) _revealedSinceUpload.Add(cell);
+        }
+
+        /// Đọc ngược từ TEXTURE ra để xem những ô vừa lộ màu có thật sự tới nơi không.
+        ///
+        /// Ba nguồn phải khớp nhau, và chỗ lệch chỉ thẳng ra tầng hỏng:
+        ///   - luật chơi bảo đã tô, mảng CPU vẫn trong suốt  → cú ghi không xảy ra;
+        ///   - mảng CPU có màu, texture vẫn trong suốt        → cú upload bị mất;
+        ///   - cả ba đều đúng mà mắt vẫn thấy ô trống         → hỏng ở khâu VẼ, không
+        ///     phải ở dữ liệu: hai lớp lệch nhau, hoặc có lớp khác đè lên.
+        ///
+        /// Nhánh thứ ba là nhánh dễ bị bỏ sót nhất, vì nó khiến người ta đi sửa mãi phần
+        /// dữ liệu vốn đang đúng.
+        private void VerifyReveals()
+        {
+            if (!_verifyReveals || _revealedSinceUpload.Count == 0) return;
+
+            foreach (var cell in _revealedSinceUpload)
+            {
+                if (IsMismatched(cell.x, cell.y)) Report(cell.x, cell.y, "vừa tô");
+            }
+
+            _revealedSinceUpload.Clear();
+        }
+
+        /// Quét lại cả bảng theo chu kỳ.
+        ///
+        /// Bắt được loại hỏng mà VerifyReveals không thấy: ô ghi ĐÚNG lúc tô rồi mới bị
+        /// làm hỏng ở một frame nào đó về sau.
+        ///
+        /// Chỉ báo ô lệch ở HAI LƯỢT QUÉT LIÊN TIẾP. Ô đang có viên ngọc bay tới thì luật
+        /// chơi đã ghi "đã tô" trong khi màu còn chưa được lộ — đó là trạng thái BÌNH
+        /// THƯỜNG, chỉ kéo dài chưa tới một giây. Báo ngay lượt đầu thì mỗi lần kéo tay
+        /// tô là hàng chục dòng cảnh báo giả, và cái lệch thật chìm nghỉm trong đó.
+        private void AuditBoard()
+        {
+            if (_auditIntervalSeconds <= 0f || Grid == null || _paintService == null) return;
+            if (Time.unscaledTime < _nextAuditTime) return;
+
+            _nextAuditTime = Time.unscaledTime + _auditIntervalSeconds;
+
+            _currentMismatches.Clear();
+
+            var confirmed = 0;
+
+            for (var y = 0; y < Grid.Height; y++)
+            {
+                for (var x = 0; x < Grid.Width; x++)
+                {
+                    if (!IsMismatched(x, y)) continue;
+
+                    var cell = new Vector2Int(x, y);
+                    _currentMismatches.Add(cell);
+
+                    if (!_previousMismatches.Contains(cell)) continue;
+
+                    Report(x, y, "lệch dai dẳng");
+                    confirmed++;
+                }
+            }
+
+            if (confirmed > 0)
+            {
+                Debug.LogWarning($"[BoardAudit] {confirmed} ô lệch qua hai lượt quét, " +
+                                 $"trên tổng {Grid.Width * Grid.Height} ô.", this);
+            }
+
+            // Hoán đổi hai tập thay vì chép nội dung: tập cũ thành chỗ chứa cho lượt sau.
+            (_previousMismatches, _currentMismatches) = (_currentMismatches, _previousMismatches);
+        }
+
+        private bool IsMismatched(int x, int y)
+        {
+            if (_paintService == null || _paintedPixels == null || _paintedTexture == null) return false;
+
+            var index = (Grid.Height - 1 - y) * Grid.Width + x;
+
+            // Texture2D dựng bằng code nên luôn đọc lại được, không cần bật Read/Write.
+            var cpuHasColor = _paintedPixels[index].a > 0;
+            var gpuHasColor = _paintedTexture.GetPixel(x, Grid.Height - 1 - y).a > 0f;
+
+            return _paintService.IsPainted(x, y) != cpuHasColor || cpuHasColor != gpuHasColor;
+        }
+
+        /// In đủ ba nguồn để không phải đoán tầng nào hỏng.
+        private void Report(int x, int y, string context)
+        {
+            var index = (Grid.Height - 1 - y) * Grid.Width + x;
+
+            var isPainted = _paintService.IsPainted(x, y);
+            var cpu = _paintedPixels[index];
+            var gpu = (Color32)_paintedTexture.GetPixel(x, Grid.Height - 1 - y);
+
+            Debug.LogWarning(
+                $"[BoardAudit/{context}] ô ({x},{y}): luật chơi={(isPainted ? "ĐÃ TÔ" : "chưa tô")}, " +
+                $"mảng CPU={(cpu.a > 0 ? $"có màu {cpu}" : "TRONG SUỐT")}, " +
+                $"texture={(gpu.a > 0 ? $"có màu {gpu}" : "TRONG SUỐT")}.", this);
         }
 
         private void Rebuild()
@@ -321,6 +448,11 @@ namespace JewelPainter.Gameplay.Board
         private void ReleaseTextures()
         {
             _isTextureDirty = false;
+
+            // Toạ độ của lưới cũ không còn nghĩa gì với lưới mới.
+            _revealedSinceUpload.Clear();
+            _previousMismatches.Clear();
+            _currentMismatches.Clear();
 
             DestroyIfAlive(ref _unpaintedSprite);
             DestroyIfAlive(ref _paintedSprite);

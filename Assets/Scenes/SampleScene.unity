@@ -1660,10 +1660,12 @@ MonoBehaviour:
   _showAtZoomProgress: 0.6
   _minCellScreenPixels: 32
   _numberColor: {r: 0, g: 0, b: 0, a: 1}
-  _maxSpawnPerFrame: 24
+  _maxSpawnPerFrame: 400
   _visibleMarginCells: 2
+  _showHysteresis: 0.08
   _spawnAllInOneFrame: 1
   _prewarmPerNumber: 64
+  _prewarmFromBoardSize: 1
 --- !u!1 &929957781
 GameObject:
   m_ObjectHideFlags: 0
@@ -4150,6 +4152,8 @@ MonoBehaviour:
   _unpaintedRenderer: {fileID: 2005522618}
   _paintedRenderer: {fileID: 178997523}
   _grayscale: 1
+  _verifyReveals: 1
+  _auditIntervalSeconds: 2
 --- !u!212 &2005522618
 SpriteRenderer:
   m_ObjectHideFlags: 0
