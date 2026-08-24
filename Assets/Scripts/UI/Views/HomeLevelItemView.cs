@@ -27,9 +27,21 @@ namespace JewelPainter.UI.Views
 
         private bool _hasWarned;
 
+        /// Màn mà ô này đang hiện. Danh sách tái dùng ô nên chỉ số trong mảng không nói
+        /// lên màn nào — phải hỏi chính ô.
+        public int LevelId { get; private set; }
+
+        /// Chỗ bức tranh đang đứng, để hiệu ứng bay xuất phát đúng từ đó thay vì từ tâm ô.
+        public RectTransform ThumbnailRect =>
+            _thumbnail != null ? (RectTransform)_thumbnail.transform : null;
+
+        public Sprite ThumbnailSprite => _thumbnail != null ? _thumbnail.sprite : null;
+
         public void Bind(int levelId, Sprite thumbnail, bool isUnlocked, bool isCurrent)
         {
             WarnOnMissingReferences();
+
+            LevelId = levelId;
 
             if (_levelText != null)
             {

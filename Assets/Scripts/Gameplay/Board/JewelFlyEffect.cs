@@ -109,8 +109,28 @@ namespace JewelPainter.Gameplay.Board
                  "Đáp xuống thì trả về giá trị gốc của prefab.")]
         [SerializeField] private int _flyingSortingOrder = 15;
 
+        /// Một cú bay đang dở. Struct để cả danh sách nằm gọn trong một mảng liên tục,
+        /// không có object nào được cấp phát cho mỗi viên.
+        private struct Flight
+        {
+            public SpriteRenderer Flyer;
+            public Vector2Int Cell;
+            public int PaletteIndex;
+            public Vector3 Origin;
+            public Vector3 Target;
+            public float Elapsed;
+            public float Duration;
+            public float StartScale;
+
+            /// Quãng đường so với Reference Distance, đã kẹp về 0..1. Giữ lại để mỗi frame
+            /// khỏi tính lại, và để chọn đúng ease gần hay xa.
+            public float Reach;
+
+            public float TargetAlpha;
+        }
+
         private readonly Stack<SpriteRenderer> _pool = new();
-        private readonly Dictionary<SpriteRenderer, Tween> _tweens = new();
+        private readonly List<Flight> _flights = new();
         private readonly HashSet<Vector2Int> _inFlight = new();
 
         /// Đếm số viên đang bay theo TỪNG MÀU. Cần đếm riêng vì "màu này đã xong chưa"
@@ -145,7 +165,7 @@ namespace JewelPainter.Gameplay.Board
             if (_boardView != null) _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
             if (_paintService != null) _paintService.OnCellPainted -= HandleCellPainted;
 
-            KillAllTweens();
+            AbortAllFlights();
         }
 
         /// Ô đang có viên bay tới thì JewelLayer chưa được hiện ngọc ở đó.
@@ -163,9 +183,7 @@ namespace JewelPainter.Gameplay.Board
 
         private void HandleBoardRebuilt()
         {
-            KillAllTweens();
-            _inFlight.Clear();
-            _inFlightByPalette.Clear();
+            AbortAllFlights();
             Prewarm();
         }
 
@@ -181,7 +199,7 @@ namespace JewelPainter.Gameplay.Board
 
             if (layout == null || colors == null) return false;
             if (paletteIndex < 0 || paletteIndex >= colors.Count) return false;
-            if (_tweens.Count >= _maxConcurrent) return false;
+            if (_flights.Count >= _maxConcurrent) return false;
 
             if (_originProvider == null || !_originProvider.TryGetOriginWorldPosition(paletteIndex, out var origin))
             {
@@ -218,54 +236,142 @@ namespace JewelPainter.Gameplay.Board
             // mà nếu vẫn phải co từ cỡ 5 về 1 thì TỐC ĐỘ ĐỔI CỠ vọt lên gấp mấy lần một
             // cú bay dài. Mắt bắt nhịp đó chứ không bắt quãng đường, nên nó đọc ra là
             // búng chứ không phải bay.
-            flyer.transform.localScale = Vector3.one * Mathf.Lerp(_nearStartScale, _startScale, reach);
+            var startScale = Mathf.Lerp(_nearStartScale, _startScale, reach);
+            flyer.transform.localScale = Vector3.one * startScale;
+
+            // Alpha đích đọc từ màu vừa gán chứ không cứng bằng 1: prefab có thể để sẵn
+            // một độ trong suốt riêng, và pha hiện dần phải về đúng giá trị đó.
+            var targetAlpha = flyer.color.a;
+
+            if (_fadeInPortion > 0f)
+            {
+                var faded = flyer.color;
+                faded.a = 0f;
+                flyer.color = faded;
+            }
 
             _inFlight.Add(cell);
             AddInFlight(paletteIndex, 1);
 
-            var duration = ResolveDuration(distance);
-            var settleTime = duration * Mathf.Clamp01(_settlePortion);
-            var travelTime = duration - settleTime;
-
-            // DOMove chứ không DOJump: DOJump tách trục Y ra tween riêng với easing khác
-            // trục X, nên kể cả đặt jumpPower = 0 thì hai trục vẫn chạy lệch nhịp và
-            // đường bay vẫn cong. DOMove nội suy thẳng giữa hai điểm.
-            var sequence = DOTween.Sequence();
-
-            var moveEase = reach <= _nearEaseReach ? _nearMoveEase : _moveEase;
-
-            sequence.Insert(0f, flyer.transform.DOMove(target, duration).SetEase(moveEase));
-
-            // Hai tween scale nối đuôi nhau, KHÔNG chồng thời gian: co về settleScale
-            // suốt quãng bay, rồi nở về 1 ở đoạn cuối. Chồng nhau thì DOTween để tween
-            // sau đè tween trước và pha co bị nuốt mất.
-            if (settleTime > 0f && !Mathf.Approximately(_settleScale, 1f))
+            _flights.Add(new Flight
             {
-                sequence.Insert(0f, flyer.transform.DOScale(_settleScale, travelTime).SetEase(_scaleEase));
-                sequence.Insert(travelTime, flyer.transform.DOScale(1f, settleTime).SetEase(Ease.OutSine));
-            }
-            else
-            {
-                sequence.Insert(0f, flyer.transform.DOScale(1f, duration).SetEase(_scaleEase));
-            }
-
-            var fadeTime = duration * Mathf.Clamp01(_fadeInPortion);
-            if (fadeTime > 0f) sequence.Insert(0f, CreateFadeIn(flyer, fadeTime));
-
-            sequence.OnComplete(() =>
-            {
-                Release(flyer);
-
-                // Gỡ khỏi sổ TRƯỚC khi bắn sự kiện: người nghe hỏi ngay "màu này còn
-                // viên nào đang bay không", mà lúc đó chính viên này đã hạ cánh rồi.
-                _inFlight.Remove(cell);
-                AddInFlight(paletteIndex, -1);
-
-                Land(cell, paletteIndex);
+                Flyer = flyer,
+                Cell = cell,
+                PaletteIndex = paletteIndex,
+                Origin = origin,
+                Target = target,
+                Elapsed = 0f,
+                Duration = Mathf.Max(0.01f, ResolveDuration(distance)),
+                StartScale = startScale,
+                Reach = reach,
+                TargetAlpha = targetAlpha,
             });
 
-            _tweens[flyer] = sequence;
             return true;
+        }
+
+        /// Mỗi frame nhích mọi viên đang bay một bước.
+        ///
+        /// Tự nội suy thay vì dựng tween cho từng viên. DOTween cấp phát chừng một tá
+        /// object nhỏ cho MỖI cú bay: mỗi DOMove/DOScale/DOTween.To là hai delegate cộng
+        /// một closure giữ tham chiếu, rồi thêm closure của OnComplete. Kéo tay tô nhanh
+        /// trên màn nhiều ô là vài trăm lần cấp phát mỗi giây, và trên mobile chạy IL2CPP
+        /// thì bộ dọn rác dừng cả thế giới đúng vào lúc người chơi đang nhìn viên bay.
+        /// Vòng này chạy trên List struct nên không cấp phát lấy một byte.
+        ///
+        /// Đường cong easing vẫn là của DOTween, lấy qua DOVirtual.EasedValue — hàm đó chỉ
+        /// tính một giá trị chứ không dựng tween. Nhờ vậy mọi ô Ease bạn đã chọn trong
+        /// Inspector giữ nguyên tác dụng, và cảm giác bay không đổi một li.
+        private void Update()
+        {
+            if (_flights.Count == 0) return;
+
+            var deltaTime = Time.deltaTime;
+            var travelPortion = 1f - Mathf.Clamp01(_settlePortion);
+
+            // Chạy ngược vì Finish kéo phần tử cuối vào chỗ vừa trống.
+            for (var i = _flights.Count - 1; i >= 0; i--)
+            {
+                var flight = _flights[i];
+
+                // Viên bị huỷ giữa chừng (đổi cảnh, prefab bị xoá). Vẫn phải cho ô hạ
+                // cánh, không thì nó kẹt vĩnh viễn không bao giờ có ngọc.
+                if (flight.Flyer == null)
+                {
+                    Finish(i, flight, recycle: false);
+                    continue;
+                }
+
+                flight.Elapsed += deltaTime;
+                var t = Mathf.Clamp01(flight.Elapsed / flight.Duration);
+
+                var moveEase = flight.Reach <= _nearEaseReach ? _nearMoveEase : _moveEase;
+                var progress = DOVirtual.EasedValue(0f, 1f, t, moveEase);
+
+                var flyerTransform = flight.Flyer.transform;
+                flyerTransform.position = Vector3.LerpUnclamped(flight.Origin, flight.Target, progress);
+                flyerTransform.localScale = Vector3.one * ResolveScale(flight.StartScale, t, travelPortion);
+
+                if (_fadeInPortion > 0f)
+                {
+                    var color = flight.Flyer.color;
+                    color.a = flight.TargetAlpha * DOVirtual.EasedValue(
+                        0f, 1f, Mathf.Clamp01(t / _fadeInPortion), Ease.OutSine);
+                    flight.Flyer.color = color;
+                }
+
+                if (t < 1f)
+                {
+                    // Ghi lại vì Flight là struct: sửa bản sao không đụng tới List.
+                    _flights[i] = flight;
+                    continue;
+                }
+
+                Finish(i, flight, recycle: true);
+            }
+        }
+
+        /// Co dần về Settle Scale suốt quãng bay, rồi nở về 1 ở đoạn cuối.
+        ///
+        /// Hai pha NỐI ĐUÔI nhau chứ không chồng thời gian. Bản dùng tween trước đây phải
+        /// ghi rõ điều đó vì DOTween để tween sau đè tween trước và pha co bị nuốt mất;
+        /// ở đây thì mỗi thời điểm chỉ có đúng một công thức chạy nên chuyện đó không có
+        /// cửa xảy ra.
+        private float ResolveScale(float startScale, float t, float travelPortion)
+        {
+            if (travelPortion >= 1f || Mathf.Approximately(_settleScale, 1f))
+            {
+                return Mathf.LerpUnclamped(startScale, 1f, DOVirtual.EasedValue(0f, 1f, t, _scaleEase));
+            }
+
+            if (t <= travelPortion)
+            {
+                var shrink = DOVirtual.EasedValue(0f, 1f, t / travelPortion, _scaleEase);
+                return Mathf.LerpUnclamped(startScale, _settleScale, shrink);
+            }
+
+            var settle = DOVirtual.EasedValue(
+                0f, 1f, (t - travelPortion) / (1f - travelPortion), Ease.OutSine);
+
+            return Mathf.LerpUnclamped(_settleScale, 1f, settle);
+        }
+
+        private void Finish(int index, Flight flight, bool recycle)
+        {
+            // Kéo phần tử cuối vào chỗ trống thay vì RemoveAt giữa danh sách. Vòng lặp
+            // gọi hàm này chạy ngược nên phần tử vừa kéo về đã duyệt rồi.
+            var last = _flights.Count - 1;
+            _flights[index] = _flights[last];
+            _flights.RemoveAt(last);
+
+            if (recycle) Recycle(flight.Flyer);
+
+            // Gỡ khỏi sổ TRƯỚC khi bắn sự kiện: người nghe hỏi ngay "màu này còn viên nào
+            // đang bay không", mà lúc đó chính viên này đã hạ cánh rồi.
+            _inFlight.Remove(flight.Cell);
+            AddInFlight(flight.PaletteIndex, -1);
+
+            Land(flight.Cell, flight.PaletteIndex);
         }
 
         /// Giữ TỐC ĐỘ đều thay vì giữ thời gian đều. Thời gian cố định làm ô ngay sát
@@ -287,30 +393,6 @@ namespace JewelPainter.Gameplay.Board
             var variance = 1f + UnityEngine.Random.Range(-_durationVariance, _durationVariance);
 
             return Mathf.Clamp(scaled, min, max) * variance;
-        }
-
-        /// Hiện dần bằng DOTween.To trên alpha thay vì SpriteRenderer.DOFade: DOFade cho
-        /// SpriteRenderer nằm trong module Sprite của DOTween, mà project cố ý chỉ dùng
-        /// phần core để khỏi phải khai thêm assembly.
-        private static Tween CreateFadeIn(SpriteRenderer flyer, float duration)
-        {
-            var color = flyer.color;
-            var targetAlpha = color.a;
-
-            color.a = 0f;
-            flyer.color = color;
-
-            return DOTween.To(
-                    () => flyer.color.a,
-                    alpha =>
-                    {
-                        var current = flyer.color;
-                        current.a = alpha;
-                        flyer.color = current;
-                    },
-                    targetAlpha,
-                    duration)
-                .SetEase(Ease.OutSine);
         }
 
         /// Ô chỉ đổi từ xám sang màu thật ở đây, không phải lúc người chơi bấm.
@@ -344,7 +426,7 @@ namespace JewelPainter.Gameplay.Board
             if (_pool.Count > 0)
             {
                 var pooled = _pool.Pop();
-                pooled.gameObject.SetActive(true);
+                pooled.enabled = true;
                 return pooled;
             }
 
@@ -355,34 +437,20 @@ namespace JewelPainter.Gameplay.Board
             return Instantiate(_jewelPrefab, _root);
         }
 
-        /// Tween phải chết TRƯỚC khi viên quay về kho. Object tái sử dụng mang theo
-        /// tween cũ sẽ bị kéo về vị trí của lần bay trước.
+        /// Bỏ mọi cú bay đang dở, dùng khi đổi màn hoặc lúc huỷ object.
         ///
-        /// Trả lại đủ những gì đã đổi lúc thuê: tween, scale, sortingOrder. Sót một cái
-        /// là lần bay sau thừa hưởng trạng thái cũ.
-        private void Release(SpriteRenderer flyer)
+        /// KHÔNG bắn OnJewelLanded cho những ô đó: bảng cũ không còn tồn tại, mà người
+        /// nghe cũng đã tự dọn sạch theo OnBoardRebuilt rồi.
+        private void AbortAllFlights()
         {
-            if (_tweens.TryGetValue(flyer, out var tween))
+            for (var i = 0; i < _flights.Count; i++)
             {
-                tween.Kill();
-                _tweens.Remove(flyer);
+                var flyer = _flights[i].Flyer;
+                if (flyer != null) Recycle(flyer);
             }
 
-            Recycle(flyer);
-        }
-
-        private void KillAllTweens()
-        {
-            foreach (var pair in _tweens)
-            {
-                pair.Value?.Kill();
-
-                if (pair.Key == null) continue;
-
-                Recycle(pair.Key);
-            }
-
-            _tweens.Clear();
+            _flights.Clear();
+            _inFlight.Clear();
             _inFlightByPalette.Clear();
         }
 
@@ -400,7 +468,8 @@ namespace JewelPainter.Gameplay.Board
             color.a = 1f;
             flyer.color = color;
 
-            flyer.gameObject.SetActive(false);
+            // Tắt RENDERER chứ không tắt GameObject — cùng lý do đã ghi ở JewelLayer.Release.
+            flyer.enabled = false;
             _pool.Push(flyer);
         }
 
@@ -423,7 +492,7 @@ namespace JewelPainter.Gameplay.Board
             while (_pool.Count < _prewarmCount)
             {
                 var flyer = Instantiate(_jewelPrefab, _root);
-                flyer.gameObject.SetActive(false);
+                flyer.enabled = false;
                 _pool.Push(flyer);
             }
         }

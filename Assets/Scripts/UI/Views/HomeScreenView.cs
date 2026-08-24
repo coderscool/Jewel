@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
 using JewelPainter.UI.Components;
@@ -48,6 +49,16 @@ namespace JewelPainter.UI.Views
                  "Nhớ đặt Focus Alignment của nó TRÙNG với ô ngay trên.")]
         [SerializeField] private ScrollFocusScaler _focusScaler;
 
+        [Header("Ăn mừng sau khi thắng màn")]
+        [Tooltip("Hiệu ứng đưa bức tranh vừa hoàn thành bay vào icon bộ sưu tập. " +
+                 "Để trống thì bỏ qua phần ăn mừng, Home mở ra như bình thường.")]
+        [SerializeField] private CollectionFlyEffect _collectionFly;
+
+        [Tooltip("Thời gian cuộn từ ô vừa xong sang ô của màn kế tiếp, sau khi tranh đã " +
+                 "bay đi. Cuộn có thời gian chứ không nhảy cóc, để người chơi thấy mình " +
+                 "đang đi tiếp trong danh sách.")]
+        [SerializeField] private float _celebrateScrollSeconds = 0.6f;
+
         [Header("Nút")]
         [SerializeField] private Button _playButton;
         [SerializeField] private TMP_Text _playLevelText;
@@ -69,6 +80,14 @@ namespace JewelPainter.UI.Views
         private IPopupService _popupService;
         private PaintProgressStore _progressStore;
         private RectTransform _currentItemRect;
+
+        /// Màn vừa hoàn thành, chờ được ăn mừng ở lần dựng danh sách kế tiếp. -1 là không có.
+        ///
+        /// Phải nhớ riêng chứ không suy ra từ CurrentLevel: lúc Home mở thì AdvanceProgress
+        /// đã chạy rồi, nên "màn hiện tại" là màn KẾ TIẾP chứ không phải màn vừa xong.
+        private int _pendingCelebrationLevel = -1;
+
+        private HomeLevelItemView _celebrateItem;
 
         public void Init(
             ILevelService levelService,
@@ -103,6 +122,17 @@ namespace JewelPainter.UI.Views
             Rebuild();
         }
 
+        /// Mở Home kèm màn ăn mừng: dừng ở ô của màn vừa xong, cho bức tranh bay vào bộ
+        /// sưu tập, rồi mới cuộn sang màn kế tiếp.
+        ///
+        /// Nhận levelId thay vì tự đọc: bên gọi phải chụp lại con số TRƯỚC khi đẩy tiến
+        /// trình, vì sau đó không còn cách nào biết màn nào vừa xong.
+        public void ShowCelebrating(int clearedLevelId)
+        {
+            _pendingCelebrationLevel = clearedLevelId;
+            Show();
+        }
+
         public void Hide()
         {
             // Huỷ luôn lần cuộn đang chờ tới frame sau: đóng Home rồi mà nó vẫn chạy thì
@@ -124,6 +154,7 @@ namespace JewelPainter.UI.Views
             ReleaseThumbnails();
 
             _currentItemRect = null;
+            _celebrateItem = null;
 
             if (_itemPrefab == null || _levelService == null) return;
 
@@ -149,6 +180,7 @@ namespace JewelPainter.UI.Views
                 _activeItemRects.Add(rect);
 
                 if (isCurrent) _currentItemRect = rect;
+                if (levelId == _pendingCelebrationLevel) _celebrateItem = item;
             }
 
             HideFrom(slot);
@@ -157,7 +189,68 @@ namespace JewelPainter.UI.Views
 
             if (_focusScaler != null) _focusScaler.SetTargets(_activeItemRects);
 
-            ScrollToCurrent();
+            BeginOpeningFlow();
+        }
+
+        /// Có màn cần ăn mừng thì chạy màn ăn mừng, không thì mở như mọi lần.
+        ///
+        /// Tiêu luôn _pendingCelebrationLevel ở đây, kể cả khi không chạy được: để sót là
+        /// lần mở Home sau lại ăn mừng một màn đã cũ.
+        private void BeginOpeningFlow()
+        {
+            var celebrateItem = _celebrateItem;
+            _pendingCelebrationLevel = -1;
+
+            var canCelebrate = celebrateItem != null
+                               && _collectionFly != null
+                               && _collectionButton != null
+                               && _scrollRect != null
+                               && celebrateItem.ThumbnailRect != null
+                               && celebrateItem.ThumbnailSprite != null
+                               && isActiveAndEnabled;
+
+            if (!canCelebrate)
+            {
+                ScrollToCurrent();
+                return;
+            }
+
+            StopAllCoroutines();
+            StartCoroutine(CelebrateRoutine(celebrateItem));
+        }
+
+        /// Ba nhịp: đưa ô vừa xong vào khung nhìn, cho tranh bay đi, rồi cuộn sang màn mới.
+        private IEnumerator CelebrateRoutine(HomeLevelItemView item)
+        {
+            // Đợi hết một frame vì cùng lý do đã ghi ở ScrollToCurrentRoutine: Layout Group
+            // và Content Size Fitter tính lại kích thước ở cuối frame.
+            yield return null;
+
+            Canvas.ForceUpdateCanvases();
+
+            var itemRect = (RectTransform)item.transform;
+            if (TryGetScrollPosition(itemRect, out var startPosition))
+            {
+                _scrollRect.verticalNormalizedPosition = startPosition;
+            }
+
+            // Đợi thêm một frame để vị trí cuộn vừa đặt được áp vào toạ độ thật. Không có
+            // nhịp này thì hiệu ứng đo chỗ ô ở lần cuộn TRƯỚC, và tranh bay ra từ chỗ khác.
+            yield return null;
+
+            Canvas.ForceUpdateCanvases();
+
+            var finished = false;
+
+            _collectionFly.Play(
+                item.ThumbnailRect,
+                item.ThumbnailSprite,
+                (RectTransform)_collectionButton.transform,
+                () => finished = true);
+
+            while (!finished) yield return null;
+
+            yield return ScrollToCurrentRoutine(_celebrateScrollSeconds);
         }
 
         /// Màn đã xong thì vẽ tô kín mà không cần bản lưu: bản lưu của nó bị xoá ngay
@@ -182,7 +275,7 @@ namespace JewelPainter.UI.Views
             if (!isActiveAndEnabled) return;
 
             StopAllCoroutines();
-            StartCoroutine(ScrollToCurrentRoutine());
+            StartCoroutine(ScrollToCurrentRoutine(0f));
         }
 
         /// Cuộn sao cho ô của màn đang chơi nằm giữa khung nhìn.
@@ -191,7 +284,8 @@ namespace JewelPainter.UI.Views
         /// thước ở cuối frame, và ngay sau đó ScrollRect tự kẹp lại vị trí cuộn theo
         /// kích thước mới. Đặt vị trí trong cùng frame với lúc dựng danh sách là đặt
         /// xong bị ghi đè — đó là lý do bản trước không nhúc nhích.
-        private IEnumerator ScrollToCurrentRoutine()
+        /// duration 0 là nhảy thẳng tới nơi; lớn hơn 0 thì cuộn có thời gian.
+        private IEnumerator ScrollToCurrentRoutine(float duration)
         {
             yield return null;
 
@@ -199,8 +293,41 @@ namespace JewelPainter.UI.Views
 
             Canvas.ForceUpdateCanvases();
 
+            if (!TryGetScrollPosition(_currentItemRect, out var target)) yield break;
+
+            if (duration <= 0f)
+            {
+                _scrollRect.verticalNormalizedPosition = target;
+                yield break;
+            }
+
+            var from = _scrollRect.verticalNormalizedPosition;
+            var elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+
+                var t = DOVirtual.EasedValue(
+                    0f, 1f, Mathf.Clamp01(elapsed / duration), Ease.InOutCubic);
+
+                _scrollRect.verticalNormalizedPosition = Mathf.Lerp(from, target, t);
+                yield return null;
+            }
+
+            _scrollRect.verticalNormalizedPosition = target;
+        }
+
+        /// Vị trí cuộn (0..1) để đưa `target` về đúng chỗ đã đặt trong khung nhìn.
+        ///
+        /// false khi chưa đủ dữ kiện để tính. Gọi hàm này SAU Canvas.ForceUpdateCanvases,
+        /// không thì nó đọc kích thước của lần bố cục trước.
+        private bool TryGetScrollPosition(RectTransform target, out float normalizedPosition)
+        {
+            normalizedPosition = 1f;
+
             var content = _scrollRect.content;
-            if (content == null) yield break;
+            if (content == null || target == null) return false;
 
             var viewport = _scrollRect.viewport != null
                 ? _scrollRect.viewport
@@ -209,18 +336,14 @@ namespace JewelPainter.UI.Views
             var viewportHeight = viewport.rect.height;
             var scrollable = content.rect.height - viewportHeight;
 
-            if (scrollable <= 0f)
-            {
-                // Danh sách ngắn hơn khung nhìn: không có gì để cuộn.
-                _scrollRect.verticalNormalizedPosition = 1f;
-                yield break;
-            }
+            // Danh sách ngắn hơn khung nhìn: không có gì để cuộn.
+            if (scrollable <= 0f) return true;
 
             // Đo khoảng cách từ ĐỈNH content xuống tâm ô, trong hệ toạ độ của chính
             // content. Cách này không quan tâm padding, spacing, pivot, anchor hay thứ tự
             // đảo ngược — nó đọc chỗ ô đang thật sự đứng, còn mấy thứ kia chỉ là nguyên
             // nhân đưa nó tới đó.
-            var itemLocalY = content.InverseTransformPoint(_currentItemRect.position).y;
+            var itemLocalY = content.InverseTransformPoint(target.position).y;
             var distanceFromTop = content.rect.yMax - itemLocalY;
 
             // Đưa ô về đúng chỗ đã đặt trong khung nhìn.
@@ -232,7 +355,7 @@ namespace JewelPainter.UI.Views
             //   alignment 0.5 → tâm ô ở giữa (số hạng giữa triệt tiêu)
             //   alignment 1   → cạnh DƯỚI ô chạm mép dưới
             var alignment = Mathf.Clamp01(_focusAlignment);
-            var itemHeight = _currentItemRect.rect.height;
+            var itemHeight = target.rect.height;
 
             var desired = distanceFromTop
                           + itemHeight * (alignment - 0.5f)
@@ -240,11 +363,61 @@ namespace JewelPainter.UI.Views
 
             var offsetFromTop = Mathf.Clamp(desired, 0f, scrollable);
 
-            // Ghi qua verticalNormalizedPosition chứ không ghi thẳng anchoredPosition:
+            // Trả về theo verticalNormalizedPosition chứ không theo anchoredPosition:
             // anchoredPosition đo từ điểm neo, mà Content của ScrollRect mặc định neo ở
             // MÉP TRÊN viewport chứ không phải tâm. Bản trước gán thẳng vào đó nên lệch
             // đúng nửa chiều cao khung nhìn — và lệch như nhau ở mọi giá trị padding.
-            _scrollRect.verticalNormalizedPosition = 1f - offsetFromTop / scrollable;
+            normalizedPosition = 1f - offsetFromTop / scrollable;
+            return true;
+        }
+
+        /// Chạy lại màn ăn mừng với màn ngay TRƯỚC màn hiện tại, để chỉnh nhịp hiệu ứng
+        /// mà không phải tô hết một màn mỗi lần.
+        ///
+        /// Dùng màn trước chứ không dùng màn hiện tại: đúng bằng thứ người chơi thấy thật
+        /// sau khi thắng, vì lúc đó tiến trình đã nhảy sang màn kế rồi. Ảnh của màn trước
+        /// cũng được vẽ tô kín, còn màn hiện tại thì vẽ theo tiến độ dở dang.
+        ///
+        /// Gọi từ CelebrationCheat bằng phím tắt, hoặc chuột phải lên tiêu đề component
+        /// này trong lúc Play.
+        [ContextMenu("Chạy thử hiệu ứng ăn mừng")]
+        public void ReplayCelebration()
+        {
+            if (!isActiveAndEnabled || _levelService == null)
+            {
+                Debug.LogWarning("Home đang đóng nên chưa chạy thử được. Mở Home rồi bấm lại.", this);
+                return;
+            }
+
+            var previous = PreviousUnlockedLevel();
+
+            if (previous < 0)
+            {
+                Debug.LogWarning("Chưa có màn nào hoàn thành trước màn hiện tại, không có " +
+                                 "bức tranh nào để bay. Qua một màn rồi thử lại.", this);
+                return;
+            }
+
+            ShowCelebrating(previous);
+        }
+
+        /// Màn đã mở khoá đứng ngay trước màn hiện tại trong danh sách. -1 nếu không có.
+        ///
+        /// Đi theo THỨ TỰ của Levels chứ không lấy CurrentLevel trừ một: id không bắt buộc
+        /// liên tiếp, và mảng Levels mới là thứ quyết định ô nào đứng cạnh ô nào.
+        private int PreviousUnlockedLevel()
+        {
+            var previous = -1;
+
+            foreach (var config in _levelService.Levels)
+            {
+                if (config == null) continue;
+                if (config.LevelId == _levelService.CurrentLevel) return previous;
+
+                if (_levelService.IsUnlocked(config.LevelId)) previous = config.LevelId;
+            }
+
+            return previous;
         }
 
         private void HandlePlayClicked()

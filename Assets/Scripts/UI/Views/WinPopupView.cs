@@ -264,8 +264,17 @@ namespace JewelPainter.UI.Views
         {
             Hide();
 
+            // Chụp lại màn vừa xong TRƯỚC khi đẩy tiến trình. Sau AdvanceProgress thì
+            // CurrentLevel đã là màn kế tiếp, và không còn đường nào biết màn nào vừa
+            // hoàn thành — mà Home cần đúng con số đó để cho tranh bay đi.
+            var clearedLevel = _levelService != null ? _levelService.CurrentLevel : -1;
+
             _levelFlow?.AdvanceProgress();
-            _home?.Show();
+
+            if (_home == null) return;
+
+            if (clearedLevel >= 0) _home.ShowCelebrating(clearedLevel);
+            else _home.Show();
         }
     }
 }
