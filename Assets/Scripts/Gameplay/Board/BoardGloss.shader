@@ -38,10 +38,17 @@ Shader "JewelPainter/BoardGloss"
         _LightAngle ("Goc (do)", Range(0,360)) = 120
 
         [Header(Khoi)]
-        _BevelStrength ("Do manh mep", Range(0,1.5)) = 0.55
-        _BevelWidth ("Be day mep", Range(0.01,0.5)) = 0.22
+        _BevelStrength ("Do manh mep", Range(0,1.5)) = 0.7
+        _BevelWidth ("Be day mep", Range(0.01,0.5)) = 0.24
         _BevelSharpness ("Do gay cua ranh gioi", Range(0,1)) = 0.75
         _FaceCurve ("Do cong mat o", Range(0,1)) = 0.28
+
+        // Bao nhiêu phần của vành là mặt tường thẳng đứng. Xem chú thích ở hàm frag.
+        //
+        // KHÔNG dùng [Tooltip] ở đây: ShaderLab không có drawer nào tên đó, mà dấu nháy
+        // kép trong đối số còn làm hỏng luôn phép phân tích cả khối Properties — shader
+        // hỏng thì Unity vẽ material bằng màu hồng. Muốn chú thích thì viết bằng dấu //.
+        _WallShare ("Be rong mat tuong", Range(0,0.9)) = 0.45
 
         [Header(Do sang va do bong)]
         _ShadowDepth ("Do sau ben toi", Range(0,1)) = 0.45
@@ -50,9 +57,10 @@ Shader "JewelPainter/BoardGloss"
         _RimLight ("Vien sang quanh mep", Range(0,1)) = 0.28
         _Vibrance ("Do ruc mau", Range(0,1)) = 0.22
 
-        [Header(Tach vien)]
+        [Header(Tach vien va bong do)]
         _SeamDepth ("Do sam cua khe", Range(0,1)) = 0.35
-        _SeamWidth ("Be rong khe", Range(0.005,0.2)) = 0.05
+        _SeamWidth ("Be rong khe", Range(0.005,0.2)) = 0.06
+        _SeamShadowSide ("Do lech ve phia khuat sang", Range(0,1)) = 0.7
 
         [Header(Vet sang cheo tren ca bang)]
         _BandCenter ("Vi tri (don vi o)", Range(-40,40)) = 0
@@ -113,6 +121,7 @@ Shader "JewelPainter/BoardGloss"
             float _BevelWidth;
             float _BevelSharpness;
             float _FaceCurve;
+            float _WallShare;
 
             float _ShadowDepth;
             fixed4 _GlossColor;
@@ -122,6 +131,7 @@ Shader "JewelPainter/BoardGloss"
 
             float _SeamDepth;
             float _SeamWidth;
+            float _SeamShadowSide;
 
             float _BandCenter;
             float _BandWidth;
@@ -164,7 +174,17 @@ Shader "JewelPainter/BoardGloss"
                 float toEdge = 0.5 - max(abs(fromCenter.x), abs(fromCenter.y));
 
                 // --- 1. Cạnh vát ---
-                float rim = 1.0 - smoothstep(0.0, max(_BevelWidth, 1e-4), toEdge);
+                // Vành chia làm hai phần: MẶT TƯỜNG sát mép giữ nguyên một độ sáng, rồi
+                // mới có vai bo tròn nối vào mặt phẳng ở giữa.
+                //
+                // Đây là chỗ quyết định viên trông cao hay thấp. Dốc trơn từ mép vào tâm
+                // chỉ có đúng một đường sáng nhất và một đường tối nhất, mảnh như sợi chỉ
+                // — mắt đọc ra là mặt cong. Một DẢI cùng độ sáng thì đọc ra là một bức
+                // tường phẳng dựng đứng, và tường có bề cao.
+                //
+                // Để 0 là quay về dốc trơn như cũ.
+                float u = saturate(toEdge / max(_BevelWidth, 1e-4));
+                float rim = 1.0 - smoothstep(saturate(_WallShare), 1.0, u);
 
                 // Chia cho độ dài có cộng epsilon để tâm ô không chia cho 0.
                 float2 dir = fromCenter / (length(fromCenter) + 1e-4);
@@ -214,11 +234,21 @@ Shader "JewelPainter/BoardGloss"
                 float lum = dot(c.rgb, float3(0.299, 0.587, 0.114));
                 c.rgb = lerp(lum.xxx, c.rgb, 1.0 + _Vibrance);
 
-                // --- 6. Khe tối ---
+                // --- 6. Khe tối và bóng đổ ---
                 // Vạch sẫm sát mép ngoài, đè lên cả viền sáng để hai viên kề nhau không
                 // dính thành một mảng. Đặt cuối cùng vì nó phải thắng mọi thứ phía trên.
+                //
+                // Vạch này KHÔNG đều quanh viên: phía khuất sáng sẫm hơn hẳn. Đó chính là
+                // bóng viên ngọc đổ xuống mặt bảng, và bóng đổ là bằng chứng mạnh nhất cho
+                // mắt biết một vật đang nhô lên khỏi bề mặt chứ không nằm phẳng trên đó.
+                // Cạnh vát tả được hình dạng, nhưng chỉ bóng đổ mới tả được CHIỀU CAO.
                 float seam = 1.0 - smoothstep(0.0, max(_SeamWidth, 1e-4), toEdge);
-                c.rgb *= 1.0 - seam * _SeamDepth;
+
+                // facing chạy từ -1 ở phía tối tới +1 ở phía sáng.
+                float shadowSide = saturate(-facing);
+                float seamDepth = _SeamDepth * (1.0 + _SeamShadowSide * (shadowSide * 2.0 - 1.0));
+
+                c.rgb *= 1.0 - saturate(seam * seamDepth);
 
                 c.rgb = max(c.rgb, 0.0);
 

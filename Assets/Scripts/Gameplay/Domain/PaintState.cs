@@ -19,6 +19,9 @@ namespace JewelPainter.Gameplay.Domain
 
         private int _remainingTotal;
 
+        /// Tổng số ô có màu của lưới, chốt một lần lúc quét. Không đổi trong cả màn.
+        private int _totalColored;
+
         public PaintState(PixelGrid grid)
         {
             _grid = grid ?? throw new ArgumentNullException(nameof(grid));
@@ -32,6 +35,9 @@ namespace JewelPainter.Gameplay.Domain
         public IReadOnlyList<int> UsedPaletteIndices => _usedPaletteIndices;
 
         public bool IsComplete => _remainingTotal == 0;
+
+        /// Chưa tô ô nào. Lưới rỗng cũng tính là chưa tô.
+        public bool IsUntouched => _remainingTotal == _totalColored;
 
         /// false nếu toạ độ nằm ngoài bảng — bên gọi quét lưới không phải tự kiểm biên.
         public bool IsPainted(int x, int y) => IsInside(x, y) && _painted[Index(x, y)];
@@ -201,6 +207,11 @@ namespace JewelPainter.Gameplay.Domain
             }
 
             _usedPaletteIndices.Sort();
+
+            // Chốt lại tổng số ô CÓ MÀU của lưới. Từ đây _remainingTotal chỉ giảm, nên so
+            // hai con số là biết đã tô ô nào chưa. RestorePaintedBits tính lại
+            // _remainingTotal nhưng không đụng tới con số này — đúng ý, vì lưới không đổi.
+            _totalColored = _remainingTotal;
         }
 
         private bool IsInside(int x, int y) => x >= 0 && x < _grid.Width && y >= 0 && y < _grid.Height;

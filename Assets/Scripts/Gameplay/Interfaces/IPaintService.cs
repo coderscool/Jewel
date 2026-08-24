@@ -29,6 +29,9 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Mọi ô có màu đều đã được tô. false khi chưa nạp lưới.
         bool IsComplete { get; }
 
+        /// Chưa tô ô nào trong màn này, kể cả từ phiên chơi trước. false khi chưa nạp lưới.
+        bool IsUntouched { get; }
+
         int RemainingFor(int paletteIndex);
 
         /// Ô chưa tô thứ `ordinal` (đếm từ 0) của một màu, quét trái→phải, trên→dưới.

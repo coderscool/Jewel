@@ -115,6 +115,26 @@ namespace JewelPainter.UI.Views
 
         private void HandleSwatchClicked(int paletteIndex) => _paintService.SelectColor(paletteIndex);
 
+        /// Ô màu ĐẦU TIÊN đang hiện trên thanh, hoặc null khi thanh còn trống.
+        ///
+        /// Trả về RectTransform chứ không phải toạ độ: hướng dẫn cần bám theo nó khi bố
+        /// cục đổi, mà một điểm chụp sẵn thì không bám được.
+        public RectTransform FirstSwatchRect
+        {
+            get
+            {
+                foreach (var swatch in _swatches)
+                {
+                    if (swatch == null) continue;
+                    if (!swatch.gameObject.activeSelf) continue;
+
+                    return (RectTransform)swatch.transform;
+                }
+
+                return null;
+            }
+        }
+
         public bool TryGetOriginWorldPosition(int paletteIndex, out Vector3 world)
         {
             world = default;

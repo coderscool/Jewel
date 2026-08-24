@@ -103,6 +103,8 @@ namespace JewelPainter.Gameplay.Managers
 
         public bool IsComplete => _state != null && _state.IsComplete;
 
+        public bool IsUntouched => _state != null && _state.IsUntouched;
+
         public int RemainingFor(int paletteIndex)
         {
             return _state != null ? _state.RemainingFor(paletteIndex) : 0;

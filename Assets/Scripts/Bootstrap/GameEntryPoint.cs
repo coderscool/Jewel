@@ -48,6 +48,7 @@ namespace JewelPainter.Bootstrap
         private readonly NotificationPresenter _notificationPresenter;
         private readonly HomeScreenView _home;
         private readonly LoadingScreenView _loading;
+        //private readonly TutorialOverlayView _tutorial;
 
         public GameEntryPoint(
             ISaveService save,
@@ -78,7 +79,9 @@ namespace JewelPainter.Bootstrap
             WinPopupPresenter winPopupPresenter,
             NotificationPresenter notificationPresenter,
             HomeScreenView home,
-            LoadingScreenView loading)
+            LoadingScreenView loading
+            //TutorialOverlayView tutorial
+            )
         {
             _save = save;
             _progress = progress;
@@ -109,6 +112,7 @@ namespace JewelPainter.Bootstrap
             _notificationPresenter = notificationPresenter;
             _home = home;
             _loading = loading;
+            //_tutorial = tutorial;
         }
 
         public void Start()
@@ -141,6 +145,10 @@ namespace JewelPainter.Bootstrap
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService);
+
+            // Hướng dẫn Init SAU PaletteBar: cả hai nghe OnBoardReady, mà ngón tay chỉ
+            // biết đứng ở đâu sau khi thanh màu đã dựng xong các ô.
+            //_tutorial.Init(_levelService, _paintService, _paletteBar);
 
             // JewelFlyEffect quyết định lúc nào một ô coi như "xong": nó đổi màu ô,
             // gỡ marker gợi ý và cho hiện ngọc. Hai lớp dưới đều chờ tín hiệu của nó.

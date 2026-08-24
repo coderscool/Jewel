@@ -38,6 +38,7 @@ namespace JewelPainter.Bootstrap
             builder.RegisterComponentInHierarchy<HudView>();
             builder.RegisterComponentInHierarchy<HomeScreenView>();
             builder.RegisterComponentInHierarchy<LoadingScreenView>();
+            //builder.RegisterComponentInHierarchy<TutorialOverlayView>();
 
             builder.RegisterComponentInHierarchy<PaintProgressStore>();
 

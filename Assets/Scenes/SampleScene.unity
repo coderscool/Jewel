@@ -2149,10 +2149,6 @@ MonoBehaviour:
   _holdSeconds: 0.45
   _duration: 0.75
   _tailSeconds: 0.15
-  _anticipationScale: 1.18
-  _anticipationSeconds: 0.18
-  _arcRise: 0.55
-  _arcPeakAt: 0.32
   _moveEase: 10
   _endScale: 0.22
   _scaleEase: 8
