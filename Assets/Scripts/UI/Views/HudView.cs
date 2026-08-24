@@ -58,7 +58,7 @@ namespace JewelPainter.UI.Views
 
             SetLevel(_levelService.CurrentLevel);
 
-            if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleHomeClicked);
+            if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleSettingsClicked);
 
             // Ẩn cho tới khi có màn được nạp. Lúc mới vào game màn hình chờ đang che,
             // mà HUD thì chưa có gì để hiện ngoài chữ "Level 0".
@@ -77,7 +77,7 @@ namespace JewelPainter.UI.Views
             if (_hintService != null) _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
-            if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleHomeClicked);
+            if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
         }
 
         private void HandleLevelStarted(int levelId)

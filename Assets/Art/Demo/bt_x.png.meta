@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: a0eaf9b84aeffed4d8adf0803f899a8e
+guid: 5794f716f6a069446afd4440c59e9095
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 2287157973692575653
-    second: gem_grey_0
+      213: -6299312905557656061
+    second: bt_x_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: gem_grey_0
+      name: bt_x_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 100
-        height: 100
+        width: 54
+        height: 54
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 5afe5272f0e9dbf10800000000000000
-      internalID: 2287157973692575653
+      spriteID: 30eb33f99485498a0800000000000000
+      internalID: -6299312905557656061
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      gem_grey_0: 2287157973692575653
+      bt_x_0: -6299312905557656061
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

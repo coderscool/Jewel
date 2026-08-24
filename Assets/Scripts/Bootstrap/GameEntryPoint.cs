@@ -45,7 +45,7 @@ namespace JewelPainter.Bootstrap
         private readonly HintFocusController _hintFocus;
         private readonly IPopupService _popupService;
         private readonly WinPopupPresenter _winPopupPresenter;
-        //private readonly NotificationPresenter _notificationPresenter;
+        private readonly NotificationPresenter _notificationPresenter;
         private readonly HomeScreenView _home;
         private readonly LoadingScreenView _loading;
 
@@ -76,7 +76,7 @@ namespace JewelPainter.Bootstrap
             HintFocusController hintFocus,
             IPopupService popupService,
             WinPopupPresenter winPopupPresenter,
-            //NotificationPresenter notificationPresenter,
+            NotificationPresenter notificationPresenter,
             HomeScreenView home,
             LoadingScreenView loading)
         {
@@ -106,7 +106,7 @@ namespace JewelPainter.Bootstrap
             _hintFocus = hintFocus;
             _popupService = popupService;
             _winPopupPresenter = winPopupPresenter;
-            //_notificationPresenter = notificationPresenter;
+            _notificationPresenter = notificationPresenter;
             _home = home;
             _loading = loading;
         }
@@ -154,7 +154,7 @@ namespace JewelPainter.Bootstrap
 
             // Init sau LevelFlow: nó đăng ký nghe sự kiện thắng màn của LevelFlow.
             _winPopupPresenter.Init(_levelFlow, _popupService);
-            //_notificationPresenter.Init(_paintService, _popupService);
+            _notificationPresenter.Init(_paintService, _popupService);
 
             // Home dựng sẵn nhưng không tự mở — nút Home trong popup Cài đặt mới mở nó.
             _home.Init(_levelService, _popupService, _paintProgressStore);
