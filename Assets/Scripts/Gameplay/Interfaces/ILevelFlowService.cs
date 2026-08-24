@@ -16,11 +16,14 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Không còn màn nào mang id kế tiếp. Popup dựa vào đây để ẩn nút đi tiếp.
         bool IsLastLevel { get; }
 
-        /// Ghi nhận đã qua màn: đẩy tiến trình sang màn kế. KHÔNG nạp màn.
+        /// Màn vừa hoàn thành. -1 khi chưa có màn nào xong trong phiên chơi này.
         ///
-        /// Tách rời việc nạp vì popup thắng màn giờ đưa người chơi về Home chứ không
-        /// vào thẳng màn sau — chính Home mới quyết định lúc nào nạp.
-        /// Không làm gì nếu đang ở màn cuối.
-        void AdvanceProgress();
+        /// Cần con số riêng vì tiến trình đã nhích sang màn kế NGAY lúc tô xong, không
+        /// đợi người chơi bấm nút — tô xong là đã xong, bấm nút chỉ là chuyện đi tiếp.
+        /// Nhờ vậy thắng màn rồi thoát game trong lúc popup đang mở vẫn được ghi nhận.
+        ///
+        /// Hệ quả: từ lúc popup mở, CurrentLevel KHÔNG còn là màn người chơi vừa tô.
+        /// Ai cần nói về màn vừa xong thì đọc ở đây.
+        int ClearedLevel { get; }
     }
 }

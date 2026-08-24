@@ -50,6 +50,7 @@ namespace JewelPainter.Gameplay.Managers
         public void CompleteCurrentLevel()
         {
             var finishedLevel = _progress.Level;
+
             _progress.Advance();
             OnLevelCompleted?.Invoke(finishedLevel);
         }

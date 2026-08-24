@@ -83,8 +83,8 @@ namespace JewelPainter.UI.Views
 
         /// Màn vừa hoàn thành, chờ được ăn mừng ở lần dựng danh sách kế tiếp. -1 là không có.
         ///
-        /// Phải nhớ riêng chứ không suy ra từ CurrentLevel: lúc Home mở thì AdvanceProgress
-        /// đã chạy rồi, nên "màn hiện tại" là màn KẾ TIẾP chứ không phải màn vừa xong.
+        /// Phải nhớ riêng chứ không suy ra từ CurrentLevel: tiến trình đã nhích ngay lúc
+        /// tô xong, nên "màn hiện tại" là màn KẾ TIẾP chứ không phải màn vừa xong.
         private int _pendingCelebrationLevel = -1;
 
         private HomeLevelItemView _celebrateItem;

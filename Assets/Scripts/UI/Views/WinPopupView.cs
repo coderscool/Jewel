@@ -100,9 +100,11 @@ namespace JewelPainter.UI.Views
             var isLastLevel = _levelFlow != null && _levelFlow.IsLastLevel;
             var reward = RewardForCurrentLevel();
 
-            if (_levelText != null && _levelService != null)
+            // ClearedLevel chứ không phải CurrentLevel: tiến trình đã nhích sang màn kế
+            // ngay lúc tô xong, nên CurrentLevel giờ là màn SAU màn vừa thắng.
+            if (_levelText != null && _levelFlow != null && _levelFlow.ClearedLevel >= 0)
             {
-                _levelText.SetText("Level {0}", _levelService.CurrentLevel);
+                _levelText.SetText("Level {0}", _levelFlow.ClearedLevel);
             }
 
             if (_rewardText != null) _rewardText.SetText("{0}", reward);
@@ -264,14 +266,10 @@ namespace JewelPainter.UI.Views
         {
             Hide();
 
-            // Chụp lại màn vừa xong TRƯỚC khi đẩy tiến trình. Sau AdvanceProgress thì
-            // CurrentLevel đã là màn kế tiếp, và không còn đường nào biết màn nào vừa
-            // hoàn thành — mà Home cần đúng con số đó để cho tranh bay đi.
-            var clearedLevel = _levelService != null ? _levelService.CurrentLevel : -1;
-
-            _levelFlow?.AdvanceProgress();
-
             if (_home == null) return;
+
+            // Tiến trình đã nhích từ lúc tô xong, ở đây chỉ còn việc điều hướng.
+            var clearedLevel = _levelFlow != null ? _levelFlow.ClearedLevel : -1;
 
             if (clearedLevel >= 0) _home.ShowCelebrating(clearedLevel);
             else _home.Show();
