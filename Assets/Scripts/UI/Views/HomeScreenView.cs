@@ -45,9 +45,48 @@ namespace JewelPainter.UI.Views
         [Range(0f, 1f)]
         [SerializeField] private float _focusAlignment = 1f;
 
+        [Tooltip("Chừa thêm bao nhiêu pixel giữa ô và mép khung nhìn, sau khi đã căn theo " +
+                 "Focus Alignment.\n\n" +
+                 "Số DƯƠNG đẩy ô LÊN, tức xa mép dưới ra. Dùng khi căn sát đáy (alignment 1) " +
+                 "mà không muốn ô dính vào mép, hoặc khi có thanh nút che mất phần dưới " +
+                 "khung nhìn.\n\n" +
+                 "Không có tác dụng với ô CUỐI danh sách: lúc đó vị trí cuộn đã chạm đáy " +
+                 "và không còn chỗ để đi tiếp. Muốn ô cuối cũng có khoảng chừa thì thêm " +
+                 "Padding > Bottom cho Vertical Layout Group của Content.")]
+        [SerializeField] private float _focusPadding;
+
         [Tooltip("Phóng to ô đang ở vị trí tiêu điểm. Để trống thì mọi ô giữ nguyên cỡ. " +
                  "Nhớ đặt Focus Alignment của nó TRÙNG với ô ngay trên.")]
         [SerializeField] private ScrollFocusScaler _focusScaler;
+
+        [Tooltip("TẠM TẮT. Việc chỉ ra ô nào đang được quan tâm giờ do viền chọn lo — hai " +
+                 "thứ cùng chạy thì chúng nói hai điều khác nhau về cùng một danh sách.\n\n" +
+                 "Tick lại là phần phóng to chạy như cũ, ScrollFocusScaler vẫn còn nguyên.")]
+        [SerializeField] private bool _useFocusScaler;
+
+        [Header("Dây nối giữa các ô")]
+        [Tooltip("Ảnh một ĐOẠN dây. Nó được kéo dãn và xoay để nối hai ô liền nhau, nên " +
+                 "hoạ tiết nên là loại lặp được: Image Type để Tiled hoặc Sliced.\n\n" +
+                 "Anchor và Pivot của prefab phải để GIỮA (0.5, 0.5) — code đặt nó bằng " +
+                 "vị trí tâm nên neo ở góc sẽ làm dây lệch đi nửa chiều dài.")]
+        [SerializeField] private Image _linePrefab;
+
+        [Tooltip("Cha của các đoạn dây. Đặt nó trong Content của Scroll Rect và là ANH EM " +
+                 "với object chứa các ô, nằm TRƯỚC object đó trong hệ thống phân cấp để " +
+                 "dây vẽ phía sau.\n\n" +
+                 "Phải nằm trong Content thì dây mới cuộn theo các ô mà không cần tính lại " +
+                 "mỗi frame — chúng cùng bị một Transform kéo đi. Đặt ngoài Content là dây " +
+                 "đứng yên còn ô thì trôi.\n\n" +
+                 "KHÔNG được gắn Layout Group lên nó, không thì bố cục sẽ xếp lại các đoạn " +
+                 "dây thành một hàng.")]
+        [SerializeField] private RectTransform _lineRoot;
+
+        [Tooltip("Bề dày dây, tính bằng pixel.")]
+        [SerializeField] private float _lineWidth = 14f;
+
+        [Tooltip("Rút ngắn mỗi đầu dây bao nhiêu pixel, để hai đầu chui xuống dưới ô thay " +
+                 "vì chạm đúng tâm ô.")]
+        [SerializeField] private float _lineInset = 24f;
 
         [Header("Ăn mừng sau khi thắng màn")]
         [Tooltip("Hiệu ứng đưa bức tranh vừa hoàn thành bay vào icon bộ sưu tập. " +
@@ -61,7 +100,7 @@ namespace JewelPainter.UI.Views
 
         [Header("Nút")]
         [SerializeField] private Button _playButton;
-        [SerializeField] private TMP_Text _playLevelText;
+        [SerializeField] private Text _playLevelText;
         [SerializeField] private Button _collectionButton;
         [SerializeField] private Button _settingsButton;
 
@@ -71,6 +110,9 @@ namespace JewelPainter.UI.Views
         /// thay vì để nó tự đi tìm: chỉ ở đây mới biết ô nào đang dùng, ô nào đang tắt
         /// chờ tái dùng.
         private readonly List<RectTransform> _activeItemRects = new();
+
+        /// Các đoạn dây đã tạo. Tái dùng như các ô: tạo một lần rồi bật tắt.
+        private readonly List<RectTransform> _lines = new();
 
         /// Ảnh tự dựng lúc chạy, KHÔNG phải asset. Unity không dọn giúp — mỗi lần mở
         /// Home mà không huỷ bản cũ là bộ nhớ lớn thêm một nấc, không bao giờ trả lại.
@@ -88,6 +130,10 @@ namespace JewelPainter.UI.Views
         private int _pendingCelebrationLevel = -1;
 
         private HomeLevelItemView _celebrateItem;
+
+        /// Màn đang được chọn trong danh sách — thứ nút Play sẽ nạp. Khác CurrentLevel:
+        /// người chơi bấm chọn một màn cũ thì hai con số tách nhau ra.
+        private int _selectedLevel = -1;
 
         public void Init(
             ILevelService levelService,
@@ -173,7 +219,13 @@ namespace JewelPainter.UI.Views
 
                 var item = GetItem(slot++);
 
-                item.Bind(levelId, BuildThumbnail(config.GridData, levelId, isUnlocked, isCurrent), isUnlocked, isCurrent);
+                item.Bind(
+                    levelId,
+                    BuildThumbnail(config.GridData, levelId, isUnlocked, isCurrent),
+                    isUnlocked,
+                    isCurrent,
+                    HandleItemClicked);
+
                 item.gameObject.SetActive(true);
 
                 var rect = (RectTransform)item.transform;
@@ -185,9 +237,11 @@ namespace JewelPainter.UI.Views
 
             HideFrom(slot);
 
-            if (_playLevelText != null) _playLevelText.SetText("Level {0}", currentLevel);
+            // Mỗi lần mở Home lại chọn màn đang chơi. Giữ lựa chọn cũ giữa hai lần mở thì
+            // người chơi qua màn xong về Home vẫn thấy con trỏ nằm ở màn cũ.
+            SelectLevel(currentLevel);
 
-            if (_focusScaler != null) _focusScaler.SetTargets(_activeItemRects);
+            if (_useFocusScaler && _focusScaler != null) _focusScaler.SetTargets(_activeItemRects);
 
             BeginOpeningFlow();
         }
@@ -201,33 +255,50 @@ namespace JewelPainter.UI.Views
             var celebrateItem = _celebrateItem;
             _pendingCelebrationLevel = -1;
 
+            if (!isActiveAndEnabled) return;
+
+            StopAllCoroutines();
+            StartCoroutine(OpeningRoutine(celebrateItem));
+        }
+
+        /// Một cửa duy nhất cho mọi việc cần bố cục đã tính xong: dựng dây nối, rồi chọn
+        /// đường — ăn mừng, hay cuộn thẳng tới màn hiện tại.
+        ///
+        /// Gom vào một chỗ vì cả ba việc đều phải đợi CÙNG một mốc, và vì StopAllCoroutines
+        /// nằm rải rác ở nhiều đường thì việc này giết việc kia.
+        private IEnumerator OpeningRoutine(HomeLevelItemView celebrateItem)
+        {
+            // Đợi HẾT MỘT FRAME. Layout Group và Content Size Fitter tính lại kích thước ở
+            // cuối frame, nên mọi phép đo trước mốc đó đều đọc bố cục của lần dựng TRƯỚC.
+            yield return null;
+
+            Canvas.ForceUpdateCanvases();
+
+            RebuildLines();
+
+            if (_scrollRect == null) yield break;
+
             var canCelebrate = celebrateItem != null
                                && _collectionFly != null
                                && _collectionButton != null
-                               && _scrollRect != null
                                && celebrateItem.ThumbnailRect != null
-                               && celebrateItem.ThumbnailSprite != null
-                               && isActiveAndEnabled;
+                               && celebrateItem.ThumbnailSprite != null;
 
-            if (!canCelebrate)
+            if (canCelebrate)
             {
-                ScrollToCurrent();
-                return;
+                yield return CelebrateRoutine(celebrateItem);
+                yield break;
             }
 
-            StopAllCoroutines();
-            StartCoroutine(CelebrateRoutine(celebrateItem));
+            if (_currentItemRect != null && TryGetScrollPosition(_currentItemRect, out var position))
+            {
+                _scrollRect.verticalNormalizedPosition = position;
+            }
         }
 
         /// Ba nhịp: đưa ô vừa xong vào khung nhìn, cho tranh bay đi, rồi cuộn sang màn mới.
         private IEnumerator CelebrateRoutine(HomeLevelItemView item)
         {
-            // Đợi hết một frame vì cùng lý do đã ghi ở ScrollToCurrentRoutine: Layout Group
-            // và Content Size Fitter tính lại kích thước ở cuối frame.
-            yield return null;
-
-            Canvas.ForceUpdateCanvases();
-
             var itemRect = (RectTransform)item.transform;
             if (TryGetScrollPosition(itemRect, out var startPosition))
             {
@@ -269,13 +340,63 @@ namespace JewelPainter.UI.Views
             return sprite;
         }
 
-        private void ScrollToCurrent()
+        /// Dựng lại dây nối giữa các ô liền nhau.
+        ///
+        /// Chỉ chạy khi danh sách được dựng lại, KHÔNG chạy mỗi frame. Dây và ô cùng nằm
+        /// trong Content nên khi người chơi kéo cuộn, cả hai bị đúng một Transform kéo đi
+        /// — vị trí tương đối giữa chúng không đổi, nên không có gì để tính lại.
+        ///
+        /// Phải gọi SAU Canvas.ForceUpdateCanvases, không thì nó đo chỗ các ô ở lần bố cục
+        /// trước và dây nối vào những vị trí không còn ai đứng.
+        private void RebuildLines()
         {
-            if (_scrollRect == null || _currentItemRect == null) return;
-            if (!isActiveAndEnabled) return;
+            if (_linePrefab == null || _lineRoot == null) return;
 
-            StopAllCoroutines();
-            StartCoroutine(ScrollToCurrentRoutine(0f));
+            var used = 0;
+
+            // Mỗi KHE giữa hai ô liền nhau một đoạn, nên n ô cho ra n-1 đoạn.
+            for (var i = 0; i + 1 < _activeItemRects.Count; i++)
+            {
+                var line = GetLine(used++);
+
+                PlaceLine(line, _activeItemRects[i].position, _activeItemRects[i + 1].position);
+                line.gameObject.SetActive(true);
+            }
+
+            for (var i = used; i < _lines.Count; i++) _lines[i].gameObject.SetActive(false);
+        }
+
+        /// Đặt một đoạn dây nối hai điểm, cho trước bằng toạ độ THẾ GIỚI.
+        ///
+        /// Nhận toạ độ thế giới rồi tự đổi về hệ của _lineRoot: hai ô nằm trong một Layout
+        /// Group còn dây thì không, nên toạ độ cục bộ của chúng không so được với nhau.
+        private void PlaceLine(RectTransform line, Vector3 fromWorld, Vector3 toWorld)
+        {
+            var from = _lineRoot.InverseTransformPoint(fromWorld);
+            var to = _lineRoot.InverseTransformPoint(toWorld);
+
+            var delta = (Vector2)(to - from);
+            var length = Mathf.Max(0f, delta.magnitude - _lineInset * 2f);
+
+            // Ghi localPosition chứ không ghi anchoredPosition: anchoredPosition đo từ điểm
+            // neo, mà neo của prefab thì tuỳ người dựng đặt ở đâu. localPosition không phụ
+            // thuộc chuyện đó nên đặt sao là nằm đúng đấy.
+            line.localPosition = (from + to) * 0.5f;
+            line.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+            line.sizeDelta = new Vector2(length, _lineWidth);
+        }
+
+        private RectTransform GetLine(int slot)
+        {
+            while (_lines.Count <= slot)
+            {
+                var created = Instantiate(_linePrefab, _lineRoot);
+                created.gameObject.SetActive(false);
+
+                _lines.Add((RectTransform)created.transform);
+            }
+
+            return _lines[slot];
         }
 
         /// Cuộn sao cho ô của màn đang chơi nằm giữa khung nhìn.
@@ -357,9 +478,12 @@ namespace JewelPainter.UI.Views
             var alignment = Mathf.Clamp01(_focusAlignment);
             var itemHeight = target.rect.height;
 
+            // Cộng thêm phần chừa: offsetFromTop lớn hơn nghĩa là content bị kéo xuống
+            // sâu hơn, tức ô đi LÊN trong khung nhìn — ra xa mép dưới.
             var desired = distanceFromTop
                           + itemHeight * (alignment - 0.5f)
-                          - viewportHeight * alignment;
+                          - viewportHeight * alignment
+                          + _focusPadding;
 
             var offsetFromTop = Mathf.Clamp(desired, 0f, scrollable);
 
@@ -420,11 +544,33 @@ namespace JewelPainter.UI.Views
             return previous;
         }
 
+        private void HandleItemClicked(int levelId) => SelectLevel(levelId);
+
+        /// Đổi ô đang chọn: bật viền ở đúng một ô, tắt ở mọi ô còn lại, và đổi chữ trên
+        /// nút Play theo.
+        private void SelectLevel(int levelId)
+        {
+            _selectedLevel = levelId;
+
+            foreach (var item in _items)
+            {
+                if (item == null || !item.gameObject.activeSelf) continue;
+
+                item.SetSelected(item.LevelId == levelId);
+            }
+
+            if (_playLevelText != null) _playLevelText.text = $"Level {levelId}";
+        }
+
         private void HandlePlayClicked()
         {
             Hide();
 
-            _levelService.LoadLevel(_levelService.CurrentLevel);
+            // Nạp màn ĐANG CHỌN, không phải màn theo tiến trình. Người chơi chọn một màn
+            // cũ thì hai con số này khác nhau.
+            var level = _selectedLevel >= 0 ? _selectedLevel : _levelService.CurrentLevel;
+
+            _levelService.LoadLevel(level);
         }
 
         private void HandleCollectionClicked() => _popupService.Show(PopupKey.Collection);

@@ -18,7 +18,7 @@ namespace JewelPainter.UI.Views
     /// đứng một mình trên bức tranh vừa hoàn thành.
     public class HudView : MonoBehaviour
     {
-        [SerializeField] private TMP_Text _levelText;
+        [SerializeField] private Text _levelText;
 
         [Tooltip("Nút gợi ý. Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
         [SerializeField] private Button _hintButton;
@@ -129,7 +129,7 @@ namespace JewelPainter.UI.Views
             if (level == _displayedLevel) return;
 
             _displayedLevel = level;
-            _levelText.SetText("Level {0}", level);
+            _levelText.text = $"Level {level}";
         }
     }
 }

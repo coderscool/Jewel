@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -25,6 +26,16 @@ namespace JewelPainter.UI.Views
         [Tooltip("Viền hoặc dấu hiệu cho màn ĐANG chơi dở, để nó nổi lên giữa danh sách.")]
         [SerializeField] private GameObject _currentHighlight;
 
+        [Header("Chọn")]
+        [Tooltip("Viền hiện khi ô này ĐANG ĐƯỢC CHỌN. Khác Current Highlight: cái kia nói " +
+                 "'đây là màn đang chơi dở', cái này nói 'bạn vừa bấm vào đây'.")]
+        [SerializeField] private GameObject _outline;
+
+        [Tooltip("Vùng bấm để chọn ô. Thường là một Button phủ kín ô. Màn chưa mở khoá thì " +
+                 "nó tự bị tắt.")]
+        [SerializeField] private Button _button;
+
+        private Action<int> _onClicked;
         private bool _hasWarned;
 
         /// Màn mà ô này đang hiện. Danh sách tái dùng ô nên chỉ số trong mảng không nói
@@ -37,11 +48,30 @@ namespace JewelPainter.UI.Views
 
         public Sprite ThumbnailSprite => _thumbnail != null ? _thumbnail.sprite : null;
 
-        public void Bind(int levelId, Sprite thumbnail, bool isUnlocked, bool isCurrent)
+        /// Đăng ký MỘT LẦN ở Awake, không phải mỗi lần Bind.
+        ///
+        /// Danh sách tái dùng ô nên Bind chạy lại mỗi lần mở Home; thêm listener ở đó thì
+        /// một cú bấm sẽ nổ nhiều lần. Callback thì thay được vì nó chỉ là một trường.
+        private void Awake()
+        {
+            if (_button != null) _button.onClick.AddListener(HandleClicked);
+        }
+
+        private void OnDestroy()
+        {
+            if (_button != null) _button.onClick.RemoveListener(HandleClicked);
+        }
+
+        public void Bind(int levelId, Sprite thumbnail, bool isUnlocked, bool isCurrent, Action<int> onClicked)
         {
             WarnOnMissingReferences();
 
             LevelId = levelId;
+            _onClicked = onClicked;
+
+            // Màn chưa mở khoá thì không bấm được. Cho bấm rồi lại không cho chơi là kiểu
+            // phản hồi tệ nhất: người chơi tưởng máy lỗi chứ không hiểu là mình chưa tới.
+            if (_button != null) _button.interactable = isUnlocked;
 
             if (_levelText != null)
             {
@@ -64,6 +94,15 @@ namespace JewelPainter.UI.Views
             if (_lockedPlaceholder != null) _lockedPlaceholder.SetActive(!isUnlocked);
             if (_currentHighlight != null) _currentHighlight.SetActive(isCurrent);
         }
+
+        public void SetSelected(bool selected)
+        {
+            if (_outline == null) return;
+
+            if (_outline.activeSelf != selected) _outline.SetActive(selected);
+        }
+
+        private void HandleClicked() => _onClicked?.Invoke(LevelId);
 
         /// Quên kéo ô vào Inspector là lỗi im lặng: ô trên Home chỉ còn mỗi số màn, mà
         /// không có gì trong Console để lần ra. Báo một lần rồi thôi — hàm này chạy cho

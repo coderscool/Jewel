@@ -35,6 +35,10 @@ namespace JewelPainter.Gameplay.Managers
         /// nữa sau ô cuối, khi những viên đang bay lần lượt đáp xuống.
         private bool _hasAnnounced;
 
+        /// Màn đang thật sự được nạp. Từ khi Home cho chọn màn, con số này KHÔNG còn luôn
+        /// bằng CurrentLevel — người chơi chọn chơi lại một màn cũ thì hai bên tách nhau.
+        private int _loadedLevel = -1;
+
         public event Action OnLevelCleared;
 
         public int ClearedLevel { get; private set; } = -1;
@@ -119,6 +123,7 @@ namespace JewelPainter.Gameplay.Managers
 
             _hasAnnounced = false;
             ClearedLevel = -1;
+            _loadedLevel = levelId;
 
             // PaintManager Init TRƯỚC lớp này nên nó đã khôi phục xong trạng thái tô lúc
             // handler này chạy. Thứ tự đó được cắm ở GameEntryPoint.
@@ -144,9 +149,14 @@ namespace JewelPainter.Gameplay.Managers
 
             // Chụp lại TRƯỚC khi nhích: sau AdvanceProgress thì CurrentLevel đã là màn kế,
             // mà popup và màn ăn mừng ở Home đều cần biết màn nào vừa xong.
-            ClearedLevel = _levelService.CurrentLevel;
+            ClearedLevel = _loadedLevel >= 0 ? _loadedLevel : _levelService.CurrentLevel;
 
-            AdvanceProgress();
+            // CHỈ nhích khi màn vừa xong đúng là màn tiến trình đang đứng.
+            //
+            // Home cho chọn chơi lại màn cũ, mà tiến trình chỉ đi tới. Không có phép so
+            // này thì tô xong màn 2 lúc đang ở màn 5 sẽ đẩy tiến trình lên màn 6 — người
+            // chơi được thưởng hai màn cho một lần chơi, và mất luôn màn 5 chưa đụng tới.
+            if (ClearedLevel == _levelService.CurrentLevel) AdvanceProgress();
 
             // Ăn mừng chạy NGAY, còn popup đếm giờ song song. Hai thứ độc lập nhau về
             // thời gian: đổi thời lượng dải quét không kéo theo lúc popup hiện, và
