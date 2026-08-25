@@ -9,7 +9,7 @@ namespace JewelPainter.UI.Views
     public class ColorSwatchView : MonoBehaviour
     {
         [SerializeField] private Image _colorImage;
-        [SerializeField] private TMP_Text _numberText;
+        [SerializeField] private Text _numberText;
         [SerializeField] private Button _button;
 
         [Tooltip("Màu chữ số và chữ số ô còn lại, dùng chung cho mọi ô màu.")]
@@ -70,7 +70,7 @@ namespace JewelPainter.UI.Views
             _colorImage.color = color;
 
             _numberText.color = _textColor;
-            _numberText.SetText("{0}", paletteIndex + 1);
+            _numberText.text = $"{paletteIndex + 1}";
 
             if (_remainingText != null) _remainingText.color = _textColor;
 

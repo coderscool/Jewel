@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cf8129e7cdee5294da1fa75b22c2544c, type: 3}
-  m_Name: Level_1
+  m_Name: Level_6
   m_EditorClassIdentifier: 
-  _levelId: 6
-  _targetImage: {fileID: 5191319148795470059, guid: dd150dc314066b148aa756a54a605cca, type: 3}
-  _gridData: {fileID: 11400000, guid: 2d80083c0e45e5d4dbc372ce87ba28df, type: 2}
+  _levelId: 1
+  _targetImage: {fileID: 21300000, guid: f6dc7d356af7c2843a67018f48f61fa1, type: 3}
+  _gridData: {fileID: 11400000, guid: 03de04511ef89154fa4982d224410876, type: 2}
   _timeLimitSeconds: 0
   _rewardCoins: 10
   _cameraMinSize: 9
-  _cameraMaxSize: 15
-  _fadeSwitchSize: 13
+  _cameraMaxSize: 70
+  _fadeSwitchSize: 62
