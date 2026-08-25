@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Interfaces;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -22,6 +23,14 @@ namespace JewelPainter.UI.Views
         [SerializeField] private Transform _itemRoot;
 
         [SerializeField] private Button _closeButton;
+
+        [Header("Tiến độ sưu tập")]
+        [Tooltip("Dòng chữ dạng '5/12'. Để trống thì bỏ qua.")]
+        [SerializeField] private Text _progressText;
+
+        [Tooltip("Ảnh làm thanh tiến trình. Image Type phải để FILLED, không thì fillAmount " +
+                 "không có tác dụng gì và thanh lúc nào cũng đầy.")]
+        [SerializeField] private Image _progressFill;
 
         private readonly List<CollectionItemView> _items = new();
 
@@ -61,6 +70,7 @@ namespace JewelPainter.UI.Views
 
             var levels = _levelService.Levels;
             var slot = 0;
+            var unlocked = 0;
 
             foreach (var config in levels)
             {
@@ -68,13 +78,31 @@ namespace JewelPainter.UI.Views
                 // thủng một lỗ ở giữa mà không ai hiểu vì sao.
                 if (config == null) continue;
 
+                var isUnlocked = _levelService.IsUnlocked(config.LevelId);
+                if (isUnlocked) unlocked++;
+
                 var item = GetItem(slot++);
 
-                item.Bind(config.LevelId, config.TargetImage, _levelService.IsUnlocked(config.LevelId));
+                item.Bind(config.LevelId, config.TargetImage, isUnlocked);
                 item.gameObject.SetActive(true);
             }
 
             HideFrom(slot);
+
+            // Đếm theo số ô THẬT SỰ bày ra, không theo độ dài mảng Levels: ô null đã bị
+            // bỏ qua ở trên, nên lấy Levels.Count sẽ ra mẫu số lớn hơn thứ người chơi thấy.
+            SetProgress(unlocked, slot);
+        }
+
+        private void SetProgress(int unlocked, int total)
+        {
+            if (_progressText != null) _progressText.text = $"{unlocked}/{total}";
+
+            if (_progressFill == null) return;
+
+            // Chia cho 0 khi chưa có màn nào — trong Inspector rất dễ gặp lúc mảng Levels
+            // còn trống, và NaN thì Image vẽ ra một thanh trống trơn không ai lần được vì sao.
+            _progressFill.fillAmount = total > 0 ? (float)unlocked / total : 0f;
         }
 
         /// Tạo một lần rồi bật/tắt để tái dùng — không Instantiate/Destroy mỗi lần mở.
