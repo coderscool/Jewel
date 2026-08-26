@@ -22,6 +22,14 @@ namespace JewelPainter.UI.Views
         [Tooltip("Viền báo màu đang được chọn. Để trống thì không có dấu hiệu chọn.")]
         [SerializeField] private GameObject _selectedHighlight;
 
+        [Tooltip("Dấu hiệu thứ hai khi ô được chọn — thường là một mũi tên hoặc nhãn đặt " +
+                 "TRÊN ĐẦU viên ngọc.\n\n" +
+                 "Tách khỏi Selected Highlight vì hai thứ nằm ở hai chỗ khác nhau và " +
+                 "thường muốn dựng riêng: viền bọc quanh ô, còn cái này nhô lên trên. " +
+                 "Chỉ cần một dấu hiệu thì bỏ trống ô nào không dùng.\n\n" +
+                 "Đặt nó ngoài vùng bị cắt của Scroll Rect nếu muốn nó nhô cao hơn thanh.")]
+        [SerializeField] private GameObject _selectedIcon;
+
         [Tooltip("Vòng tròn tiến độ. Image phải đặt Image Type = Filled, " +
                  "Fill Method = Radial 360 — code chỉ gán fillAmount, Unity lo phần vẽ cung.")]
         [SerializeField] private Image _progressRing;
@@ -34,11 +42,17 @@ namespace JewelPainter.UI.Views
         [Tooltip("Nâng lên bao nhiêu pixel khi được chọn.")]
         [SerializeField] private float _selectedRise = 24f;
 
+        [Tooltip("Phóng to bao nhiêu lần khi được chọn. 1 là giữ nguyên cỡ.\n\n" +
+                 "Áp lên đúng object Rise Target, nên nó nhô lên và to ra cùng một lúc. " +
+                 "Chỉ nhô mà không to thì ô được chọn dễ bị đọc nhầm là ô bị lệch hàng.")]
+        [SerializeField] private float _selectedScale = 1.25f;
+
         private Action<int> _onClicked;
         private int _displayedRemaining = -1;
         private float _displayedProgress = -1f;
 
         private Vector2 _riseBasePosition;
+        private Vector3 _riseBaseScale;
         private bool _hasRiseBase;
 
         public int PaletteIndex { get; private set; } = -1;
@@ -115,6 +129,7 @@ namespace JewelPainter.UI.Views
         public void SetSelected(bool selected)
         {
             if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
+            if (_selectedIcon != null) _selectedIcon.SetActive(selected);
 
             // Màu nền chỉ hiện ở ô đang chọn. Tắt component thay vì SetActive để không
             // kích hoạt lại cả cây con mỗi lần đổi màu.
@@ -127,17 +142,25 @@ namespace JewelPainter.UI.Views
         {
             if (_riseTarget == null) return;
 
-            // Ghi lại vị trí gốc ở lần gọi ĐẦU TIÊN, không phải trong Awake: lúc Awake
-            // layout chưa chạy nên toạ độ chưa đúng.
+            // Ghi lại vị trí và cỡ gốc ở lần gọi ĐẦU TIÊN, không phải trong Awake: lúc
+            // Awake layout chưa chạy nên toạ độ chưa đúng.
+            //
+            // Nhớ cỡ gốc chứ không trả về 1: prefab có thể vốn không ở cỡ 1, và đặt bừa
+            // là mọi ô màu đổi cỡ vĩnh viễn ngay lần bỏ chọn đầu tiên.
             if (!_hasRiseBase)
             {
                 _riseBasePosition = _riseTarget.anchoredPosition;
+                _riseBaseScale = _riseTarget.localScale;
                 _hasRiseBase = true;
             }
 
             _riseTarget.anchoredPosition = selected
                 ? _riseBasePosition + new Vector2(0f, _selectedRise)
                 : _riseBasePosition;
+
+            _riseTarget.localScale = selected
+                ? _riseBaseScale * Mathf.Max(0.01f, _selectedScale)
+                : _riseBaseScale;
         }
 
         private void OnDestroy()
