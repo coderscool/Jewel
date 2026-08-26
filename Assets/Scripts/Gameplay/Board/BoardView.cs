@@ -9,7 +9,10 @@ using UnityEngine.Serialization;
 namespace JewelPainter.Gameplay.Board
 {
     /// Dựng toàn bộ ô màu thành texture rồi gắn lên SpriteRenderer.
-    /// pixelsPerUnit = 1 nên một pixel là một ô là một world unit.
+    ///
+    /// Mỗi ô chiếm một KHỐI texel vuông (xem Texels Per Cell), và pixelsPerUnit của sprite
+    /// đúng bằng cạnh khối đó — nên bảng vẫn rộng đúng Width x Height world unit. Mọi lớp
+    /// khác đi qua BoardLayout nên không phải biết gì về độ mịn của texture.
     ///
     /// Ô tô xong cũng chỉ là ghi lại một pixel — chi phí KHÔNG phụ thuộc số ô,
     /// nên lưới 64x64 (4096 ô) tốn đúng bằng lưới 16x16.
@@ -41,17 +44,24 @@ namespace JewelPainter.Gameplay.Board
                  "Tắt để đối chiếu với ảnh gốc.")]
         [SerializeField] private bool _grayscale = true;
 
+        [Tooltip("Mỗi ô chiếm bao nhiêu texel vuông trong texture bảng.\n\n" +
+                 "1 là bản cũ, và nó không sống nổi ở hai đầu mức zoom. Zoom xa: lọc Point " +
+                 "chỉ lấy một texel cho mỗi pixel màn hình nên có ô bị bỏ sót hẳn. Bật " +
+                 "mipmap để chữa thì mip lại trộn ô đã tô với hàng xóm alpha 0, và ô nhạt " +
+                 "dần đi — đó chính là cảnh 'ô mất màu không cố định' và 'ngọc chìm dưới nền'.\n\n" +
+                 "4 là mặc định: thu nhỏ có dữ liệu thật để trung bình, phóng to vẫn sắc " +
+                 "cạnh vì lọc vẫn là Point. Bộ nhớ gấp 16 lần nhưng bảng 72x72 cũng chỉ " +
+                 "331 KB cho cả hai lớp.\n\n" +
+                 "Đổi số này phải VÀO LẠI MÀN mới có tác dụng.")]
+        [Range(1, 8)]
+        [SerializeField] private int _texelsPerCell = 4;
+
         [Tooltip("Sinh mipmap cho hai texture bảng.\n\n" +
-                 "Bảng là MỘT PIXEL MỘT Ô. Zoom xa trên bảng lớn thì một pixel màn hình " +
-                 "phủ nhiều hơn một texel, mà lọc Point chỉ lấy đúng một texel cho mỗi " +
-                 "pixel — những texel còn lại bị bỏ qua hẳn. Hậu quả: vài ô đã tô biến mất " +
-                 "khỏi màn hình dù dữ liệu vẫn nguyên, trong khi viên ngọc là quad thật nên " +
-                 "vẫn vẽ. Càng nhiều ô càng dễ gặp.\n\n" +
-                 "Có mipmap thì mức thu nhỏ được tính sẵn bằng cách gộp trung bình, nên " +
-                 "không ô nào bị bỏ sót. Vẫn giữ lọc Point nên zoom to ô vẫn sắc cạnh.\n\n" +
+                 "Từ khi mỗi ô có 4x4 texel, mipmap không còn là thứ bắt buộc — mức mip đầu " +
+                 "tiên vẫn còn nguyên hình ô. Bật thì zoom rất xa mượt hơn, tắt thì cạnh ô " +
+                 "sắc hơn. Thử cả hai rồi chọn.\n\n" +
                  "Cái giá: thêm một phần ba bộ nhớ texture, và mỗi lần upload phải dựng lại " +
-                 "mipmap. Với texture cỡ vài nghìn pixel thì cả hai đều không đáng kể.\n\n" +
-                 "Bỏ tick để so sánh trước sau.")]
+                 "mipmap.")]
         [SerializeField] private bool _generateMipmaps = true;
 
         /// Cách đẩy thay đổi lên màn hình. Chỉ để CHIA ĐÔI phạm vi lỗi, không phải để phát hành.
@@ -207,11 +217,11 @@ namespace JewelPainter.Gameplay.Board
                 var oldUnpaintedTexture = _unpaintedTexture;
                 var oldPaintedTexture = _paintedTexture;
 
-                _unpaintedTexture = CreateTexture(Grid.Width, Grid.Height, _unpaintedPixels, _generateMipmaps);
-                _paintedTexture = CreateTexture(Grid.Width, Grid.Height, _paintedPixels, _generateMipmaps);
+                _unpaintedTexture = CreateTexture(TextureWidth, Grid.Height * _texelsPerCell, _unpaintedPixels, _generateMipmaps);
+                _paintedTexture = CreateTexture(TextureWidth, Grid.Height * _texelsPerCell, _paintedPixels, _generateMipmaps);
 
-                _unpaintedSprite = CreateSprite(_unpaintedTexture, Grid.Width, Grid.Height);
-                _paintedSprite = CreateSprite(_paintedTexture, Grid.Width, Grid.Height);
+                _unpaintedSprite = CreateSprite(_unpaintedTexture);
+                _paintedSprite = CreateSprite(_paintedTexture);
 
                 DestroyIfAlive(ref oldUnpaintedSprite);
                 DestroyIfAlive(ref oldPaintedSprite);
@@ -287,11 +297,11 @@ namespace JewelPainter.Gameplay.Board
             {
                 for (var x = 0; x < Grid.Width; x++)
                 {
-                    var index = (Grid.Height - 1 - y) * Grid.Width + x;
+                    var index = TexelIndexOf(x, y);
 
                     if (_paintService.IsPainted(x, y)) stateCount++;
                     if (_paintedPixels[index].a > 0) cpuCount++;
-                    if (_paintedTexture.GetPixel(x, Grid.Height - 1 - y).a > 0f) gpuCount++;
+                    if (_paintedTexture.GetPixel(x * _texelsPerCell, (Grid.Height - 1 - y) * _texelsPerCell).a > 0f) gpuCount++;
 
                     if (!IsMismatched(x, y)) continue;
 
@@ -327,11 +337,11 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_paintService == null || _paintedPixels == null || _paintedTexture == null) return false;
 
-            var index = (Grid.Height - 1 - y) * Grid.Width + x;
+            var index = TexelIndexOf(x, y);
 
             // Texture2D dựng bằng code nên luôn đọc lại được, không cần bật Read/Write.
             var cpuHasColor = _paintedPixels[index].a > 0;
-            var gpuHasColor = _paintedTexture.GetPixel(x, Grid.Height - 1 - y).a > 0f;
+            var gpuHasColor = _paintedTexture.GetPixel(x * _texelsPerCell, (Grid.Height - 1 - y) * _texelsPerCell).a > 0f;
 
             return _paintService.IsPainted(x, y) != cpuHasColor || cpuHasColor != gpuHasColor;
         }
@@ -339,11 +349,11 @@ namespace JewelPainter.Gameplay.Board
         /// In đủ ba nguồn để không phải đoán tầng nào hỏng.
         private void Report(int x, int y, string context)
         {
-            var index = (Grid.Height - 1 - y) * Grid.Width + x;
+            var index = TexelIndexOf(x, y);
 
             var isPainted = _paintService.IsPainted(x, y);
             var cpu = _paintedPixels[index];
-            var gpu = (Color32)_paintedTexture.GetPixel(x, Grid.Height - 1 - y);
+            var gpu = (Color32)_paintedTexture.GetPixel(x * _texelsPerCell, (Grid.Height - 1 - y) * _texelsPerCell);
 
             Debug.LogWarning(
                 $"[BoardAudit/{context}] ô ({x},{y}): luật chơi={(isPainted ? "ĐÃ TÔ" : "chưa tô")}, " +
@@ -403,16 +413,14 @@ namespace JewelPainter.Gameplay.Board
 
             BuildPixels();
 
-            _unpaintedTexture = CreateTexture(grid.Width, grid.Height, _unpaintedPixels, _generateMipmaps);
-            _paintedTexture = CreateTexture(grid.Width, grid.Height, _paintedPixels, _generateMipmaps);
+            _unpaintedTexture = CreateTexture(TextureWidth, Grid.Height * _texelsPerCell, _unpaintedPixels, _generateMipmaps);
+            _paintedTexture = CreateTexture(TextureWidth, Grid.Height * _texelsPerCell, _paintedPixels, _generateMipmaps);
 
-            _unpaintedSprite = CreateSprite(_unpaintedTexture, grid.Width, grid.Height);
-            _paintedSprite = CreateSprite(_paintedTexture, grid.Width, grid.Height);
+            _unpaintedSprite = CreateSprite(_unpaintedTexture);
+            _paintedSprite = CreateSprite(_paintedTexture);
 
             _unpaintedRenderer.sprite = _unpaintedSprite;
             _paintedRenderer.sprite = _paintedSprite;
-
-            PushCellCountToMaterial();
 
             // Gọi SAU khi đã gán sprite: phép kiểm đo renderer.bounds, mà bounds chỉ có
             // nghĩa khi renderer đã có sprite.
@@ -425,7 +433,7 @@ namespace JewelPainter.Gameplay.Board
 
         private void BuildPixels()
         {
-            var count = Grid.Width * Grid.Height;
+            var count = Grid.Width * Grid.Height * _texelsPerCell * _texelsPerCell;
 
             _unpaintedPixels = new Color32[count];
             _paintedPixels = new Color32[count];
@@ -520,39 +528,6 @@ namespace JewelPainter.Gameplay.Board
                 renderer);
         }
 
-        /// Đưa kích thước lưới sang shader BoardGloss, để nó biết một ô rộng bao nhiêu
-        /// phần của bảng mà đặt điểm sáng vào giữa ô.
-        ///
-        /// Shader tự suy được con số này từ _MainTex_TexelSize — texture bảng đúng một
-        /// pixel một ô. Nhưng SpriteRenderer gán texture qua đường riêng của nó, và Unity
-        /// không đảm bảo đổ _TexelSize theo đường đó. Đẩy tường minh thì hết cửa hỏng.
-        ///
-        /// Đi qua MaterialPropertyBlock chứ không đụng `.material`: đọc `.material` sinh
-        /// một bản sao material cho riêng renderer này, và bản sao đó rò ra mỗi lần vào màn.
-        ///
-        /// Material không dùng shader BoardGloss thì thuộc tính này bị bỏ qua, không lỗi.
-        private void PushCellCountToMaterial()
-        {
-            if (_paintedRenderer == null || Grid == null) return;
-
-            // Tạo ở LẦN GỌI ĐẦU, không phải ở khởi tạo trường.
-            //
-            // Trường static có giá trị khởi tạo sẵn sẽ chạy trong type initializer, mà
-            // Unity kích hoạt nó từ ngữ cảnh constructor của MonoBehaviour — nơi cấm gọi
-            // mọi API dựng object của engine. Kết quả là TypeInitializationException nuốt
-            // trọn cả class: không chỉ dòng này hỏng, mà BoardView không dùng được nữa.
-            _materialProperties ??= new MaterialPropertyBlock();
-
-            _paintedRenderer.GetPropertyBlock(_materialProperties);
-            _materialProperties.SetVector(CellCountId, new Vector4(Grid.Width, Grid.Height, 0f, 0f));
-            _paintedRenderer.SetPropertyBlock(_materialProperties);
-        }
-
-        private static readonly int CellCountId = Shader.PropertyToID("_CellCount");
-
-        /// Dùng chung một khối cho mọi lần gọi — cấp phát mới mỗi lần là rác không cần thiết.
-        private static MaterialPropertyBlock _materialProperties;
-
         /// Giữ lọc Point kể cả khi có mipmap: mipmap lo phần zoom XA, còn Point lo phần
         /// zoom GẦN. Đổi sang Bilinear để chữa cái thứ nhất sẽ làm hỏng cái thứ hai —
         /// ô mất cạnh sắc và nhoè sang nhau.
@@ -572,19 +547,54 @@ namespace JewelPainter.Gameplay.Board
 
         /// Hai lớp phải dùng đúng cùng một cách dựng sprite, không thì chúng lệch nhau
         /// nửa ô và mọi thứ trông như bị nhoè viền.
-        private static Sprite CreateSprite(Texture2D texture, int width, int height)
+        ///
+        /// pixelsPerUnit = số texel mỗi ô, nên bảng vẫn rộng đúng Width x Height world
+        /// unit dù texture mịn hơn. BoardLayout và mọi lớp khác không phải biết gì về
+        /// chuyện độ mịn đã đổi.
+        private Sprite CreateSprite(Texture2D texture)
         {
             return Sprite.Create(
                 texture,
-                new Rect(0f, 0f, width, height),
+                new Rect(0f, 0f, texture.width, texture.height),
                 new Vector2(0.5f, 0.5f),
-                1f);
+                _texelsPerCell);
         }
 
+        /// Bề rộng texture tính bằng texel.
+        private int TextureWidth => Grid.Width * _texelsPerCell;
+
+        /// Chỉ số texel ở GÓC DƯỚI TRÁI của một ô, trong mảng pixel.
+        ///
         /// PixelGrid có y = 0 ở trên, Texture2D có y = 0 ở dưới.
+        private int TexelIndexOf(int x, int y)
+        {
+            return (Grid.Height - 1 - y) * _texelsPerCell * TextureWidth + x * _texelsPerCell;
+        }
+
+        /// Tô cả KHỐI texel của một ô, không phải một texel.
+        ///
+        /// Một texel một ô nghe thì gọn, nhưng nó không sống nổi ở hai đầu mức zoom. Zoom
+        /// xa: lọc Point chỉ lấy một texel cho mỗi pixel màn hình nên ô bị bỏ sót hẳn; bật
+        /// mipmap để chữa thì mip lại trộn ô đã tô với hàng xóm alpha 0 và ô nhạt dần đi.
+        /// Cả hai đều là bệnh của việc không có dữ liệu để mà thu nhỏ.
+        ///
+        /// Có khối 4x4 thì thu nhỏ có cái thật để trung bình, còn phóng to vẫn sắc cạnh vì
+        /// lọc vẫn là Point. Cái giá là bộ nhớ gấp 16 lần — với bảng 72x72 là 331 KB cho
+        /// cả hai lớp, không đáng kể.
         private void WritePixel(Color32[] pixels, int x, int y, Color32 color)
         {
-            pixels[(Grid.Height - 1 - y) * Grid.Width + x] = color;
+            var origin = TexelIndexOf(x, y);
+            var width = TextureWidth;
+
+            for (var row = 0; row < _texelsPerCell; row++)
+            {
+                var start = origin + row * width;
+
+                for (var column = 0; column < _texelsPerCell; column++)
+                {
+                    pixels[start + column] = color;
+                }
+            }
         }
 
         private void ClearBoard(string reason)

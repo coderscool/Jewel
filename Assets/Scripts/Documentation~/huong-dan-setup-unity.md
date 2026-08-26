@@ -1714,7 +1714,8 @@ Dựng trong **Canvas chứa HUD**, không dựng canvas riêng.
   - `Finger Offset` = **(0, -60)** — chỉnh tới khi đầu ngón chạm đúng ô màu
   - `Tutorial Level Id` = **1**
   - `Delay Seconds` = **0.6**
-- [ ] Tắt `TutorialContent` trong Inspector (code tự bật khi cần)
+- [ ] Tắt **`TutorialContent`** trong Inspector (code tự bật khi cần).
+      **Giữ `Tutorial` LUÔN BẬT** — xem cảnh báo ngay dưới
 
 > **Bỏ tick `Raycast Target` là bước bắt buộc, không phải tuỳ chọn.**
 > Để bật thì lớp hướng dẫn nuốt cú chạm: người chơi bấm đúng viên ngọc mà ngón tay đang
@@ -1723,6 +1724,14 @@ Dựng trong **Canvas chứa HUD**, không dựng canvas riêng.
 
 > **`Content` phải là object CON.** Bỏ trống hoặc trỏ về chính `Tutorial` thì lúc tắt
 > hướng dẫn sẽ huỷ luôn coroutine của chính nó. Code báo lỗi đỏ rõ ràng nếu gán nhầm.
+
+> **Chỉ tắt `TutorialContent`, không tắt `Tutorial`.**
+> Đó là lý do hai thứ tách rời nhau: cái ngoài sống suốt màn để nghe sự kiện, cái trong
+> mới là phần hiện ra.
+
+**Canvas HUD tắt lúc khởi động thì vẫn chạy đúng.** `OnBoardReady` nổ trong lúc màn hình
+chờ còn che, mà lúc đó canvas HUD có thể chưa bật — hướng dẫn giữ lại ý định và tự chạy
+ngay khi canvas bật lên. Bật `Log Decision` sẽ thấy dòng `hoãn lại vì object '...' đang tắt`.
 
 **Điều kiện hiện** đọc thẳng từ trạng thái tô (`IsUntouched`), không lưu cờ "đã xem".
 Muốn thử lại bao nhiêu lần cũng được: `Edit > Clear All PlayerPrefs`, hoặc tô một ô rồi
@@ -1914,6 +1923,9 @@ thật sự nhanh hơn không" — thứ mà nhìn biểu đồ chạy thời gi
 | Console báo đỏ về ô `Content` của Tutorial | `Content` bỏ trống hoặc trỏ về chính object mang script | 5.13 |
 | Vào màn 1 không thấy hướng dẫn | Màn đó đã tô ít nhất một ô — xoá tiến độ rồi thử lại | 5.13 |
 | Ngón tay chỉ lệch khỏi ô màu | `Finger Offset` chưa chỉnh, hoặc Pivot của ảnh tay không ở đầu ngón | 5.13 |
+| `Coroutine couldn't be started ... 'Tutorial' is inactive` | Object cha đang tắt. Nay tự hoãn rồi chạy lại — bật `Log Decision` để xem tên object cha | 5.13 |
+| Ngón tay hiện ra nhưng đứng im | Ô `Finger` còn trống, hoặc `Tap Travel` = 0 | 5.13 |
+| Chọn màn 1 từ Home mà không thấy hướng dẫn | Bản cũ so theo tiến trình. Nay so theo màn đang nạp — bật `Log Decision` để xem | 5.13 |
 
 ---
 

@@ -34,6 +34,14 @@ Shader "JewelPainter/BoardGloss"
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1,1,1,1)
 
+        [Header(Vien ngoc ve theo tung o)]
+        // Hình viên ngọc, lấy mẫu MỘT LẦN CHO MỖI Ô. Nhờ nó mà cả bảng chỉ còn một quad
+        // thay vì mỗi ô một SpriteRenderer.
+        //   R = bóng đổ (nhân với màu ô)   G = ánh loé (cộng vào)   A = hình viên
+        // Để trắng trơn thì ô vẫn là hình vuông đặc như trước.
+        _BeadTex ("Hinh vien ngoc", 2D) = "white" {}
+        _BeadAmount ("Do manh", Range(0,1)) = 1
+
         [Header(Huong anh sang)]
         _LightAngle ("Goc (do)", Range(0,360)) = 120
 
@@ -112,6 +120,8 @@ Shader "JewelPainter/BoardGloss"
             };
 
             sampler2D _MainTex;
+            sampler2D _BeadTex;
+            float _BeadAmount;
             fixed4 _Color;
             float4 _CellCount;
 
@@ -163,7 +173,20 @@ Shader "JewelPainter/BoardGloss"
                 fixed4 c = tex2D(_MainTex, i.uv) * i.color;
 
                 float2 cells = max(_CellCount.xy, 1.0);
-                float2 cellUV = frac(i.uv * cells);
+                float2 cellCoord = i.uv * cells;
+                float2 cellUV = frac(cellCoord);
+
+                // --- 0. Hình viên ngọc ---
+                // Lấy mẫu bằng tex2Dgrad với đạo hàm của cellCoord, KHÔNG để GPU tự tính
+                // từ cellUV: frac nhảy từ 1 về 0 ở mỗi mép ô, nên đạo hàm tại đó vọt lên
+                // rất lớn và GPU chọn mức mip thấp nhất — kết quả là một đường nhoè chạy
+                // dọc mọi mép ô. cellCoord thì liên tục nên đạo hàm của nó luôn đúng.
+                fixed4 bead = tex2Dgrad(_BeadTex, cellUV, ddx(cellCoord), ddy(cellCoord));
+
+                // Ô chưa tô có alpha 0 nên phép nhân dưới đây giữ nguyên nó trong suốt —
+                // hình viên ngọc chỉ hiện ở ô đã tô, không cần hỏi ô nào đã tô.
+                c.rgb *= lerp(1.0, bead.r, _BeadAmount);
+                c.a *= lerp(1.0, bead.a, _BeadAmount);
 
                 float rad = radians(_LightAngle);
                 float2 lightDir = float2(cos(rad), sin(rad));
@@ -221,6 +244,10 @@ Shader "JewelPainter/BoardGloss"
                 // Trải rộng cả nửa ô và không có biên nên không thể đọc ra thành hình dán.
                 float lit = saturate(face);
                 c.rgb = lerp(c.rgb, _GlossColor.rgb, lit * lit * _Gloss);
+
+                // Ánh loé vẽ sẵn trong ảnh viên ngọc. Cộng vào chứ không pha, vì nó đã
+                // được vẽ đúng chỗ rồi — pha sẽ làm nó nhạt đi ở ô màu sáng.
+                c.rgb += _GlossColor.rgb * bead.g * _BeadAmount;
 
                 // --- 5. Viền sáng ---
                 // Sáng đều quanh CẢ mép, kể cả phía không có đèn. Nghe thì phản trực giác,

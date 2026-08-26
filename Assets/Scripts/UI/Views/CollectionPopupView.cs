@@ -70,7 +70,7 @@ namespace JewelPainter.UI.Views
 
             var levels = _levelService.Levels;
             var slot = 0;
-            var unlocked = 0;
+            var collected = 0;
 
             foreach (var config in levels)
             {
@@ -78,12 +78,15 @@ namespace JewelPainter.UI.Views
                 // thủng một lỗ ở giữa mà không ai hiểu vì sao.
                 if (config == null) continue;
 
-                var isUnlocked = _levelService.IsUnlocked(config.LevelId);
-                if (isUnlocked) unlocked++;
+                // IsCompleted chứ không phải IsUnlocked. Bộ sưu tập là chỗ bày thứ đã LÀM
+                // XONG; màn đang tô dở tuy đã mở khoá nhưng bức tranh chưa có, bày ra là
+                // hứa nhầm với người chơi.
+                var isCollected = _levelService.IsCompleted(config.LevelId);
+                if (isCollected) collected++;
 
                 var item = GetItem(slot++);
 
-                item.Bind(config.LevelId, config.TargetImage, isUnlocked);
+                item.Bind(config.LevelId, config.TargetImage, isCollected);
                 item.gameObject.SetActive(true);
             }
 
@@ -91,18 +94,18 @@ namespace JewelPainter.UI.Views
 
             // Đếm theo số ô THẬT SỰ bày ra, không theo độ dài mảng Levels: ô null đã bị
             // bỏ qua ở trên, nên lấy Levels.Count sẽ ra mẫu số lớn hơn thứ người chơi thấy.
-            SetProgress(unlocked, slot);
+            SetProgress(collected, slot);
         }
 
-        private void SetProgress(int unlocked, int total)
+        private void SetProgress(int collected, int total)
         {
-            if (_progressText != null) _progressText.text = $"{unlocked}/{total}";
+            if (_progressText != null) _progressText.text = $"{collected}/{total}";
 
             if (_progressFill == null) return;
 
             // Chia cho 0 khi chưa có màn nào — trong Inspector rất dễ gặp lúc mảng Levels
             // còn trống, và NaN thì Image vẽ ra một thanh trống trơn không ai lần được vì sao.
-            _progressFill.fillAmount = total > 0 ? (float)unlocked / total : 0f;
+            _progressFill.fillAmount = total > 0 ? (float)collected / total : 0f;
         }
 
         /// Tạo một lần rồi bật/tắt để tái dùng — không Instantiate/Destroy mỗi lần mở.

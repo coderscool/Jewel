@@ -30,6 +30,13 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Có LevelConfig nào mang id này không. Dùng để biết còn màn kế hay đã hết.
         bool HasLevel(int levelId);
 
+        /// Màn đã TÔ XONG. Khác IsUnlocked ở đúng một màn: màn đang chơi dở đã mở khoá
+        /// nhưng chưa hoàn thành.
+        ///
+        /// Hai câu hỏi khác nhau nên có hai hàm: "vào chơi được không" dùng IsUnlocked,
+        /// "đã có trong bộ sưu tập chưa" dùng hàm này.
+        bool IsCompleted(int levelId);
+
         void LoadLevel(int levelId);
         void CompleteCurrentLevel();
     }

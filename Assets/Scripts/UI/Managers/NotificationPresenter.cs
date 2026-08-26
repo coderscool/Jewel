@@ -1,6 +1,7 @@
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.UI.Definitions;
 using JewelPainter.UI.Interfaces;
+using JewelPainter.UI.Views;
 using UnityEngine;
 
 namespace JewelPainter.UI.Managers
@@ -11,6 +12,10 @@ namespace JewelPainter.UI.Managers
     /// trước đó không có object nào của nó tồn tại để tự nghe sự kiện.
     public class NotificationPresenter : MonoBehaviour
     {
+        [Tooltip("Hướng dẫn cho người chơi mới. Có gán thì lời nhắc im lặng trong lúc " +
+                 "hướng dẫn đang hiện. Để trống thì lời nhắc luôn hiện.")]
+        [SerializeField] private TutorialOverlayView _tutorial;
+
         private IPaintService _paintService;
         private IPopupService _popupService;
 
@@ -27,6 +32,13 @@ namespace JewelPainter.UI.Managers
             if (_paintService != null) _paintService.OnColorRequired -= HandleColorRequired;
         }
 
-        private void HandleColorRequired() => _popupService.Show(PopupKey.Notification);
+        private void HandleColorRequired()
+        {
+            // Hướng dẫn đang chỉ thẳng vào ô màu và nói đúng việc cần làm. Chồng thêm một
+            // popup nói lại cùng điều đó thì nó che mất chính thứ ngón tay đang chỉ.
+            if (_tutorial != null && _tutorial.IsShowing) return;
+
+            _popupService.Show(PopupKey.Notification);
+        }
     }
 }

@@ -62,6 +62,15 @@ namespace JewelPainter.Gameplay.Board
         /// nét mới.
         private bool _waitingForFullRelease;
 
+        /// Nét này đã chạm vào một ô đáng lẽ tô được nhưng chưa chọn màu. Lời nhắc chờ
+        /// tới lúc NHẤC TAY mới bắn, và chỉ bắn nếu tay không hề kéo đi đâu.
+        ///
+        /// Bắn ngay lúc đặt tay xuống là sai: kéo bảng đi xem tranh cũng bắt đầu bằng một
+        /// cú chạm vào ô nào đó, nên người chơi ăn lời nhắc mỗi lần muốn di chuyển. Chỉ
+        /// một cú chạm rồi thả tại chỗ mới là "tôi định tô ô này".
+        private bool _hasPendingNotify;
+        private Vector2 _pendingNotifyScreen;
+
         /// BoardCamera đọc cái này để biết có được kéo hay không.
         public StrokeOwner CurrentStroke { get; private set; } = StrokeOwner.None;
 
@@ -77,6 +86,9 @@ namespace JewelPainter.Gameplay.Board
 
             if (!TryReadPointer(out var screenPosition, out var canPaint))
             {
+                // Đã nhấc HẾT tay ra — đây mới là lúc chốt xem có nhắc hay không.
+                FlushPendingNotify();
+
                 CurrentStroke = StrokeOwner.None;
                 _lastCell = NoCell;
                 ResetHold();
@@ -106,7 +118,11 @@ namespace JewelPainter.Gameplay.Board
                 if (CurrentStroke == StrokeOwner.Camera) BeginHold(screenPosition);
             }
 
-            if (CurrentStroke == StrokeOwner.Camera) TickHold(screenPosition);
+            if (CurrentStroke == StrokeOwner.Camera)
+            {
+                TickHold(screenPosition);
+                TickPendingNotify(screenPosition);
+            }
 
             if (CurrentStroke != StrokeOwner.Paint) return;
 
@@ -197,12 +213,45 @@ namespace JewelPainter.Gameplay.Board
 
             if (_paintService.CanPaint(cell.x, cell.y)) return StrokeOwner.Paint;
 
-            // Chạm trúng một ô ĐÁNG LẼ tô được mà chưa chọn màu nào: nhắc một tiếng rồi
-            // vẫn giao nét cho camera. Im lặng ở đây là người chơi mới vào màn cứ quẹt
+            // Chạm trúng một ô ĐÁNG LẼ tô được mà chưa chọn màu nào: ghi nhận để nhắc,
+            // nhưng chờ tới lúc nhấc tay. Im lặng hẳn thì người chơi mới vào màn cứ quẹt
             // mãi mà không hiểu vì sao không có gì xảy ra.
-            if (IsPaintableWhenColorChosen(cell)) _paintService.RequireColor();
+            if (IsPaintableWhenColorChosen(cell))
+            {
+                _hasPendingNotify = true;
+                _pendingNotifyScreen = screenPosition;
+            }
 
             return StrokeOwner.Camera;
+        }
+
+        /// Tay đã kéo đi quá xa thì bỏ lời nhắc: đó là ý định DI CHUYỂN bảng, không phải
+        /// ý định tô. Dùng chung ngưỡng với hold-to-pick vì cùng một câu hỏi — "cú này có
+        /// phải là chạm tại chỗ không".
+        private void TickPendingNotify(Vector2 screenPosition)
+        {
+            if (!_hasPendingNotify) return;
+
+            var moved = screenPosition - _pendingNotifyScreen;
+            var tolerance = Mathf.Max(0f, _holdMoveTolerancePixels);
+
+            if (moved.sqrMagnitude > tolerance * tolerance) _hasPendingNotify = false;
+        }
+
+        /// Chốt lời nhắc lúc nhấc hết tay.
+        private void FlushPendingNotify()
+        {
+            if (!_hasPendingNotify) return;
+
+            _hasPendingNotify = false;
+
+            if (_paintService == null) return;
+
+            // Giữ lâu để chọn màu cũng là một nét không kéo đi đâu, nên nó cũng tới được
+            // đây — nhưng lúc đó màu đã chọn xong rồi, nhắc nữa là nhắc sai.
+            if (_paintService.SelectedPaletteIndex >= 0) return;
+
+            _paintService.RequireColor();
         }
 
         /// Trả false khi không còn gì chạm màn hình.

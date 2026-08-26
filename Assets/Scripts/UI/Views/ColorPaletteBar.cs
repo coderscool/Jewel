@@ -91,23 +91,23 @@ namespace JewelPainter.UI.Views
                 swatch.gameObject.SetActive(true);
             }
 
-            ScrollToStart();
+            RelayoutBar();
         }
 
-        /// Đưa thanh về ô màu đầu tiên.
+        /// Sắp lại thanh: còn nhiều màu thì cuộn về ô đầu, còn ít màu thì căn giữa.
         ///
         /// Phải đợi HẾT MỘT FRAME. Content Size Fitter tính lại bề rộng của thanh ở cuối
-        /// frame, và ngay sau đó Scroll Rect kẹp lại vị trí cuộn theo bề rộng mới. Đặt
-        /// trong cùng frame với lúc dựng các ô là đặt xong bị ghi đè.
-        private void ScrollToStart()
+        /// frame, và ngay sau đó Scroll Rect kẹp lại vị trí theo bề rộng mới. Đo hay đặt
+        /// trong cùng frame với lúc dựng các ô đều là làm xong bị ghi đè.
+        private void RelayoutBar()
         {
             if (_scrollRect == null || !isActiveAndEnabled) return;
 
             StopAllCoroutines();
-            StartCoroutine(ScrollToStartRoutine());
+            StartCoroutine(RelayoutBarRoutine());
         }
 
-        private IEnumerator ScrollToStartRoutine()
+        private IEnumerator RelayoutBarRoutine()
         {
             yield return null;
 
@@ -115,10 +115,42 @@ namespace JewelPainter.UI.Views
 
             Canvas.ForceUpdateCanvases();
 
-            // 0 là mép TRÁI. Dừng luôn đà quán tính, không thì cú kéo dở dang của màn
-            // trước vẫn còn trớn và đẩy thanh trôi tiếp ngay sau khi đặt.
+            var content = _scrollRect.content;
+            if (content == null) yield break;
+
+            var viewport = _scrollRect.viewport != null
+                ? _scrollRect.viewport
+                : (RectTransform)_scrollRect.transform;
+
+            // Dừng đà quán tính. Cú kéo dở dang của màn trước còn trớn thì nó đẩy thanh
+            // trôi tiếp ngay sau khi ta đặt xong.
             _scrollRect.velocity = Vector2.zero;
-            _scrollRect.horizontalNormalizedPosition = 0f;
+
+            var fitsInViewport = content.rect.width <= viewport.rect.width;
+
+            // TẮT cuộn ngang khi các ô đã vừa khung nhìn.
+            //
+            // Không phải để chặn thao tác, mà vì Scroll Rect luôn kéo content về nằm gọn
+            // trong biên — và khi content NHỎ HƠN khung nhìn, phép kẹp đó dí nó vào một
+            // mép. Căn giữa xong sẽ bị nó đẩy về lại ngay frame sau. Tắt trục ngang thì
+            // phép kẹp không đụng tới trục đó nữa.
+            _scrollRect.horizontal = !fitsInViewport;
+
+            if (!fitsInViewport)
+            {
+                _scrollRect.horizontalNormalizedPosition = 0f;   // 0 là mép TRÁI
+                yield break;
+            }
+
+            // Dịch content sao cho tâm nó trùng tâm khung nhìn.
+            //
+            // Đo qua toạ độ thế giới rồi đổi về hệ của viewport, thay vì tính từ
+            // anchoredPosition: cách này không phụ thuộc người dựng đặt Anchor và Pivot
+            // của content ở đâu.
+            var contentCenter = viewport.InverseTransformPoint(content.TransformPoint(content.rect.center));
+            var delta = viewport.rect.center.x - contentCenter.x;
+
+            content.anchoredPosition += new Vector2(delta, 0f);
         }
 
         private void HandleCellPainted(Vector2Int cell, int paletteIndex)
@@ -133,6 +165,10 @@ namespace JewelPainter.UI.Views
             if (remaining <= 0)
             {
                 swatch.gameObject.SetActive(false);
+
+                // Thanh vừa hụt đi một ô nên phải sắp lại. Đây mới là lúc hay xảy ra nhất:
+                // càng về cuối màn càng ít màu, và đó đúng là lúc dồn về giữa dễ thấy nhất.
+                RelayoutBar();
                 return;
             }
 

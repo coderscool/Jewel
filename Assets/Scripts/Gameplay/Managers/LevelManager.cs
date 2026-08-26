@@ -30,6 +30,10 @@ namespace JewelPainter.Gameplay.Managers
         /// tự nên "đã tới màn 5" đã nói đủ rằng 1–4 xong rồi.
         public bool IsUnlocked(int levelId) => levelId <= CurrentLevel;
 
+        /// Tiến trình chỉ nhích khi một màn tô xong, nên "đứng trước màn hiện tại" đã đủ
+        /// nghĩa là "đã hoàn thành" — không cần lưu riêng cờ cho từng màn.
+        public bool IsCompleted(int levelId) => levelId < CurrentLevel;
+
         public event Action<int> OnLevelStarted;
         public event Action<int> OnLevelCompleted;
 
