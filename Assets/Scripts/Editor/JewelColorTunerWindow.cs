@@ -1,25 +1,27 @@
 using System.Collections.Generic;
+using JewelPainter.Gameplay.Config;
 using JewelPainter.Gameplay.Data;
+using JewelPainter.Gameplay.Domain;
 using UnityEditor;
 using UnityEngine;
 
 namespace JewelPainter.Editor
 {
-    /// Cửa sổ chỉnh màu: xem trước ô ĐẤT và VIÊN NGỌC nằm trên nó, kèm núm chỉnh
-    /// độ rực, độ tương phản, độ sáng và độ loé của viên ngọc.
+    /// Cửa sổ chỉnh màu: xem trước ô ĐẤT và VIÊN NGỌC nằm trên nó, mỗi bên một bộ núm.
     ///
-    /// Vì sao cần một cửa sổ riêng thay vì chỉnh thẳng trong Play Mode: hai thứ quyết định
-    /// màu cuối cùng nằm ở hai nơi khác nhau — bảng màu của LevelGridData và phép nhân
-    /// tint của SpriteRenderer. Chỉnh mù ở một bên rồi chạy game xem bên kia ra sao là
-    /// vòng lặp rất chậm. Ở đây hai thứ đó nằm cạnh nhau và đổi tức thì.
+    /// Vì sao cần một cửa sổ riêng thay vì chỉnh thẳng trong Play Mode: hai thứ quyết
+    /// định màu cuối cùng nằm ở hai asset khác nhau — bảng màu của LevelGridData và
+    /// phép chỉnh trong JewelTintConfig. Chỉnh mù ở một bên rồi chạy game xem bên kia
+    /// ra sao là vòng lặp rất chậm. Ở đây hai thứ đó nằm cạnh nhau và đổi tức thì.
     ///
-    /// Phép toán chỉnh màu để NGAY TRONG cửa sổ này, không đẩy sang runtime. Chừng nào
-    /// bạn còn đang dò số thì nó là việc của Editor; khi chốt được bộ số rồi mới bàn tới
-    /// chuyện nướng nó vào lúc sinh lưới.
+    /// Phép toán KHÔNG nằm trong file này. Nó ở Gameplay/Domain/ColorAdjustment.cs,
+    /// đúng cái mà LevelManager chạy lúc vào màn. Trước đây cửa sổ tự tính lấy, nên
+    /// bộ số dò ra chỉ đúng ở đây còn game thì không chạy nó.
     public class JewelColorTunerWindow : EditorWindow
     {
         private const int PreviewCell = 84;
         private const int PreviewColumns = 6;
+        private const string ConfigFolder = "Assets/Scriptables";
 
         /// Bộ màu mẫu khi chưa chọn Grid Data — đủ trải từ sẫm tới nhạt để thấy ngay
         /// một núm ảnh hưởng khác nhau thế nào ở hai đầu thang sáng.
@@ -37,11 +39,15 @@ namespace JewelPainter.Editor
 
         private Sprite _jewelSprite;
         private LevelGridData _gridData;
+        private JewelTintConfig _tintConfig;
 
-        private float _saturation = 1f;
-        private float _contrast = 1f;
-        private float _brightness;
-        private float _jewelLighten = 0.08f;
+        /// Config đã đọc số vào cửa sổ. Giữ lại để biết lúc nào người ta vừa kéo một
+        /// asset KHÁC vào ô — chỉ khi đó mới nạp lại, chứ nạp mỗi lần OnGUI thì núm
+        /// không bao giờ kéo được.
+        private JewelTintConfig _loadedConfig;
+
+        private ColorAdjustment _ground = ColorAdjustment.None;
+        private ColorAdjustment _jewel = ColorAdjustment.None;
 
         private bool _showGround = true;
         private Vector2 _scroll;
@@ -51,7 +57,7 @@ namespace JewelPainter.Editor
         {
             var window = GetWindow<JewelColorTunerWindow>();
             window.titleContent = new GUIContent("Chỉnh màu ngọc");
-            window.minSize = new Vector2(560f, 480f);
+            window.minSize = new Vector2(560f, 520f);
         }
 
         private void OnGUI()
@@ -80,12 +86,19 @@ namespace JewelPainter.Editor
             EditorGUILayout.LabelField("Nguồn", EditorStyles.boldLabel);
 
             _jewelSprite = (Sprite)EditorGUILayout.ObjectField(
-                new GUIContent("Sprite viên ngọc", "Ảnh xám của viên ngọc. Để trống thì chỉ xem màu đất."),
+                new GUIContent("Sprite viên ngọc", "Ảnh xám của viên ngọc — cùng sprite " +
+                    "gắn trên prefab mà JewelLayer dùng. Để trống thì chỉ xem màu đất."),
                 _jewelSprite, typeof(Sprite), false);
 
             _gridData = (LevelGridData)EditorGUILayout.ObjectField(
                 new GUIContent("Grid Data", "Lấy bảng màu thật của một màn. Để trống thì dùng bộ màu mẫu."),
                 _gridData, typeof(LevelGridData), false);
+
+            _tintConfig = (JewelTintConfig)EditorGUILayout.ObjectField(
+                new GUIContent("Jewel Tint Config", "Asset chứa bộ số của viên ngọc, dùng chung cả game."),
+                _tintConfig, typeof(JewelTintConfig), false);
+
+            SyncFromConfig();
 
             if (_gridData == null)
             {
@@ -93,52 +106,101 @@ namespace JewelPainter.Editor
                     "Đang dùng bộ màu mẫu. Kéo một LevelGridData vào để chỉnh trên đúng " +
                     "bảng màu của màn đó.", MessageType.None);
             }
+
+            if (_tintConfig == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Chưa có Jewel Tint Config — núm của viên ngọc chỉ xem trước, không " +
+                    "ghi đi đâu được.", MessageType.Info);
+
+                if (GUILayout.Button("Tạo Jewel Tint Config mới")) CreateConfig();
+            }
+        }
+
+        /// Nạp số từ asset vào núm, chỉ khi ô Config vừa đổi sang một asset khác.
+        ///
+        /// Gỡ asset ra khỏi ô thì GIỮ NGUYÊN số đang có. Xoá đi là vứt công dò của
+        /// người ta chỉ vì họ bấm nhầm ô, mà số trên núm thì không có Ctrl+Z.
+        private void SyncFromConfig()
+        {
+            if (_tintConfig == _loadedConfig) return;
+
+            _loadedConfig = _tintConfig;
+
+            if (_tintConfig != null) _jewel = _tintConfig.Tint;
+        }
+
+        /// Asset mới sinh ra mang luôn bộ số đang dò dở, không phải bộ số rỗng — người
+        /// bấm nút này gần như luôn là người vừa kéo núm xong và muốn cất nó đi.
+        private void CreateConfig()
+        {
+            var path = EditorUtility.SaveFilePanelInProject(
+                "Tạo Jewel Tint Config", "JewelTintConfig", "asset",
+                "Chọn chỗ lưu asset chứa bộ số màu của viên ngọc.", ConfigFolder);
+
+            if (string.IsNullOrEmpty(path)) return;
+
+            var created = CreateInstance<JewelTintConfig>();
+            created.SetTint(_jewel);
+
+            AssetDatabase.CreateAsset(created, path);
+            AssetDatabase.SaveAssets();
+
+            _tintConfig = created;
+            _loadedConfig = created;
+
+            EditorGUIUtility.PingObject(created);
         }
 
         private void DrawSliderSection()
         {
-            EditorGUILayout.LabelField("Màu đất — áp cho cả bảng màu", EditorStyles.boldLabel);
-
-            _saturation = EditorGUILayout.Slider(
-                new GUIContent("Độ rực", "1 là giữ nguyên. 0 là xám hết. Trên 1 thì đẩy ra xa mức xám."),
-                _saturation, 0f, 2f);
-
-            _contrast = EditorGUILayout.Slider(
-                new GUIContent("Độ tương phản", "Xoay quanh mốc xám giữa: màu sáng sáng thêm, màu tối tối thêm."),
-                _contrast, 0f, 2f);
-
-            _brightness = EditorGUILayout.Slider(
-                new GUIContent("Độ sáng", "Cộng thẳng vào cả ba kênh."),
-                _brightness, -0.3f, 0.3f);
+            EditorGUILayout.LabelField("Màu đất — ghi vào bảng màu của Grid Data", EditorStyles.boldLabel);
+            _ground = DrawAdjustment(_ground,
+                "Cộng thẳng vào cả ba kênh của màu đất.");
 
             EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Viên ngọc — chỉ áp cho sprite nằm trên", EditorStyles.boldLabel);
 
-            _jewelLighten = EditorGUILayout.Slider(
-                new GUIContent("Độ loé",
-                    "CỘNG thêm trắng vào màu tô lên sprite, không đụng màu đất.\n\n" +
-                    "Tint của SpriteRenderer là phép NHÂN nên không bao giờ cho ra màu sáng " +
-                    "hơn màu gốc. Đây là chỗ duy nhất tạo được vùng sáng vượt lên."),
-                _jewelLighten, 0f, 0.4f);
+            EditorGUILayout.LabelField("Viên ngọc — chồng lên màu đất ở trên", EditorStyles.boldLabel);
+            _jewel = DrawAdjustment(_jewel,
+                "Núm quan trọng nhất của viên ngọc.\n\n" +
+                "Tint của SpriteRenderer là phép NHÂN với ảnh, nên chỗ sáng nhất của " +
+                "viên ngọc bằng đúng màu tint. Kéo dương thì ngọc nổi lên khỏi nền đất " +
+                "cùng màu, để 0 thì ngọc chìm vào ô.");
+
+            EditorGUILayout.Space();
 
             _showGround = EditorGUILayout.Toggle(
                 new GUIContent("Hiện hàng màu đất", "Hàng trên là đất trơn, hàng dưới có viên ngọc đè lên."),
                 _showGround);
 
-            using (new EditorGUI.DisabledScope(
-                Mathf.Approximately(_saturation, 1f) &&
-                Mathf.Approximately(_contrast, 1f) &&
-                Mathf.Approximately(_brightness, 0f)))
+            using (new EditorGUI.DisabledScope(_ground.IsNone && _jewel.IsNone))
             {
-                if (GUILayout.Button("Trả về mặc định")) ResetSliders();
+                if (GUILayout.Button("Trả cả hai nhóm về 0"))
+                {
+                    _ground = ColorAdjustment.None;
+                    _jewel = ColorAdjustment.None;
+                }
             }
         }
 
-        private void ResetSliders()
+        /// Ba núm của một ColorAdjustment. Thang 0 là giữ nguyên cho cả ba — xem chú
+        /// thích ở ColorAdjustment về việc vì sao không dùng thang nhân quanh mốc 1.
+        private static ColorAdjustment DrawAdjustment(ColorAdjustment value, string brightnessTooltip)
         {
-            _saturation = 1f;
-            _contrast = 1f;
-            _brightness = 0f;
+            var saturation = EditorGUILayout.Slider(
+                new GUIContent("Độ rực", "0 là giữ nguyên. -1 là xám hết. +1 đẩy gấp đôi ra xa mức xám."),
+                value.Saturation, -1f, 1f);
+
+            var contrast = EditorGUILayout.Slider(
+                new GUIContent("Độ tương phản", "Xoay quanh mốc xám giữa: dương thì màu sáng " +
+                    "sáng thêm và màu tối tối thêm, âm thì cả bảng dồn về giữa."),
+                value.Contrast, -1f, 1f);
+
+            var brightness = EditorGUILayout.Slider(
+                new GUIContent("Độ sáng", brightnessTooltip),
+                value.Brightness, -0.5f, 0.5f);
+
+            return new ColorAdjustment(saturation, contrast, brightness);
         }
 
         private void DrawPreviewSection()
@@ -162,7 +224,7 @@ namespace JewelPainter.Editor
                 var column = i % PreviewColumns;
                 var row = i / PreviewColumns;
 
-                var ground = Adjust(colors[i]);
+                var ground = _ground.Apply(colors[i]);
                 var block = row * (PreviewCell * (_showGround ? 2 : 1) + 6);
 
                 var x = area.x + column * PreviewCell;
@@ -177,12 +239,15 @@ namespace JewelPainter.Editor
                 // Ô có ngọc: đất trước, ngọc đè lên — đúng thứ tự lớp trong game.
                 var cell = new Rect(x, y, PreviewCell, PreviewCell);
                 EditorGUI.DrawRect(cell, ground);
-                DrawJewel(cell, Lighten(ground, _jewelLighten));
+                DrawJewel(cell, _jewel.Apply(ground));
             }
         }
 
         /// Vẽ sprite bằng toạ độ UV của nó trong texture, không vẽ cả texture.
         /// Sprite nằm trong atlas thì textureRect chỉ là một mảnh của tấm lớn.
+        ///
+        /// GUI.color nhân với texture, đúng như SpriteRenderer.color nhân lúc chạy game —
+        /// nên ô này cho thấy đúng thứ sẽ hiện trên bảng.
         private void DrawJewel(Rect rect, Color tint)
         {
             if (_jewelSprite == null || _jewelSprite.texture == null) return;
@@ -222,8 +287,8 @@ namespace JewelPainter.Editor
 
             foreach (var color in colors)
             {
-                var ground = Adjust(color);
-                var jewel = Lighten(ground, _jewelLighten);
+                var ground = _ground.Apply(color);
+                var jewel = _jewel.Apply(ground);
 
                 builder.AppendLine($"#{Hex(color)}  →  #{Hex(ground)}  →  #{Hex(jewel)}");
             }
@@ -237,15 +302,37 @@ namespace JewelPainter.Editor
         {
             EditorGUILayout.LabelField("Ghi lại", EditorStyles.boldLabel);
 
+            using (new EditorGUI.DisabledScope(_tintConfig == null))
+            {
+                if (GUILayout.Button("Ghi bộ số VIÊN NGỌC vào Jewel Tint Config")) ApplyToConfig();
+            }
+
+            EditorGUILayout.HelpBox(
+                "Ghi vào config là ghi một bộ số, hoàn tác được bằng Ctrl+Z. Nhớ gán " +
+                "asset này vào ô Jewel Tint của LevelManager trong scene, nếu không game " +
+                "vẫn cho ngọc mang đúng màu đất.", MessageType.None);
+
+            EditorGUILayout.Space();
+
             using (new EditorGUI.DisabledScope(_gridData == null))
             {
-                if (GUILayout.Button("Ghi bảng màu đã chỉnh vào Grid Data")) ApplyToGridData();
+                if (GUILayout.Button("Ghi bảng màu ĐẤT vào Grid Data")) ApplyToGridData();
             }
 
             EditorGUILayout.HelpBox(
                 "Chỉ ghi BẢNG MÀU, không đụng tới lưới ô. Thao tác này KHÔNG hoàn tác được " +
                 "bằng Ctrl+Z và sinh lại lưới bằng tool ảnh sẽ ghi đè lên nó — nên chốt " +
                 "bộ số xong hẵng bấm.", MessageType.Warning);
+        }
+
+        private void ApplyToConfig()
+        {
+            Undo.RecordObject(_tintConfig, "Ghi bộ số màu viên ngọc");
+
+            _tintConfig.SetTint(_jewel);
+
+            EditorUtility.SetDirty(_tintConfig);
+            AssetDatabase.SaveAssets();
         }
 
         private void ApplyToGridData()
@@ -266,7 +353,7 @@ namespace JewelPainter.Editor
             }
 
             var adjusted = new Color32[_gridData.Colors.Count];
-            for (var i = 0; i < adjusted.Length; i++) adjusted[i] = Adjust(_gridData.Colors[i]);
+            for (var i = 0; i < adjusted.Length; i++) adjusted[i] = _ground.Apply(_gridData.Colors[i]);
 
             // Dựng lại mảng ô từ PixelGrid: SetData ghi đè cả cụm nên phải đưa lại đủ.
             var cells = new int[grid.Width * grid.Height];
@@ -280,62 +367,14 @@ namespace JewelPainter.Editor
             EditorUtility.SetDirty(_gridData);
             AssetDatabase.SaveAssets();
 
-            // Bộ số đã nằm trong asset rồi, giữ nguyên trên thanh trượt sẽ chỉnh chồng lần nữa.
-            ResetSliders();
+            // Bộ số đã nằm trong asset rồi, giữ nguyên trên núm sẽ chỉnh chồng lần nữa.
+            // Nhóm ngọc KHÔNG reset: nó chồng lên màu đất mới, vẫn còn nguyên ý nghĩa.
+            _ground = ColorAdjustment.None;
         }
 
         private IReadOnlyList<Color32> SourceColors()
         {
             return _gridData != null ? _gridData.Colors : SampleColors;
-        }
-
-        /// Rực → tương phản → sáng, đúng thứ tự Photoshop.
-        ///
-        /// Thứ tự có ý nghĩa: tương phản xoay quanh mốc 0.5 nên nó khuếch đại luôn cả phần
-        /// lệch mà bước tăng độ rực vừa tạo ra. Đảo hai bước cho ra kết quả khác hẳn.
-        private Color32 Adjust(Color32 color)
-        {
-            var gray = (0.299f * color.r + 0.587f * color.g + 0.114f * color.b) / 255f;
-
-            return new Color32(
-                ToByte(AdjustChannel(color.r / 255f, gray)),
-                ToByte(AdjustChannel(color.g / 255f, gray)),
-                ToByte(AdjustChannel(color.b / 255f, gray)),
-                color.a);
-        }
-
-        private float AdjustChannel(float channel, float gray)
-        {
-            // KHÔNG dùng Mathf.Lerp: nó kẹp t về 0..1 nên độ rực trên 1 sẽ dừng lại đúng
-            // ở màu gốc và thanh trượt có kéo tiếp cũng không đổi gì.
-            var value = gray + (channel - gray) * _saturation;
-
-            value = (value - 0.5f) * _contrast + 0.5f;
-
-            return value + _brightness;
-        }
-
-        /// Cộng đều một lượng trắng vào ba kênh — phép mà một nguồn sáng làm với bề mặt.
-        ///
-        /// Nhân theo tỉ lệ thì màu lệch sắc: nhân 1.1 lên #ea891e đẩy kênh đỏ thêm 23 mà
-        /// kênh lam chỉ thêm 3, ra cam gắt. Cộng 21 vào cả ba cho ra #fe9d34 — vẫn là màu
-        /// đó, chỉ sáng hơn.
-        private static Color32 Lighten(Color32 color, float amount)
-        {
-            if (amount <= 0f) return color;
-
-            var add = Mathf.RoundToInt(Mathf.Clamp01(amount) * 255f);
-
-            return new Color32(
-                (byte)Mathf.Min(255, color.r + add),
-                (byte)Mathf.Min(255, color.g + add),
-                (byte)Mathf.Min(255, color.b + add),
-                color.a);
-        }
-
-        private static byte ToByte(float value)
-        {
-            return (byte)Mathf.Clamp(Mathf.RoundToInt(value * 255f), 0, 255);
         }
     }
 }

@@ -62,7 +62,10 @@ namespace JewelPainter.UI.Views
             var data = _levelService.CurrentGrid;
             if (data == null) return;
 
-            var colors = data.Colors;
+            // Màu NGỌC chứ không phải màu đất: ô trên thanh phải trông đúng bằng thứ
+            // người chơi sắp đặt xuống bảng, nhất là khi hiệu ứng bay xuất phát từ chính
+            // ô này.
+            var colors = _levelService.CurrentJewelColors;
             var used = _paintService.UsedPaletteIndices;
 
             // Đếm slot RIÊNG, không dùng chỉ số của vòng lặp.

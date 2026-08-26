@@ -190,7 +190,7 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_active.ContainsKey(cell)) return;
 
-            var colors = _boardView.Colors;
+            var colors = _boardView.JewelColors;
             if (colors == null || paletteIndex < 0 || paletteIndex >= colors.Count) return;
 
             var jewel = Rent();

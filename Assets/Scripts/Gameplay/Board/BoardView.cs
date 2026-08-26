@@ -127,6 +127,14 @@ namespace JewelPainter.Gameplay.Board
         public PixelGrid Grid { get; private set; }
         public IReadOnlyList<Color32> Colors { get; private set; }
 
+        /// Bảng màu dành cho VIÊN NGỌC — cùng chỉ số với Colors, nhưng đã qua phép chỉnh
+        /// của JewelTintConfig. Lớp đất trong texture vẫn dùng Colors.
+        ///
+        /// Chuyển tiếp từ ILevelService chứ không tự tính: nếu BoardView tính một bản
+        /// và ColorPaletteBar tính một bản thì sớm muộn hai bản lệch nhau, mà lệch ở đây
+        /// nghĩa là viên ngọc bay ra khỏi ô màu có màu khác lúc nó đáp xuống.
+        public IReadOnlyList<Color32> JewelColors { get; private set; }
+
         /// Cấu hình màn đang chơi. BoardColorFade đọc mốc mờ từ đây — hai instance của
         /// nó không đi qua DI được (RegisterComponentInHierarchy chỉ tìm thấy một), nên
         /// lấy chung qua BoardView vốn đã có sẵn tham chiếu.
@@ -409,6 +417,7 @@ namespace JewelPainter.Gameplay.Board
 
             Grid = grid;
             Colors = colors;
+            JewelColors = _levelService.CurrentJewelColors;
             Layout = new BoardLayout(grid.Width, grid.Height);
 
             BuildPixels();
@@ -606,6 +615,7 @@ namespace JewelPainter.Gameplay.Board
 
             Grid = null;
             Colors = null;
+            JewelColors = null;
             Layout = null;
             _unpaintedPixels = null;
             _paintedPixels = null;

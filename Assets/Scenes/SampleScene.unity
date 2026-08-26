@@ -712,7 +712,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 2032333479
-  m_SortingOrder: 0
+  m_SortingOrder: 11
   m_TargetDisplay: 0
 --- !u!224 &373777943
 RectTransform:
@@ -2155,6 +2155,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6c32b6281160f874180917165f3f180b, type: 2}
   - {fileID: 11400000, guid: 51547948cbf16674586427ac3efef7d0, type: 2}
   - {fileID: 11400000, guid: 6cfd2a9412ac3d14ebe61b675e9e4e99, type: 2}
+  _jewelTint: {fileID: 0}
 --- !u!4 &986912015
 Transform:
   m_ObjectHideFlags: 0
@@ -3791,7 +3792,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 83, y: -98}
-  m_SizeDelta: {x: 96, y: 96}
+  m_SizeDelta: {x: 126, y: 127}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1591653264
 MonoBehaviour:
@@ -3857,7 +3858,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 6858065489634022420, guid: f4959001c7489ee42ac3bec53848ae8b, type: 3}
+  m_Sprite: {fileID: -3973990622428968029, guid: 1dfb4fbfa294ef94fadf5766ed94c4f0, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -4095,8 +4096,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 218, y: -114}
-  m_SizeDelta: {x: 133, y: 136}
+  m_AnchoredPosition: {x: 218, y: -99}
+  m_SizeDelta: {x: 126, y: 127}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1805261088
 MonoBehaviour:
@@ -4162,7 +4163,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -8770380493168960671, guid: b493a7059dcac94459a7b35f69d74f08, type: 3}
+  m_Sprite: {fileID: 6817332317061082186, guid: 9b5eed243c2a34f47a5d0dd0763fa5f6, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -5206,7 +5207,7 @@ Canvas:
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 2032333479
-  m_SortingOrder: 11
+  m_SortingOrder: 12
   m_TargetDisplay: 0
 --- !u!224 &2113275855
 RectTransform:

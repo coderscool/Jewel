@@ -195,7 +195,7 @@ namespace JewelPainter.Gameplay.Board
         private bool TryStartFlight(Vector2Int cell, int paletteIndex)
         {
             var layout = _boardView.Layout;
-            var colors = _boardView.Colors;
+            var colors = _boardView.JewelColors;
 
             if (layout == null || colors == null) return false;
             if (paletteIndex < 0 || paletteIndex >= colors.Count) return false;

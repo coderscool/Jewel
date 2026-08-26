@@ -44,7 +44,7 @@ Bootstrap → UI → Gameplay → Core
 
 | Vấn đề | Vị trí |
 |---|---|
-| (chưa có — project mới scaffold) | |
+| Trọng số luminance Rec.601 có hai bản. `ColorAdjustment` (Domain) không được phụ thuộc ngược lên `BoardColors` (Board) nên phải chép lại ba hằng số. Cách sửa: chuyển `BoardColors` xuống `Gameplay/Domain/` bằng cửa sổ Project của Unity, rồi cho cả hai dùng chung. | `Gameplay/Domain/ColorAdjustment.cs`, `Gameplay/Board/BoardColors.cs` |
 
 ## Nhắc riêng cho Unity
 

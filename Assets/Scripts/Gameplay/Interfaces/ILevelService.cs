@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Config;
 using JewelPainter.Gameplay.Data;
+using UnityEngine;
 
 namespace JewelPainter.Gameplay.Interfaces
 {
@@ -16,6 +17,16 @@ namespace JewelPainter.Gameplay.Interfaces
 
         /// Dữ liệu lưới của màn đang chơi. null nếu màn chưa nạp hoặc chưa gán GridData.
         LevelGridData CurrentGrid { get; }
+
+        /// Bảng màu của VIÊN NGỌC cho màn đang chơi — màu đất đã qua JewelTintConfig.
+        ///
+        /// Cùng số lượng và cùng thứ tự với CurrentGrid.Colors, nên một chỉ số dùng
+        /// được cho cả hai bảng. Rỗng khi chưa nạp màn nào.
+        ///
+        /// Vì sao là một bảng dựng sẵn chứ không phải hàm tính từng màu: nơi tô ngọc là
+        /// vòng lặp sinh hàng nghìn viên, còn bảng thì chỉ vài màu. Tính một lần lúc vào
+        /// màn là xong, không đụng gì tới đường chạy nóng.
+        IReadOnlyList<Color32> CurrentJewelColors { get; }
 
         /// Toàn bộ màn chơi, đúng thứ tự khai trong LevelManager. Popup bộ sưu tập
         /// duyệt danh sách này. Có thể chứa phần tử null nếu Inspector bỏ trống ô nào.
