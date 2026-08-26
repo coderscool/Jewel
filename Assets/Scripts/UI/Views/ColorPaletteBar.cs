@@ -1,6 +1,8 @@
+using System.Collections;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace JewelPainter.UI.Views
 {
@@ -16,6 +18,12 @@ namespace JewelPainter.UI.Views
         [Tooltip("Camera của bảng. Cần để đổi vị trí ô màu trên màn hình sang world " +
                  "cho hiệu ứng ngọc bay.")]
         [SerializeField] private Camera _worldCamera;
+
+        [Tooltip("Scroll Rect của thanh màu. Có gán thì mỗi lần vào màn nó tự cuộn về ô " +
+                 "màu ĐẦU TIÊN.\n\n" +
+                 "Cần thiết vì vị trí cuộn không tự reset: kéo thanh sang phải ở màn này " +
+                 "thì vào màn sau nó vẫn nằm nguyên chỗ đó, dù danh sách màu đã khác hẳn.")]
+        [SerializeField] private ScrollRect _scrollRect;
 
         private readonly List<ColorSwatchView> _swatches = new();
 
@@ -82,6 +90,35 @@ namespace JewelPainter.UI.Views
                 swatch.SetSelected(false);
                 swatch.gameObject.SetActive(true);
             }
+
+            ScrollToStart();
+        }
+
+        /// Đưa thanh về ô màu đầu tiên.
+        ///
+        /// Phải đợi HẾT MỘT FRAME. Content Size Fitter tính lại bề rộng của thanh ở cuối
+        /// frame, và ngay sau đó Scroll Rect kẹp lại vị trí cuộn theo bề rộng mới. Đặt
+        /// trong cùng frame với lúc dựng các ô là đặt xong bị ghi đè.
+        private void ScrollToStart()
+        {
+            if (_scrollRect == null || !isActiveAndEnabled) return;
+
+            StopAllCoroutines();
+            StartCoroutine(ScrollToStartRoutine());
+        }
+
+        private IEnumerator ScrollToStartRoutine()
+        {
+            yield return null;
+
+            if (_scrollRect == null) yield break;
+
+            Canvas.ForceUpdateCanvases();
+
+            // 0 là mép TRÁI. Dừng luôn đà quán tính, không thì cú kéo dở dang của màn
+            // trước vẫn còn trớn và đẩy thanh trôi tiếp ngay sau khi đặt.
+            _scrollRect.velocity = Vector2.zero;
+            _scrollRect.horizontalNormalizedPosition = 0f;
         }
 
         private void HandleCellPainted(Vector2Int cell, int paletteIndex)

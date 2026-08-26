@@ -1694,6 +1694,61 @@ Home **không** tự mở nữa. Nó mở bằng nút Home trên HUD (mục 5.9)
 
 ---
 
+### 5.13 Tutorial — hướng dẫn cho người chơi mới
+
+Vào màn 1 mà chưa tô ô nào thì hiện một bàn tay chỉ vào ô màu đầu tiên trên thanh chọn,
+kèm một bảng nhắc. Chọn màu xong là tắt.
+
+Dựng trong **Canvas chứa HUD**, không dựng canvas riêng.
+
+- [ ] Chọn Canvas của HUD → chuột phải → Create Empty, tên `Tutorial`.
+      Kéo nó xuống **cuối cùng** trong danh sách con để nó vẽ trên mọi thứ
+- [ ] Trong `Tutorial` → Create Empty, tên `TutorialContent`, kéo giãn kín màn hình
+- [ ] Trong `TutorialContent` đặt hai thứ:
+  - một `Image` tên `Finger` — ảnh bàn tay, **Pivot để ở đầu ngón trỏ**
+  - một bảng nhắc: nền + `TextMeshProUGUI`, đặt ở chỗ không che thanh chọn màu
+- [ ] Chọn **mọi** `Image` và `Text` trong `Tutorial` → **bỏ tick `Raycast Target`**
+- [ ] Chọn `Tutorial` → `Add Component > Tutorial Overlay View`
+  - `Content` = `TutorialContent`
+  - `Finger` = `Finger`
+  - `Finger Offset` = **(0, -60)** — chỉnh tới khi đầu ngón chạm đúng ô màu
+  - `Tutorial Level Id` = **1**
+  - `Delay Seconds` = **0.6**
+- [ ] Tắt `TutorialContent` trong Inspector (code tự bật khi cần)
+
+> **Bỏ tick `Raycast Target` là bước bắt buộc, không phải tuỳ chọn.**
+> Để bật thì lớp hướng dẫn nuốt cú chạm: người chơi bấm đúng viên ngọc mà ngón tay đang
+> chỉ, không có gì xảy ra, và hướng dẫn không bao giờ tắt được. Đây là lỗi khó lần nhất
+> trong cả mục này vì mọi thứ trông vẫn đúng.
+
+> **`Content` phải là object CON.** Bỏ trống hoặc trỏ về chính `Tutorial` thì lúc tắt
+> hướng dẫn sẽ huỷ luôn coroutine của chính nó. Code báo lỗi đỏ rõ ràng nếu gán nhầm.
+
+**Điều kiện hiện** đọc thẳng từ trạng thái tô (`IsUntouched`), không lưu cờ "đã xem".
+Muốn thử lại bao nhiêu lần cũng được: `Edit > Clear All PlayerPrefs`, hoặc tô một ô rồi
+vào lại màn — tô rồi thì thôi không hiện.
+
+**Vì sao không dùng popup:** popup có nền chặn bấm, mà thứ ngón tay đang chỉ vào lại
+chính là cái người chơi phải bấm. Lớp này chỉ là ảnh đè lên, không chặn gì.
+
+**Nghe `OnBoardReady` chứ không nghe `OnLevelStarted`:** lúc màn bắt đầu, thanh chọn màu
+chưa dựng xong các ô, mà ngón tay cần biết ô màu đầu tiên đứng ở đâu. Vì cùng lý do đó,
+`GameEntryPoint` gọi `Init` của nó **sau** `ColorPaletteBar`.
+
+#### Luồng
+
+```
+Vào màn  ──►  OnBoardReady
+                └─ đúng màn 1?  và  IsUntouched?
+                     └─ chờ Delay Seconds
+                          └─ đặt ngón tay vào ô màu đầu tiên, bật Content
+                               └─ ngón tay gõ nhè nhẹ theo nhịp
+Chọn màu ──►  tắt ngay
+Đổi màn  ──►  tắt ngay
+```
+
+---
+
 ## Phần 6 — Chạy thử
 
 **Bảng:**
@@ -1855,6 +1910,10 @@ thật sự nhanh hơn không" — thứ mà nhìn biểu đồ chạy thời gi
 | Zoom to thì ô đã tô mất màu | `Painted Renderer` chưa gán, hoặc lỡ gắn `Board Color Fade` lên `Painted` | 5.6 |
 | Ô đã tô che mất viền và số | `Painted` đặt `Order in Layer` lớn hơn 0 | 5.6 |
 | Ngọc to hoặc nhỏ hơn ô | `Pixels Per Unit` chưa bằng cạnh ảnh | 4.3 |
+| Hướng dẫn hiện ra nhưng bấm ô màu không ăn, và nó không tắt | Còn `Image` nào trong `Tutorial` đang bật `Raycast Target` | 5.13 |
+| Console báo đỏ về ô `Content` của Tutorial | `Content` bỏ trống hoặc trỏ về chính object mang script | 5.13 |
+| Vào màn 1 không thấy hướng dẫn | Màn đó đã tô ít nhất một ô — xoá tiến độ rồi thử lại | 5.13 |
+| Ngón tay chỉ lệch khỏi ô màu | `Finger Offset` chưa chỉnh, hoặc Pivot của ảnh tay không ở đầu ngón | 5.13 |
 
 ---
 

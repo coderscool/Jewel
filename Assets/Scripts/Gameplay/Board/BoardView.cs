@@ -41,7 +41,43 @@ namespace JewelPainter.Gameplay.Board
                  "Tắt để đối chiếu với ảnh gốc.")]
         [SerializeField] private bool _grayscale = true;
 
+        [Tooltip("Sinh mipmap cho hai texture bảng.\n\n" +
+                 "Bảng là MỘT PIXEL MỘT Ô. Zoom xa trên bảng lớn thì một pixel màn hình " +
+                 "phủ nhiều hơn một texel, mà lọc Point chỉ lấy đúng một texel cho mỗi " +
+                 "pixel — những texel còn lại bị bỏ qua hẳn. Hậu quả: vài ô đã tô biến mất " +
+                 "khỏi màn hình dù dữ liệu vẫn nguyên, trong khi viên ngọc là quad thật nên " +
+                 "vẫn vẽ. Càng nhiều ô càng dễ gặp.\n\n" +
+                 "Có mipmap thì mức thu nhỏ được tính sẵn bằng cách gộp trung bình, nên " +
+                 "không ô nào bị bỏ sót. Vẫn giữ lọc Point nên zoom to ô vẫn sắc cạnh.\n\n" +
+                 "Cái giá: thêm một phần ba bộ nhớ texture, và mỗi lần upload phải dựng lại " +
+                 "mipmap. Với texture cỡ vài nghìn pixel thì cả hai đều không đáng kể.\n\n" +
+                 "Bỏ tick để so sánh trước sau.")]
+        [SerializeField] private bool _generateMipmaps = true;
+
+        /// Cách đẩy thay đổi lên màn hình. Chỉ để CHIA ĐÔI phạm vi lỗi, không phải để phát hành.
+        private enum UploadMode
+        {
+            /// SetPixels32 + Apply. Đây là đường thật.
+            Normal = 0,
+
+            /// Thêm bước gán lại sprite cho renderer sau mỗi lần Apply.
+            ReassignSprite = 1,
+
+            /// Dựng lại texture và sprite từ đầu sau mỗi lần đổi — đúng bằng những gì xảy
+            /// ra khi vào lại màn. RẤT nặng, chỉ bật vài giây để xem có hết lỗi không.
+            RecreateTexture = 2,
+        }
+
         [Header("Chẩn đoán")]
+        [Tooltip("Chia đôi phạm vi lỗi 'tô rồi mà không lên màu, vào lại màn thì đúng'.\n\n" +
+                 "Vào lại màn khác cú upload thường ở ba việc: tạo texture mới, tạo sprite " +
+                 "mới, gán lại sprite. Chạy thử từng nấc để biết việc nào mới là thứ chữa " +
+                 "được lỗi.\n\n" +
+                 "Normal — đường thật, để so sánh.\n" +
+                 "Reassign Sprite — hết lỗi thì thủ phạm là renderer đang giữ bản cũ.\n" +
+                 "Recreate Texture — chỉ nấc này mới hết thì thủ phạm là chính texture.\n\n" +
+                 "Trả về Normal khi đo xong: nấc thứ ba dựng lại texture mỗi lần tô.")]
+        [SerializeField] private UploadMode _uploadMode = UploadMode.Normal;
         [Tooltip("Sau mỗi lần upload, đọc NGƯỢC từ texture ra để kiểm những ô vừa lộ màu.\n\n" +
                  "Dùng khi gặp cảnh 'ô đã tô mà không có màu'. Ba nguồn được đối chiếu: " +
                  "trạng thái luật chơi, mảng pixel trên CPU, và texture đã nằm trên GPU. " +
@@ -116,11 +152,15 @@ namespace JewelPainter.Gameplay.Board
             {
                 _isTextureDirty = false;
 
+                // Apply phải dựng LẠI mipmap, không thì mức thu nhỏ vẫn mang nội dung của
+                // lúc vào màn và ô vừa tô không hiện ra khi zoom xa.
                 _unpaintedTexture.SetPixels32(_unpaintedPixels);
-                _unpaintedTexture.Apply(false);
+                _unpaintedTexture.Apply(_generateMipmaps);
 
                 _paintedTexture.SetPixels32(_paintedPixels);
-                _paintedTexture.Apply(false);
+                _paintedTexture.Apply(_generateMipmaps);
+
+                ApplyUploadMode();
 
                 VerifyReveals();
             }
@@ -151,6 +191,47 @@ namespace JewelPainter.Gameplay.Board
             _isTextureDirty = true;
 
             if (_verifyReveals) _revealedSinceUpload.Add(cell);
+        }
+
+        /// Hai nấc chẩn đoán bổ sung sau mỗi lần upload. Normal thì không làm gì.
+        private void ApplyUploadMode()
+        {
+            if (_uploadMode == UploadMode.Normal) return;
+
+            if (_uploadMode == UploadMode.RecreateTexture)
+            {
+                // Dựng lại đúng như lúc vào màn. Giữ lại tham chiếu cũ để huỷ SAU khi đã
+                // gán cái mới — huỷ trước thì có một nhịp renderer trỏ vào sprite đã chết.
+                var oldUnpaintedSprite = _unpaintedSprite;
+                var oldPaintedSprite = _paintedSprite;
+                var oldUnpaintedTexture = _unpaintedTexture;
+                var oldPaintedTexture = _paintedTexture;
+
+                _unpaintedTexture = CreateTexture(Grid.Width, Grid.Height, _unpaintedPixels, _generateMipmaps);
+                _paintedTexture = CreateTexture(Grid.Width, Grid.Height, _paintedPixels, _generateMipmaps);
+
+                _unpaintedSprite = CreateSprite(_unpaintedTexture, Grid.Width, Grid.Height);
+                _paintedSprite = CreateSprite(_paintedTexture, Grid.Width, Grid.Height);
+
+                DestroyIfAlive(ref oldUnpaintedSprite);
+                DestroyIfAlive(ref oldPaintedSprite);
+                DestroyIfAlive(ref oldUnpaintedTexture);
+                DestroyIfAlive(ref oldPaintedTexture);
+            }
+
+            // Gán null trước rồi gán lại: gán đúng cái sprite đang có sẵn thì Unity thấy
+            // giá trị không đổi và bỏ qua, nên bước này sẽ chẳng chứng minh được gì.
+            if (_unpaintedRenderer != null)
+            {
+                _unpaintedRenderer.sprite = null;
+                _unpaintedRenderer.sprite = _unpaintedSprite;
+            }
+
+            if (_paintedRenderer != null)
+            {
+                _paintedRenderer.sprite = null;
+                _paintedRenderer.sprite = _paintedSprite;
+            }
         }
 
         /// Đọc ngược từ TEXTURE ra để xem những ô vừa lộ màu có thật sự tới nơi không.
@@ -195,10 +276,23 @@ namespace JewelPainter.Gameplay.Board
 
             var confirmed = 0;
 
+            // Đếm riêng từng nguồn. Ba con số này là thứ biến sự IM LẶNG thành bằng chứng:
+            // im lặng mà không có số thì không phân biệt được "mọi thứ khớp" với "máy đo
+            // không hề chạy" — mà hai kết luận đó dẫn đi hai hướng ngược nhau.
+            var stateCount = 0;
+            var cpuCount = 0;
+            var gpuCount = 0;
+
             for (var y = 0; y < Grid.Height; y++)
             {
                 for (var x = 0; x < Grid.Width; x++)
                 {
+                    var index = (Grid.Height - 1 - y) * Grid.Width + x;
+
+                    if (_paintService.IsPainted(x, y)) stateCount++;
+                    if (_paintedPixels[index].a > 0) cpuCount++;
+                    if (_paintedTexture.GetPixel(x, Grid.Height - 1 - y).a > 0f) gpuCount++;
+
                     if (!IsMismatched(x, y)) continue;
 
                     var cell = new Vector2Int(x, y);
@@ -215,6 +309,14 @@ namespace JewelPainter.Gameplay.Board
             {
                 Debug.LogWarning($"[BoardAudit] {confirmed} ô lệch qua hai lượt quét, " +
                                  $"trên tổng {Grid.Width * Grid.Height} ô.", this);
+            }
+            else
+            {
+                // In cả khi sạch. Ba số bằng nhau mà mắt vẫn thấy ô thiếu màu thì kết luận
+                // đã chắc: DỮ LIỆU ĐÚNG, hỏng nằm ở khâu VẼ.
+                Debug.Log($"[BoardAudit] quét {Grid.Width}x{Grid.Height} ô, khớp hết. " +
+                          $"Đã tô: luật chơi {stateCount}, mảng CPU {cpuCount}, " +
+                          $"texture {gpuCount}.", this);
             }
 
             // Hoán đổi hai tập thay vì chép nội dung: tập cũ thành chỗ chứa cho lượt sau.
@@ -299,12 +401,10 @@ namespace JewelPainter.Gameplay.Board
             Colors = colors;
             Layout = new BoardLayout(grid.Width, grid.Height);
 
-            WarnOnLayerMisalignment();
-
             BuildPixels();
 
-            _unpaintedTexture = CreateTexture(grid.Width, grid.Height, _unpaintedPixels);
-            _paintedTexture = CreateTexture(grid.Width, grid.Height, _paintedPixels);
+            _unpaintedTexture = CreateTexture(grid.Width, grid.Height, _unpaintedPixels, _generateMipmaps);
+            _paintedTexture = CreateTexture(grid.Width, grid.Height, _paintedPixels, _generateMipmaps);
 
             _unpaintedSprite = CreateSprite(_unpaintedTexture, grid.Width, grid.Height);
             _paintedSprite = CreateSprite(_paintedTexture, grid.Width, grid.Height);
@@ -313,6 +413,10 @@ namespace JewelPainter.Gameplay.Board
             _paintedRenderer.sprite = _paintedSprite;
 
             PushCellCountToMaterial();
+
+            // Gọi SAU khi đã gán sprite: phép kiểm đo renderer.bounds, mà bounds chỉ có
+            // nghĩa khi renderer đã có sprite.
+            WarnOnLayerMisalignment();
 
             _isTextureDirty = false;
 
@@ -370,34 +474,50 @@ namespace JewelPainter.Gameplay.Board
             }
         }
 
-        /// Hai lớp texture phải nằm CHỒNG KHÍT lên nhau.
+        /// Mỗi lớp texture phải phủ ĐÚNG vùng world mà BoardLayout mô tả.
         ///
-        /// Chúng là hai SpriteRenderer riêng, dựng từ cùng một cách nên cùng kích thước
-        /// world. Nhưng nếu object con `Painted` bị lệch vị trí hoặc khác scale thì màu
-        /// đã tô vẽ trượt khỏi ô của nó: có ô hiện màu của hàng xóm, có ô trông như
-        /// không được tô, và mép ô nào cũng chỉ phủ một phần.
+        /// BoardLayout quy ước bảng căn giữa gốc toạ độ, mỗi ô rộng đúng một world unit —
+        /// và mọi lớp khác đều tin vào quy ước đó: ngọc, gợi ý, số, viền ô đều đặt mình
+        /// bằng CellToWorldCenter. Sprite của bảng chỉ khớp khi renderer nằm ở gốc với
+        /// scale 1.
         ///
-        /// Triệu chứng đó rất khó lần ra bằng mắt vì mọi thứ khác vẫn đúng — ngọc vẫn
-        /// hiện, số vẫn hiện, chỉ riêng lớp màu lệch đi. Nên báo thẳng ra Console.
+        /// So với TOẠ ĐỘ TUYỆT ĐỐI chứ không so hai lớp với nhau. Bản trước chỉ so tương
+        /// đối nên bỏ lọt đúng trường hợp hay gặp nhất: object CHA bị dời hoặc bị scale,
+        /// kéo cả hai lớp lệch đi cùng một lượng. Lúc đó hai lớp vẫn khít nhau hoàn hảo,
+        /// phép kiểm im lặng, mà màu thì trượt khỏi ô — mỗi ô chỉ được phủ một phần, phần
+        /// còn lại là màu của hàng xóm hoặc để trống.
+        ///
+        /// Triệu chứng rất khó lần bằng mắt vì mọi thứ khác vẫn đúng chỗ. Nên báo thẳng
+        /// ra Console, kèm số đo.
         private void WarnOnLayerMisalignment()
         {
-            if (_unpaintedRenderer == null || _paintedRenderer == null) return;
+            var expected = Layout.WorldBounds;
 
-            var a = _unpaintedRenderer.transform;
-            var b = _paintedRenderer.transform;
+            WarnIfBoundsWrong(_unpaintedRenderer, expected, "chưa tô");
+            WarnIfBoundsWrong(_paintedRenderer, expected, "đã tô");
+        }
 
-            var offset = b.position - a.position;
-            var scaleRatio = b.lossyScale - a.lossyScale;
+        private static void WarnIfBoundsWrong(SpriteRenderer renderer, Bounds expected, string label)
+        {
+            if (renderer == null || renderer.sprite == null) return;
 
-            // Bỏ qua sai lệch cỡ một phần nghìn ô — đó là sai số dấu phẩy động, không
-            // phải người ta đặt nhầm.
-            if (offset.sqrMagnitude < 0.0001f && scaleRatio.sqrMagnitude < 0.0001f) return;
+            var actual = renderer.bounds;
+
+            var offset = (Vector2)(actual.center - expected.center);
+            var sizeError = (Vector2)(actual.size - expected.size);
+
+            // Bỏ qua sai lệch cỡ một phần trăm ô — đó là sai số dấu phẩy động, không phải
+            // người ta đặt nhầm.
+            if (offset.sqrMagnitude < 0.0001f && sizeError.sqrMagnitude < 0.0001f) return;
 
             Debug.LogWarning(
-                $"Hai lớp bảng KHÔNG chồng khít: '{b.name}' lệch {offset} và chênh scale " +
-                $"{scaleRatio} so với '{a.name}'. Màu đã tô sẽ vẽ trượt khỏi ô của nó. " +
-                "Đặt Position của object lớp đã tô về (0, 0, 0) và Scale về (1, 1, 1).",
-                _paintedRenderer);
+                $"Lớp bảng '{label}' ({renderer.name}) KHÔNG trùng lưới ô: lệch tâm {offset}, " +
+                $"chênh kích thước {sizeError}. Bảng phải phủ đúng {expected.size.x} x " +
+                $"{expected.size.y} world unit và căn giữa gốc toạ độ.\n" +
+                "Kiểm theo thứ tự: Position của chính nó, rồi Position và Scale của MỌI " +
+                "object cha — một cái cha lệch thôi là cả hai lớp cùng trượt, và phép so " +
+                "hai lớp với nhau sẽ không phát hiện ra.",
+                renderer);
         }
 
         /// Đưa kích thước lưới sang shader BoardGloss, để nó biết một ô rộng bao nhiêu
@@ -433,16 +553,19 @@ namespace JewelPainter.Gameplay.Board
         /// Dùng chung một khối cho mọi lần gọi — cấp phát mới mỗi lần là rác không cần thiết.
         private static MaterialPropertyBlock _materialProperties;
 
-        private static Texture2D CreateTexture(int width, int height, Color32[] pixels)
+        /// Giữ lọc Point kể cả khi có mipmap: mipmap lo phần zoom XA, còn Point lo phần
+        /// zoom GẦN. Đổi sang Bilinear để chữa cái thứ nhất sẽ làm hỏng cái thứ hai —
+        /// ô mất cạnh sắc và nhoè sang nhau.
+        private static Texture2D CreateTexture(int width, int height, Color32[] pixels, bool mipChain)
         {
-            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, mipChain)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
             };
 
             texture.SetPixels32(pixels);
-            texture.Apply(false);
+            texture.Apply(mipChain);
 
             return texture;
         }
