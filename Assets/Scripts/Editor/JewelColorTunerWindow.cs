@@ -37,6 +37,10 @@ namespace JewelPainter.Editor
         /// script sinh ảnh. Lệch một trong ba là màu xem trước khác màu chạy game.
         private const float ParamSaturationMin = -1f;
         private const float ParamSaturationMax = 3f;
+
+        /// Mức pha trắng mà núm "Độ trắng mặt đỉnh" không đụng tới.
+        /// PHẢI KHỚP HIGHLIGHT_FLOOR trong JewelFacets.shader.
+        private const float HighlightFloor = 0.5f;
         private const string ConfigFolder = "Assets/Scriptables";
 
         // Tên property của shader JewelPainter/Jewel Facets. Đọc bằng HasProperty
@@ -46,6 +50,7 @@ namespace JewelPainter.Editor
         private const string ContrastProperty = "_Contrast";
         private const string BrightnessProperty = "_Brightness";
         private const string FacetStrengthProperty = "_FacetStrength";
+        private const string HighlightWhiteProperty = "_HighlightWhite";
         private const string ParamTexProperty = "_ParamTex";
 
         /// Prefab viên ngọc — cùng thứ gán vào JewelLayer và JewelFlyEffect.
@@ -81,6 +86,7 @@ namespace JewelPainter.Editor
         private Material _loadedMaterial;
 
         private float _facetStrength = 1f;
+        private float _highlightWhite = 1f;
         private LevelGridData _gridData;
         private JewelTintConfig _tintConfig;
 
@@ -283,6 +289,7 @@ namespace JewelPainter.Editor
             hash = hash * 397 ^ _jewel.Contrast.GetHashCode();
             hash = hash * 397 ^ _jewel.Brightness.GetHashCode();
             hash = hash * 397 ^ _facetStrength.GetHashCode();
+            hash = hash * 397 ^ _highlightWhite.GetHashCode();
 
             if (hash == _previewStateHash) return;
 
@@ -329,6 +336,10 @@ namespace JewelPainter.Editor
 
             _facetStrength = _jewelMaterial.HasProperty(FacetStrengthProperty)
                 ? _jewelMaterial.GetFloat(FacetStrengthProperty)
+                : 1f;
+
+            _highlightWhite = _jewelMaterial.HasProperty(HighlightWhiteProperty)
+                ? _jewelMaterial.GetFloat(HighlightWhiteProperty)
                 : 1f;
         }
 
@@ -390,6 +401,13 @@ namespace JewelPainter.Editor
                         "Hạ núm này làm nhạt CẢ VIỀN NGOÀI, nên dưới 0.5 thì viên ngọc " +
                         "mất đường bao và chìm vào ô sáng."),
                     _facetStrength, 0f, 1f);
+
+                _highlightWhite = EditorGUILayout.Slider(
+                    new GUIContent("Độ trắng mặt đỉnh", "Hạ riêng độ loé của mặt trên cùng, " +
+                        "mặt bàn giữ nguyên. 1 là đúng ảnh đã vẽ, 0 là đỉnh tụt xuống " +
+                        "ngang mặt bàn.\n\nHạ Độ đậm mặt cắt cũng bớt loé, nhưng nó kéo " +
+                        "phẳng cả viên; núm này chỉ ăn vào mấy mặt sáng nhất."),
+                    _highlightWhite, 0f, 1f);
             }
 
             EditorGUILayout.Space();
@@ -559,6 +577,26 @@ namespace JewelPainter.Editor
             DrawJewelBody(rect, _jewel.Apply(ground));
         }
 
+        /// Nhân độ đậm rồi hạ độ loé — bản C# của đúng đoạn trong JewelFacets.shader.
+        ///
+        /// Mọi mặt trong ảnh tham số đều là phép PHA THEO TỈ LỆ: pha về trắng một
+        /// lượng t thì (tương phản, sáng) = (-t, +t/2), pha về đen thì (-t, -t/2).
+        /// Nên dấu của độ sáng cho biết mặt này pha về đâu, còn -tương phản chính là
+        /// t. Nhờ vậy tách được riêng mấy mặt loé mà ảnh tham số không cần thêm kênh.
+        private ColorAdjustment TrimHighlight(ColorAdjustment facet)
+        {
+            var saturation = facet.Saturation * _facetStrength;
+            var contrast = facet.Contrast * _facetStrength;
+            var brightness = facet.Brightness * _facetStrength;
+
+            if (brightness <= 0.0001f) return new ColorAdjustment(saturation, contrast, brightness);
+
+            var t = -contrast;
+            var trimmed = t - Mathf.Max(0f, t - HighlightFloor) * (1f - _highlightWhite);
+
+            return new ColorAdjustment(saturation, -trimmed, 0.5f * trimmed);
+        }
+
         private Texture2D GetPreview(Color32 ground)
         {
             if (_facetParams == null) return null;
@@ -581,14 +619,13 @@ namespace JewelPainter.Editor
 
             for (var i = 0; i < pixels.Length; i++)
             {
-                var facet = _facetParams[i];
+                var facet = TrimHighlight(_facetParams[i]);
 
-                // Bộ số của mặt cắt nhân với độ đậm, rồi cộng bộ số chung — đúng thứ
-                // tự shader làm. _facetStrength = 0 thì chỉ còn bộ số chung.
+                // Bộ số của mặt cắt, rồi cộng bộ số chung — đúng thứ tự shader làm.
                 var combined = new ColorAdjustment(
-                    facet.Saturation * _facetStrength + _jewel.Saturation,
-                    facet.Contrast * _facetStrength + _jewel.Contrast,
-                    facet.Brightness * _facetStrength + _jewel.Brightness);
+                    facet.Saturation + _jewel.Saturation,
+                    facet.Contrast + _jewel.Contrast,
+                    facet.Brightness + _jewel.Brightness);
 
                 var color = combined.Apply(ground);
                 pixels[i] = new Color32(color.r, color.g, color.b, _facetAlpha[i]);
@@ -731,6 +768,11 @@ namespace JewelPainter.Editor
             if (_jewelMaterial.HasProperty(FacetStrengthProperty))
             {
                 _jewelMaterial.SetFloat(FacetStrengthProperty, _facetStrength);
+            }
+
+            if (_jewelMaterial.HasProperty(HighlightWhiteProperty))
+            {
+                _jewelMaterial.SetFloat(HighlightWhiteProperty, _highlightWhite);
             }
 
             EditorUtility.SetDirty(_jewelMaterial);

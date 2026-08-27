@@ -22,6 +22,7 @@ Shader "JewelPainter/Jewel Facets"
         [PerRendererData] _MainTex ("Hình bóng (Sprite)", 2D) = "white" {}
         [NoScaleOffset] _ParamTex ("Bản đồ mặt cắt (R rực, G tương phản, B sáng)", 2D) = "grey" {}
         _FacetStrength ("Độ đậm mặt cắt", Range(0, 1)) = 1
+        _HighlightWhite ("Độ trắng mặt đỉnh", Range(0, 1)) = 1
 
         [Header(Chinh chung cho ca vien ngoc)]
         _Saturation ("Độ rực", Range(-1, 1)) = 0
@@ -60,6 +61,14 @@ Shader "JewelPainter/Jewel Facets"
             // Thang mã hoá độ rực trong kênh R. Phải khớp S_MIN/S_MAX của script sinh ảnh.
             #define SAT_MIN -1.0
             #define SAT_MAX  3.0
+
+            // Mức pha trắng mà núm _HighlightWhite KHÔNG đụng tới.
+            //
+            // Mặt bàn pha trắng 0.445, mặt đỉnh 0.885. Đặt sàn ở giữa thì núm chỉ ăn
+            // vào phần vượt sàn, tức gần như chỉ ăn vào mặt đỉnh — hạ độ trắng của
+            // đỉnh mà mặt bàn giữ nguyên. Nhân đều cả hai thì viên ngọc phẳng đi chứ
+            // không phải bớt loé.
+            #define HIGHLIGHT_FLOOR 0.5
 
             struct appdata_t
             {
@@ -100,6 +109,7 @@ Shader "JewelPainter/Jewel Facets"
             sampler2D _MainTex;
             sampler2D _ParamTex;
             float _FacetStrength;
+            float _HighlightWhite;
             float _Saturation;
             float _Contrast;
             float _Brightness;
@@ -126,9 +136,26 @@ Shader "JewelPainter/Jewel Facets"
 
                 // Bộ số của mặt cắt, rồi cộng thêm bộ số chung của cả viên.
                 // _FacetStrength = 0 làm phần mặt cắt biến mất, còn lại đúng màu ô.
-                float s = lerp(SAT_MIN, SAT_MAX, p.r) * _FacetStrength + _Saturation;
-                float k = (p.g * 2.0 - 1.0) * _FacetStrength + _Contrast;
-                float b = (p.b - 0.5) * _FacetStrength + _Brightness;
+                float s = lerp(SAT_MIN, SAT_MAX, p.r) * _FacetStrength;
+                float k = (p.g * 2.0 - 1.0) * _FacetStrength;
+                float b = (p.b - 0.5) * _FacetStrength;
+
+                // Mọi mặt trong ảnh tham số đều là phép PHA THEO TỈ LỆ: pha về trắng
+                // một lượng t thì (k, b) = (-t, +t/2), pha về đen thì (-t, -t/2).
+                // Nên dấu của b cho biết mặt này đang pha về đâu, và -k chính là t.
+                // Nhờ vậy núm dưới đây tách được riêng mấy mặt loé mà không cần ảnh
+                // tham số mang thêm một kênh đánh dấu.
+                float towardWhite = step(0.0001, b);
+                float t = -k;
+                float trimmed = t - max(0.0, t - HIGHLIGHT_FLOOR) * (1.0 - _HighlightWhite);
+
+                k = lerp(k, -trimmed, towardWhite);
+                b = lerp(b, 0.5 * trimmed, towardWhite);
+
+                // Bộ số chung của cả viên, cộng sau cùng.
+                s += _Saturation;
+                k += _Contrast;
+                b += _Brightness;
 
                 float3 rgb = IN.color.rgb;
 
