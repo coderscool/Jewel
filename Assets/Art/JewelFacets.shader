@@ -23,6 +23,7 @@ Shader "JewelPainter/Jewel Facets"
         [NoScaleOffset] _ParamTex ("Bản đồ mặt cắt (R rực, G tương phản, B sáng)", 2D) = "grey" {}
         _FacetStrength ("Độ đậm mặt cắt", Range(0, 1)) = 1
         _HighlightWhite ("Độ trắng mặt đỉnh", Range(0, 1)) = 1
+        _Depth ("Tách khỏi nền", Range(0, 0.5)) = 0
 
         [Header(Chinh chung cho ca vien ngoc)]
         _Saturation ("Độ rực", Range(-1, 1)) = 0
@@ -110,6 +111,7 @@ Shader "JewelPainter/Jewel Facets"
             sampler2D _ParamTex;
             float _FacetStrength;
             float _HighlightWhite;
+            float _Depth;
             float _Saturation;
             float _Contrast;
             float _Brightness;
@@ -156,6 +158,18 @@ Shader "JewelPainter/Jewel Facets"
                 s += _Saturation;
                 k += _Contrast;
                 b += _Brightness;
+
+                // Tách khỏi nền: dìm CẢ VIÊN về phía đen một lượng tỉ lệ.
+                //
+                // Mặt bên trái/phải mang bộ số (0,0,0), tức đúng bằng màu ô — nên
+                // trên nền cùng màu chúng biến mất, viên ngọc chỉ còn nhận ra nhờ
+                // đường viền một pixel. Dìm cả viên thì mọi mặt lùi khỏi màu ô cùng
+                // một tỉ lệ, cấu trúc bên trong giữ nguyên.
+                //
+                // Gộp vào (k, b) chứ không nhân vào màu đầu ra: phép chỉnh vẫn là
+                // MỘT lần gọi, khỏi sinh thêm một bước mà bên C# phải chép lại.
+                k = (1.0 + k) * (1.0 - _Depth) - 1.0;
+                b = (0.5 + b) * (1.0 - _Depth) - 0.5;
 
                 float3 rgb = IN.color.rgb;
 

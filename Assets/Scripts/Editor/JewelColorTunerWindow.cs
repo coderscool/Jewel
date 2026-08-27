@@ -35,8 +35,14 @@ namespace JewelPainter.Editor
         /// Thang mã hoá độ rực trong kênh R của ảnh tham số.
         /// PHẢI KHỚP SAT_MIN/SAT_MAX trong JewelFacets.shader và S_MIN/S_MAX của
         /// script sinh ảnh. Lệch một trong ba là màu xem trước khác màu chạy game.
-        private const float ParamSaturationMin = -1f;
-        private const float ParamSaturationMax = 3f;
+        private const float ParamSaturationMin = JewelFacetMap.SaturationMin;
+        private const float ParamSaturationMax = JewelFacetMap.SaturationMax;
+
+        /// Số mẫu mỗi chiều trong một pixel lúc sinh ảnh. 4 dùng cho ảnh nướng ra file,
+        /// 2 cho ô xem trước — xem trước sinh lại mỗi lần kéo núm nên phải rẻ.
+        private const int BakeSupersample = 4;
+        private const int PreviewSupersample = 2;
+        private const int BakeResolution = 256;
 
         /// Mức pha trắng mà núm "Độ trắng mặt đỉnh" không đụng tới.
         /// PHẢI KHỚP HIGHLIGHT_FLOOR trong JewelFacets.shader.
@@ -51,6 +57,7 @@ namespace JewelPainter.Editor
         private const string BrightnessProperty = "_Brightness";
         private const string FacetStrengthProperty = "_FacetStrength";
         private const string HighlightWhiteProperty = "_HighlightWhite";
+        private const string DepthProperty = "_Depth";
         private const string ParamTexProperty = "_ParamTex";
 
         /// Prefab viên ngọc — cùng thứ gán vào JewelLayer và JewelFlyEffect.
@@ -87,6 +94,13 @@ namespace JewelPainter.Editor
 
         private float _facetStrength = 1f;
         private float _highlightWhite = 1f;
+        private float _depth;
+
+        /// Nguồn bộ số của từng mặt. Có asset này thì ô xem trước sinh thẳng từ nó,
+        /// khỏi đọc ảnh — kéo núm là thấy ngay. Không có thì đọc ảnh như trước.
+        private JewelFacetProfile _facetProfile;
+        private JewelFacetProfile _loadedProfile;
+        private bool _showFacets;
         private LevelGridData _gridData;
         private JewelTintConfig _tintConfig;
 
@@ -137,6 +151,9 @@ namespace JewelPainter.Editor
             }
 
             DrawSliderSection();
+            EditorGUILayout.Space();
+
+            DrawFacetSection();
             RefreshPreviewCache();
             EditorGUILayout.Space();
 
@@ -166,12 +183,21 @@ namespace JewelPainter.Editor
                 new GUIContent("Grid Data", "Lấy bảng màu thật của một màn. Để trống thì dùng bộ màu mẫu."),
                 _gridData, typeof(LevelGridData), false);
 
+            _facetProfile = (JewelFacetProfile)EditorGUILayout.ObjectField(
+                new GUIContent("Bộ số mặt cắt", "Asset chứa bộ số của từng mặt. Có nó thì " +
+                    "chỉnh được riêng chín mặt và nướng lại ảnh tham số."),
+                _facetProfile, typeof(JewelFacetProfile), false);
+
             _tintConfig = (JewelTintConfig)EditorGUILayout.ObjectField(
                 new GUIContent("Jewel Tint Config", "Asset chứa bộ số của viên ngọc, dùng chung cả game."),
                 _tintConfig, typeof(JewelTintConfig), false);
 
             SyncFromMaterial();
             SyncFromConfig();
+
+            // Gọi lại sau ô asset: ResolveFromPrefab chạy trước ô đó nên frame vừa kéo
+            // asset vào, nó chưa thấy. Hàm này tự bỏ qua khi không có gì đổi.
+            LoadParamMap();
 
             if (_jewelPrefab != null && _jewelMaterial == null)
             {
@@ -226,12 +252,53 @@ namespace JewelPainter.Editor
             LoadParamMap();
         }
 
+        /// Sinh mảng tham số thẳng từ asset bộ số, không qua ảnh.
+        private void RebuildFromProfile()
+        {
+            _loadedParamTexture = null;   // ép LoadParamMap chạy lại nếu gỡ asset ra
+            _loadedProfile = _facetProfile;
+            ClearPreviewCache();
+
+            if (_facetProfile == null)
+            {
+                _facetParams = null;
+                _facetAlpha = null;
+                return;
+            }
+
+            var pixels = JewelFacetMap.Build(_facetProfile, PreviewResolution, PreviewSupersample);
+
+            _facetParams = new ColorAdjustment[pixels.Length];
+            _facetAlpha = new byte[pixels.Length];
+
+            for (var i = 0; i < pixels.Length; i++)
+            {
+                _facetParams[i] = Decode(pixels[i]);
+                _facetAlpha[i] = pixels[i].a;
+            }
+        }
+
+        private static ColorAdjustment Decode(Color32 pixel)
+        {
+            return new ColorAdjustment(
+                Mathf.Lerp(ParamSaturationMin, ParamSaturationMax, pixel.r / 255f),
+                pixel.g / 255f * 2f - 1f,
+                pixel.b / 255f - 0.5f);
+        }
+
         /// Giải mã ảnh tham số từ file PNG vào mảng ColorAdjustment.
         private void LoadParamMap()
         {
+            if (_facetProfile != null)
+            {
+                if (_facetProfile != _loadedProfile) RebuildFromProfile();
+                return;
+            }
+
             if (_paramTexture == _loadedParamTexture) return;
 
             _loadedParamTexture = _paramTexture;
+            _loadedProfile = null;
             _facetParams = null;
             _facetAlpha = null;
             ClearPreviewCache();
@@ -270,11 +337,7 @@ namespace JewelPainter.Editor
                     var pixel = pixels[sourceY * width + sourceX];
                     var index = y * PreviewResolution + x;
 
-                    _facetParams[index] = new ColorAdjustment(
-                        Mathf.Lerp(ParamSaturationMin, ParamSaturationMax, pixel.r / 255f),
-                        pixel.g / 255f * 2f - 1f,
-                        pixel.b / 255f - 0.5f);
-
+                    _facetParams[index] = Decode(pixel);
                     _facetAlpha[index] = pixel.a;
                 }
             }
@@ -290,6 +353,7 @@ namespace JewelPainter.Editor
             hash = hash * 397 ^ _jewel.Brightness.GetHashCode();
             hash = hash * 397 ^ _facetStrength.GetHashCode();
             hash = hash * 397 ^ _highlightWhite.GetHashCode();
+            hash = hash * 397 ^ _depth.GetHashCode();
 
             if (hash == _previewStateHash) return;
 
@@ -341,6 +405,10 @@ namespace JewelPainter.Editor
             _highlightWhite = _jewelMaterial.HasProperty(HighlightWhiteProperty)
                 ? _jewelMaterial.GetFloat(HighlightWhiteProperty)
                 : 1f;
+
+            _depth = _jewelMaterial.HasProperty(DepthProperty)
+                ? _jewelMaterial.GetFloat(DepthProperty)
+                : 0f;
         }
 
         /// Nạp số từ asset vào núm, chỉ khi ô Config vừa đổi sang một asset khác.
@@ -408,6 +476,14 @@ namespace JewelPainter.Editor
                         "ngang mặt bàn.\n\nHạ Độ đậm mặt cắt cũng bớt loé, nhưng nó kéo " +
                         "phẳng cả viên; núm này chỉ ăn vào mấy mặt sáng nhất."),
                     _highlightWhite, 0f, 1f);
+
+                _depth = EditorGUILayout.Slider(
+                    new GUIContent("Tách khỏi nền", "Dìm CẢ VIÊN ngọc về phía đen một " +
+                        "lượng tỉ lệ.\n\nChỉ dùng khi muốn nguyên viên lùi khỏi màu ô. " +
+                        "Nếu chỉ có hai mặt bên tan vào nền thì đừng kéo núm này — kéo " +
+                        "riêng hai mặt đó ở mục Từng mặt cắt, kéo ở đây sẽ làm tối cả " +
+                        "mặt bàn lẫn mặt đỉnh theo."),
+                    _depth, 0f, 0.5f);
             }
 
             EditorGUILayout.Space();
@@ -513,6 +589,120 @@ namespace JewelPainter.Editor
             return true;
         }
 
+        /// Chín mặt cắt, cộng viền và khe.
+        private void DrawFacetSection()
+        {
+            _showFacets = EditorGUILayout.Foldout(_showFacets, "Từng mặt cắt", true, EditorStyles.foldoutHeader);
+            if (!_showFacets) return;
+
+            if (_facetProfile == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Chưa có asset bộ số mặt cắt. Ảnh tham số hiện tại là thứ đã nướng " +
+                    "chín, không đọc ngược ra bộ số được — phải tạo asset mới rồi nướng " +
+                    "lại thì mới chỉnh riêng từng mặt.", MessageType.Info);
+
+                if (GUILayout.Button("Tạo bộ số mặt cắt mới")) CreateFacetProfile();
+                return;
+            }
+
+            using (var change = new EditorGUI.ChangeCheckScope())
+            {
+                for (var i = 0; i < JewelFacetProfile.FacetCount; i++)
+                {
+                    EditorGUILayout.LabelField(JewelFacetProfile.FacetNames[i], EditorStyles.boldLabel);
+                    _facetProfile.SetFacet(i, DrawAdjustment(_facetProfile.GetFacet(i),
+                        "Cộng thẳng vào cả ba kênh của mặt này."));
+                }
+
+                EditorGUILayout.LabelField("Mặt bàn (giữa)", EditorStyles.boldLabel);
+                _facetProfile.Table = DrawAdjustment(_facetProfile.Table,
+                    "Cộng thẳng vào cả ba kênh của mặt bàn.");
+
+                EditorGUILayout.Space();
+
+                EditorGUILayout.LabelField("Khe giữa các mặt", EditorStyles.boldLabel);
+                _facetProfile.Seam = DrawAdjustment(_facetProfile.Seam,
+                    "Cộng thẳng vào cả ba kênh của khe.");
+
+                EditorGUILayout.LabelField("Viền ngoài", EditorStyles.boldLabel);
+                _facetProfile.Outline = DrawAdjustment(_facetProfile.Outline,
+                    "Cộng thẳng vào cả ba kênh của viền.");
+
+                if (change.changed)
+                {
+                    EditorUtility.SetDirty(_facetProfile);
+                    RebuildFromProfile();
+                }
+            }
+
+            EditorGUILayout.Space();
+
+            using (new EditorGUI.DisabledScope(_paramTexture == null))
+            {
+                if (GUILayout.Button("Nướng lại ảnh tham số")) BakeParamMap();
+            }
+
+            EditorGUILayout.HelpBox(
+                "Ô xem trước đang lấy số thẳng từ asset, còn GAME đọc ảnh đã nướng. " +
+                "Kéo núm xong mà không bấm nướng thì trong game không đổi gì.",
+                MessageType.Warning);
+        }
+
+        private void CreateFacetProfile()
+        {
+            var path = EditorUtility.SaveFilePanelInProject(
+                "Tạo bộ số mặt cắt", "JewelFacetProfile", "asset",
+                "Chọn chỗ lưu asset chứa bộ số của từng mặt.", ConfigFolder);
+
+            if (string.IsNullOrEmpty(path)) return;
+
+            var created = CreateInstance<JewelFacetProfile>();
+
+            AssetDatabase.CreateAsset(created, path);
+            AssetDatabase.SaveAssets();
+
+            _facetProfile = created;
+            _loadedProfile = created;
+
+            RebuildFromProfile();
+            EditorGUIUtility.PingObject(created);
+        }
+
+        /// Ghi ảnh 256x256 đè lên chính file mà material đang trỏ tới.
+        private void BakeParamMap()
+        {
+            var path = AssetDatabase.GetAssetPath(_paramTexture);
+
+            if (string.IsNullOrEmpty(path))
+            {
+                EditorUtility.DisplayDialog("Không nướng được",
+                    "Ảnh tham số của material không phải một file trong project.", "OK");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog("Ghi đè ảnh tham số",
+                    $"Ghi đè '{path}'?\n\nKhông hoàn tác được bằng Ctrl+Z.", "Ghi", "Huỷ"))
+            {
+                return;
+            }
+
+            var pixels = JewelFacetMap.Build(_facetProfile, BakeResolution, BakeSupersample);
+
+            var texture = new Texture2D(BakeResolution, BakeResolution, TextureFormat.RGBA32, false, true)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+            };
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+
+            File.WriteAllBytes(path, texture.EncodeToPNG());
+            DestroyImmediate(texture);
+
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        }
+
         private void DrawPreviewSection()
         {
             EditorGUILayout.LabelField("Xem trước", EditorStyles.boldLabel);
@@ -597,6 +787,20 @@ namespace JewelPainter.Editor
             return new ColorAdjustment(saturation, -trimmed, 0.5f * trimmed);
         }
 
+        /// Dìm cả viên về phía đen — bản C# của đúng đoạn trong JewelFacets.shader.
+        ///
+        /// Gộp vào (tương phản, sáng) chứ không nhân vào màu đầu ra, để phép chỉnh
+        /// vẫn là MỘT lần gọi ColorAdjustment.Apply.
+        private ColorAdjustment ApplyDepth(ColorAdjustment value)
+        {
+            if (_depth <= 0.0001f) return value;
+
+            return new ColorAdjustment(
+                value.Saturation,
+                (1f + value.Contrast) * (1f - _depth) - 1f,
+                (0.5f + value.Brightness) * (1f - _depth) - 0.5f);
+        }
+
         private Texture2D GetPreview(Color32 ground)
         {
             if (_facetParams == null) return null;
@@ -621,11 +825,12 @@ namespace JewelPainter.Editor
             {
                 var facet = TrimHighlight(_facetParams[i]);
 
-                // Bộ số của mặt cắt, rồi cộng bộ số chung — đúng thứ tự shader làm.
-                var combined = new ColorAdjustment(
+                // Bộ số của mặt cắt, rồi cộng bộ số chung, rồi dìm cả viên —
+                // đúng thứ tự shader làm.
+                var combined = ApplyDepth(new ColorAdjustment(
                     facet.Saturation + _jewel.Saturation,
                     facet.Contrast + _jewel.Contrast,
-                    facet.Brightness + _jewel.Brightness);
+                    facet.Brightness + _jewel.Brightness));
 
                 var color = combined.Apply(ground);
                 pixels[i] = new Color32(color.r, color.g, color.b, _facetAlpha[i]);
@@ -773,6 +978,11 @@ namespace JewelPainter.Editor
             if (_jewelMaterial.HasProperty(HighlightWhiteProperty))
             {
                 _jewelMaterial.SetFloat(HighlightWhiteProperty, _highlightWhite);
+            }
+
+            if (_jewelMaterial.HasProperty(DepthProperty))
+            {
+                _jewelMaterial.SetFloat(DepthProperty, _depth);
             }
 
             EditorUtility.SetDirty(_jewelMaterial);
