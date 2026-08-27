@@ -18,6 +18,13 @@ namespace JewelPainter.UI.Managers
         [SerializeField] private PopupConfig _config;
         [SerializeField] private Transform _root;
 
+        [Tooltip("Tấm nền mờ phía sau popup. Tự bật khi có popup nào đang mở mà popup đó " +
+                 "làm tối nền — nghĩa là mọi popup TRỪ lời nhắc.\n\n" +
+                 "Đặt nó làm con ĐẦU TIÊN của Root: popup sinh ra sau nên đứng sau nó " +
+                 "trong danh sách con, và UI vẽ theo đúng thứ tự đó.\n\n" +
+                 "Để trống thì bỏ qua, mọi thứ chạy như cũ.")]
+        [SerializeField] private GameObject _backdrop;
+
         private readonly Dictionary<PopupKey, PopupView> _prefabs = new();
         private readonly Dictionary<PopupKey, PopupView> _instances = new();
 
@@ -70,6 +77,29 @@ namespace JewelPainter.UI.Managers
             {
                 if (popup.IsVisible) popup.Hide();
             }
+        }
+
+        /// Đọc LẠI trạng thái thật mỗi frame thay vì đếm lượt bật/tắt.
+        ///
+        /// Popup tự đóng bằng nút đóng của chính nó — nó gọi thẳng PopupView.Hide chứ
+        /// không đi qua manager. Một bộ đếm ở đây sẽ không bao giờ nghe được cú đóng đó,
+        /// và tấm nền mờ kẹt lại trên màn hình. Vài popup thì vòng lặp này không đáng gì,
+        /// mà nó đúng trong mọi đường đóng — kể cả những đường thêm sau này.
+        private void LateUpdate()
+        {
+            if (_backdrop == null) return;
+
+            var needed = false;
+
+            foreach (var popup in _instances.Values)
+            {
+                if (!popup.IsVisible || !popup.DimsBackground) continue;
+
+                needed = true;
+                break;
+            }
+
+            if (_backdrop.activeSelf != needed) _backdrop.SetActive(needed);
         }
     }
 }

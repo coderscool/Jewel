@@ -16,6 +16,10 @@ namespace JewelPainter.Bootstrap
     /// Không ai using ngược vào Bootstrap.
     public class GameLifetimeScope : LifetimeScope
     {
+        /// Số lượt gợi ý miễn phí phát cho người chơi mới, đúng một lần trong đời máy.
+        /// Hết thì nút gợi ý chuyển sang mở popup mời thêm lượt.
+        private const int FreeHintCredits = 3;
+
         protected override void Configure(IContainerBuilder builder)
         {
             // Core — class thuần, container tự dựng
@@ -24,6 +28,12 @@ namespace JewelPainter.Bootstrap
             // Gameplay Domain — thuần C#, nhận ISaveService qua constructor
             builder.Register<PlayerProgress>(Lifetime.Singleton);
             builder.Register<PlayerWallet>(Lifetime.Singleton);
+
+            // Số lượt khởi đầu truyền thẳng ở đây chứ không để trong HintCredits: đây là
+            // con số cân bằng game, mà composition root mới là nơi mọi con số như thế
+            // gặp nhau. Domain chỉ biết đếm và ghi.
+            builder.Register(_ => new HintCredits(
+                _.Resolve<ISaveService>(), FreeHintCredits), Lifetime.Singleton);
 
             // MonoBehaviour có sẵn trong scene — Find một lần lúc khởi động, hợp lệ ở đây
             builder.RegisterComponentInHierarchy<SoundService>()

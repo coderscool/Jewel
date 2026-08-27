@@ -1,5 +1,6 @@
 using System;
 using JewelPainter.Gameplay.Board;
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 
@@ -14,6 +15,7 @@ namespace JewelPainter.Gameplay.Managers
         private IPaintService _paintService;
         private BoardCamera _boardCamera;
         private HintMarkerEffect _markerEffect;
+        private HintCredits _credits;
 
         /// Giá trị đã báo ra lần gần nhất. Giữ lại để chỉ bắn sự kiện khi thật sự đổi:
         /// OnCellPainted nổ liên tục suốt lúc kéo tay tô, mà nút thì chỉ đổi trạng thái
@@ -21,6 +23,10 @@ namespace JewelPainter.Gameplay.Managers
         private bool _lastAvailability;
 
         public event Action<bool> OnHintAvailabilityChanged;
+        public event Action<int> OnCreditsChanged;
+        public event Action OnCreditsExhausted;
+
+        public int RemainingCredits => _credits?.Remaining ?? 0;
 
         public bool CanUseHint
         {
@@ -36,11 +42,20 @@ namespace JewelPainter.Gameplay.Managers
             }
         }
 
-        public void Init(IPaintService paintService, BoardCamera boardCamera, HintMarkerEffect markerEffect)
+        public void Init(
+            IPaintService paintService,
+            BoardCamera boardCamera,
+            HintMarkerEffect markerEffect,
+            HintCredits credits)
         {
             _paintService = paintService;
             _boardCamera = boardCamera;
             _markerEffect = markerEffect;
+            _credits = credits;
+
+            // Chuyển tiếp sự kiện của kho lượt ra ngoài, để HudView chỉ phải biết một
+            // interface duy nhất là IHintService.
+            if (_credits != null) _credits.OnCreditsChanged += HandleCreditsChanged;
 
             _paintService.OnBoardReady += RefreshAvailability;
             _paintService.OnColorSelected += HandleColorSelected;
@@ -51,6 +66,8 @@ namespace JewelPainter.Gameplay.Managers
 
         private void OnDestroy()
         {
+            if (_credits != null) _credits.OnCreditsChanged -= HandleCreditsChanged;
+
             if (_paintService == null) return;
 
             _paintService.OnBoardReady -= RefreshAvailability;
@@ -69,6 +86,18 @@ namespace JewelPainter.Gameplay.Managers
             }
 
             if (!CanUseHint) return false;
+
+            // Trừ lượt TRƯỚC khi làm gì khác, và thoát ngay nếu hết.
+            //
+            // Đặt sau phép kiểm màu ở trên là có chủ ý: chưa chọn màu thì cú bấm đó không
+            // phải một lần dùng gợi ý, nó chỉ là một cú bấm nhầm — trừ lượt ở đó là ăn
+            // cắp của người chơi.
+            if (_credits != null && !_credits.TrySpend())
+            {
+                OnCreditsExhausted?.Invoke();
+                return false;
+            }
+
             if (_boardCamera == null)
             {
                 Debug.LogWarning($"{nameof(HintFocusController)} chưa có BoardCamera — " +
@@ -93,6 +122,8 @@ namespace JewelPainter.Gameplay.Managers
 
             return true;
         }
+
+        private void HandleCreditsChanged(int remaining) => OnCreditsChanged?.Invoke(remaining);
 
         private void HandleColorSelected(int paletteIndex) => RefreshAvailability();
 

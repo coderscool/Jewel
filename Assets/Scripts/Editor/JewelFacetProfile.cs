@@ -32,7 +32,11 @@ namespace JewelPainter.Editor
         [SerializeField] private ColorAdjustment[] _facets = DefaultFacets();
         [SerializeField] private ColorAdjustment _table = new ColorAdjustment(0.55f, -0.28f, 0.14f);
         [SerializeField] private ColorAdjustment _seam = new ColorAdjustment(0.55f, -0.38f, 0.19f);
-        [SerializeField] private ColorAdjustment _outline = new ColorAdjustment(-0.93f, -0.33f, -0.165f);
+        [SerializeField] private ColorAdjustment _outline = new ColorAdjustment(1f, -0.32f, -0.19f);
+
+        [Tooltip("Bề rộng viền, tính theo ảnh 256 pixel. Đổi số này phải nướng lại ảnh.")]
+        [Range(1f, 24f)]
+        [SerializeField] private float _outlineWidth = 12f;
 
         public ColorAdjustment Table
         {
@@ -50,6 +54,18 @@ namespace JewelPainter.Editor
         {
             get => _outline;
             set => _outline = value;
+        }
+
+        /// Viền cố ý mang RỰC CAO chứ không chỉ dìm tối: dìm không thôi cho ra một
+        /// vòng nâu đen, nhìn như bóng đổ dính vào chứ không như chính viên ngọc sẫm
+        /// lại ở mép. Đẩy rực lên thì ô cam ra viền cam sẫm, ô lục ra viền lục sẫm.
+        ///
+        /// Bề rộng viền theo thang ảnh 256 pixel. Bộ sinh ảnh tự quy về tỉ lệ khung,
+        /// nên đổi độ phân giải ảnh thì viền vẫn dày đúng bằng ngần ấy phần khung.
+        public float OutlineWidth
+        {
+            get => _outlineWidth;
+            set => _outlineWidth = value;
         }
 
         public ColorAdjustment GetFacet(int index)

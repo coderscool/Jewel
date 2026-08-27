@@ -28,7 +28,6 @@ namespace JewelPainter.Editor
         private const float Round = 0.055f;       // bo góc
 
         // Bề rộng NỬA của các nét, tính theo khung ảnh 1.0.
-        private const float OutlineHalf = 2.5f / 256f;
         private const float SeamHalf = 1f / 256f;
         private const float RimHalf = 1.5f / 256f;
 
@@ -44,6 +43,7 @@ namespace JewelPainter.Editor
 
             var outer = Offset(Corners, Half, Round);
             var inner = Offset(Corners, Half * TableScale, Round * TableScale);
+            var outlineHalf = profile.OutlineWidth * 0.5f / 256f;
 
             for (var y = 0; y < resolution; y++)
             {
@@ -59,7 +59,7 @@ namespace JewelPainter.Editor
                                 (x * samples + sx + 0.5f) * step - 0.5f,
                                 (y * samples + sy + 0.5f) * step - 0.5f);
 
-                            var facet = Sample(profile, outer, inner, point, out var inside);
+                            var facet = Sample(profile, outer, inner, outlineHalf, point, out var inside);
 
                             sumS += facet.Saturation;
                             sumK += facet.Contrast;
@@ -81,13 +81,14 @@ namespace JewelPainter.Editor
         /// bộ số vẫn trả về cả khi ở ngoài, để pixel ở rìa lấy trung bình không hút
         /// phải số 0 và sinh ra một vành sáng quanh viên ngọc.
         private static ColorAdjustment Sample(
-            JewelFacetProfile profile, Vector2[] outer, Vector2[] inner, Vector2 point, out bool inside)
+            JewelFacetProfile profile, Vector2[] outer, Vector2[] inner, float outlineHalf,
+            Vector2 point, out bool inside)
         {
             var toOuter = RoundedDistance(outer, point, Round);
             inside = toOuter <= 0f;
 
             // Viền ngoài: nằm trong dải quanh biên, và cả phần tràn ra ngoài.
-            if (toOuter > -OutlineHalf) return profile.Outline;
+            if (toOuter > -outlineHalf) return profile.Outline;
 
             // Ánh hắt ở mép dưới của mặt bàn. Dùng lại bộ số của mặt đỉnh: đây là cùng
             // một nguồn sáng hắt lên, hạ độ loé của đỉnh mà vệt này không hạ theo thì

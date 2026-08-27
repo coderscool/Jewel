@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
 using JewelPainter.UI.Components;
@@ -98,6 +99,10 @@ namespace JewelPainter.UI.Views
                  "đang đi tiếp trong danh sách.")]
         [SerializeField] private float _celebrateScrollSeconds = 0.6f;
 
+        [Header("Tiền")]
+        [Tooltip("Số tiền người chơi đang có. Để trống thì không hiện.")]
+        [SerializeField] private Text _coinsText;
+
         [Header("Nút")]
         [SerializeField] private Button _playButton;
         [SerializeField] private Text _playLevelText;
@@ -121,7 +126,11 @@ namespace JewelPainter.UI.Views
         private ILevelService _levelService;
         private IPopupService _popupService;
         private PaintProgressStore _progressStore;
+        private PlayerWallet _wallet;
         private RectTransform _currentItemRect;
+
+        /// Số tiền đang hiện trên màn. Chỉ đổi chữ khi giá trị thật sự khác.
+        private int _displayedCoins = -1;
 
         /// Màn vừa hoàn thành, chờ được ăn mừng ở lần dựng danh sách kế tiếp. -1 là không có.
         ///
@@ -138,11 +147,22 @@ namespace JewelPainter.UI.Views
         public void Init(
             ILevelService levelService,
             IPopupService popupService,
-            PaintProgressStore progressStore)
+            PaintProgressStore progressStore,
+            PlayerWallet wallet)
         {
             _levelService = levelService;
             _popupService = popupService;
             _progressStore = progressStore;
+            _wallet = wallet;
+
+            // Nghe sự kiện chứ không đọc lại mỗi lần mở Home: tiền cộng vào lúc thắng màn,
+            // mà popup thắng màn nằm đè lên Home — người chơi thấy con số nhảy ngay tại chỗ
+            // thay vì phải đóng ra mở lại mới thấy.
+            if (_wallet != null)
+            {
+                _wallet.OnCoinsChanged += SetCoins;
+                SetCoins(_wallet.Coins);
+            }
 
             if (_playButton != null) _playButton.onClick.AddListener(HandlePlayClicked);
             if (_collectionButton != null) _collectionButton.onClick.AddListener(HandleCollectionClicked);
@@ -158,6 +178,8 @@ namespace JewelPainter.UI.Views
             if (_playButton != null) _playButton.onClick.RemoveListener(HandlePlayClicked);
             if (_collectionButton != null) _collectionButton.onClick.RemoveListener(HandleCollectionClicked);
             if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
+
+            if (_wallet != null) _wallet.OnCoinsChanged -= SetCoins;
 
             ReleaseThumbnails();
         }
@@ -560,6 +582,17 @@ namespace JewelPainter.UI.Views
             }
 
             if (_playLevelText != null) _playLevelText.text = $"Level {levelId}";
+        }
+
+        /// Chỉ đổi chữ khi con số thật sự khác — đổi text là dựng lại lưới chữ, mà sự
+        /// kiện tiền có thể nổ nhiều lần liên tiếp lúc coin bay ở popup thắng màn.
+        private void SetCoins(int coins)
+        {
+            if (_coinsText == null) return;
+            if (coins == _displayedCoins) return;
+
+            _displayedCoins = coins;
+            _coinsText.text = coins.ToString();
         }
 
         private void HandlePlayClicked()

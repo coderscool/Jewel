@@ -21,6 +21,13 @@ namespace JewelPainter.UI.Views
         [Tooltip("Nút gợi ý. Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
         [SerializeField] private Button _hintButton;
 
+        [Tooltip("Số lượt gợi ý miễn phí còn lại. Để trống thì không hiện số.")]
+        [SerializeField] private TMP_Text _hintCreditsText;
+
+        [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — lúc đó nút chuyển sang mời " +
+                 "xem quảng cáo, mà một số 0 nằm cạnh lời mời chỉ gây nhiễu.")]
+        [SerializeField] private GameObject _hintCreditsBadge;
+
         [Tooltip("Nút bánh răng: mở popup Cài đặt. Đường về Home nằm TRONG popup đó.")]
         [FormerlySerializedAs("_collectionButton")]
         [FormerlySerializedAs("_homeButton")]
@@ -36,6 +43,7 @@ namespace JewelPainter.UI.Views
         private ILevelFlowService _levelFlow;
         private IPopupService _popupService;
         private int _displayedLevel = -1;
+        private int _displayedCredits = -1;
 
         public void Init(
             ILevelService levelService,
@@ -52,9 +60,17 @@ namespace JewelPainter.UI.Views
 
             _levelService.OnLevelStarted += HandleLevelStarted;
             _hintService.OnHintAvailabilityChanged += SetHintAvailable;
+            _hintService.OnCreditsChanged += SetHintCredits;
+
+            // Nghe thẳng, không qua presenter. Popup mở bằng SỰ KIỆN thì mới cần một
+            // object luôn sống làm cái tai — vì chính popup chưa tồn tại trước lần mở
+            // đầu tiên. Ở đây sự kiện là hệ quả trực tiếp của việc bấm cái nút mà HUD
+            // đang giữ, nên HUD đã là object luôn sống đó rồi.
+            _hintService.OnCreditsExhausted += HandleCreditsExhausted;
             _levelFlow.OnLevelCleared += HandleLevelCleared;
 
             SetLevel(_levelService.CurrentLevel);
+            SetHintCredits(_hintService.RemainingCredits);
 
             if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleSettingsClicked);
 
@@ -72,7 +88,13 @@ namespace JewelPainter.UI.Views
         private void OnDestroy()
         {
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
-            if (_hintService != null) _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
+            if (_hintService != null)
+            {
+                _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
+                _hintService.OnCreditsChanged -= SetHintCredits;
+                _hintService.OnCreditsExhausted -= HandleCreditsExhausted;
+            }
+
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
             if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
@@ -115,6 +137,20 @@ namespace JewelPainter.UI.Views
 
         /// Chưa chọn màu, hoặc màu đang chọn đã tô hết, thì nút xám đi — bấm vào không
         /// có gì xảy ra mà người chơi lại tưởng game đứng.
+        private void HandleCreditsExhausted() => _popupService.Show(PopupKey.HintMove);
+
+        /// Chỉ SetText khi con số thật sự đổi — cùng lý do đã ghi ở SetLevel.
+        private void SetHintCredits(int remaining)
+        {
+            if (_hintCreditsBadge != null) _hintCreditsBadge.SetActive(remaining > 0);
+
+            if (_hintCreditsText == null) return;
+            if (remaining == _displayedCredits) return;
+
+            _displayedCredits = remaining;
+            _hintCreditsText.SetText("{0}", remaining);
+        }
+
         private void SetHintAvailable(bool available)
         {
             if (_hintButton == null) return;

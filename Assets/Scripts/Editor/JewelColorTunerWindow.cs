@@ -58,6 +58,7 @@ namespace JewelPainter.Editor
         private const string FacetStrengthProperty = "_FacetStrength";
         private const string HighlightWhiteProperty = "_HighlightWhite";
         private const string DepthProperty = "_Depth";
+        private const string DarkLiftProperty = "_DarkLift";
         private const string ParamTexProperty = "_ParamTex";
 
         /// Prefab viên ngọc — cùng thứ gán vào JewelLayer và JewelFlyEffect.
@@ -95,6 +96,7 @@ namespace JewelPainter.Editor
         private float _facetStrength = 1f;
         private float _highlightWhite = 1f;
         private float _depth;
+        private float _darkLift = 0.35f;
 
         /// Nguồn bộ số của từng mặt. Có asset này thì ô xem trước sinh thẳng từ nó,
         /// khỏi đọc ảnh — kéo núm là thấy ngay. Không có thì đọc ảnh như trước.
@@ -354,6 +356,7 @@ namespace JewelPainter.Editor
             hash = hash * 397 ^ _facetStrength.GetHashCode();
             hash = hash * 397 ^ _highlightWhite.GetHashCode();
             hash = hash * 397 ^ _depth.GetHashCode();
+            hash = hash * 397 ^ _darkLift.GetHashCode();
 
             if (hash == _previewStateHash) return;
 
@@ -409,6 +412,10 @@ namespace JewelPainter.Editor
             _depth = _jewelMaterial.HasProperty(DepthProperty)
                 ? _jewelMaterial.GetFloat(DepthProperty)
                 : 0f;
+
+            _darkLift = _jewelMaterial.HasProperty(DarkLiftProperty)
+                ? _jewelMaterial.GetFloat(DarkLiftProperty)
+                : 0.35f;
         }
 
         /// Nạp số từ asset vào núm, chỉ khi ô Config vừa đổi sang một asset khác.
@@ -476,6 +483,15 @@ namespace JewelPainter.Editor
                         "ngang mặt bàn.\n\nHạ Độ đậm mặt cắt cũng bớt loé, nhưng nó kéo " +
                         "phẳng cả viên; núm này chỉ ăn vào mấy mặt sáng nhất."),
                     _highlightWhite, 0f, 1f);
+
+                _darkLift = EditorGUILayout.Slider(
+                    new GUIContent("Loé trên màu tối", "Phần pha trắng còn giữ lại khi ô " +
+                        "đen kịt.\n\nPha về trắng là một lượng cộng tuyệt đối: ô càng tối " +
+                        "thì lượng ấy càng át màu gốc, tới mức ô đen cho ra mặt bàn xám " +
+                        "sáng. Núm này nhân phần pha trắng theo độ sáng của ô — màu sáng " +
+                        "không suy suyển, màu tối chỉ loé nhẹ. Để 0 thì viên ngọc đen " +
+                        "phẳng lì, không còn mặt cắt nào."),
+                    _darkLift, 0f, 1f);
 
                 _depth = EditorGUILayout.Slider(
                     new GUIContent("Tách khỏi nền", "Dìm CẢ VIÊN ngọc về phía đen một " +
@@ -629,6 +645,12 @@ namespace JewelPainter.Editor
                 _facetProfile.Outline = DrawAdjustment(_facetProfile.Outline,
                     "Cộng thẳng vào cả ba kênh của viền.");
 
+                _facetProfile.OutlineWidth = EditorGUILayout.Slider(
+                    new GUIContent("Bề rộng viền", "Tính theo ảnh 256 pixel. Đây là HÌNH " +
+                        "chứ không phải màu, nên nó nằm trong ảnh tham số — đổi xong phải " +
+                        "nướng lại thì trong game mới thấy."),
+                    _facetProfile.OutlineWidth, 1f, 24f);
+
                 if (change.changed)
                 {
                     EditorUtility.SetDirty(_facetProfile);
@@ -773,7 +795,7 @@ namespace JewelPainter.Editor
         /// lượng t thì (tương phản, sáng) = (-t, +t/2), pha về đen thì (-t, -t/2).
         /// Nên dấu của độ sáng cho biết mặt này pha về đâu, còn -tương phản chính là
         /// t. Nhờ vậy tách được riêng mấy mặt loé mà ảnh tham số không cần thêm kênh.
-        private ColorAdjustment TrimHighlight(ColorAdjustment facet)
+        private ColorAdjustment TrimHighlight(ColorAdjustment facet, float value)
         {
             var saturation = facet.Saturation * _facetStrength;
             var contrast = facet.Contrast * _facetStrength;
@@ -782,9 +804,13 @@ namespace JewelPainter.Editor
             if (brightness <= 0.0001f) return new ColorAdjustment(saturation, contrast, brightness);
 
             var t = -contrast;
-            var trimmed = t - Mathf.Max(0f, t - HighlightFloor) * (1f - _highlightWhite);
 
-            return new ColorAdjustment(saturation, -trimmed, 0.5f * trimmed);
+            // Hạ riêng độ loé của mặt sáng nhất, rồi hạ phần pha trắng theo độ sáng
+            // của màu ô. Cùng hai bước với JewelFacets.shader, cùng thứ tự.
+            t -= Mathf.Max(0f, t - HighlightFloor) * (1f - _highlightWhite);
+            t *= Mathf.Lerp(_darkLift, 1f, value);
+
+            return new ColorAdjustment(saturation, -t, 0.5f * t);
         }
 
         /// Dìm cả viên về phía đen — bản C# của đúng đoạn trong JewelFacets.shader.
@@ -821,9 +847,12 @@ namespace JewelPainter.Editor
 
             var pixels = new Color32[_facetParams.Length];
 
+            // V trong HSV của màu ô — kênh lớn nhất. Giống max(rgb) trong shader.
+            var value = Mathf.Max(ground.r, Mathf.Max(ground.g, ground.b)) / 255f;
+
             for (var i = 0; i < pixels.Length; i++)
             {
-                var facet = TrimHighlight(_facetParams[i]);
+                var facet = TrimHighlight(_facetParams[i], value);
 
                 // Bộ số của mặt cắt, rồi cộng bộ số chung, rồi dìm cả viên —
                 // đúng thứ tự shader làm.
@@ -983,6 +1012,11 @@ namespace JewelPainter.Editor
             if (_jewelMaterial.HasProperty(DepthProperty))
             {
                 _jewelMaterial.SetFloat(DepthProperty, _depth);
+            }
+
+            if (_jewelMaterial.HasProperty(DarkLiftProperty))
+            {
+                _jewelMaterial.SetFloat(DarkLiftProperty, _darkLift);
             }
 
             EditorUtility.SetDirty(_jewelMaterial);

@@ -58,6 +58,11 @@ namespace JewelPainter.UI.Views
         private PlayerWallet _wallet;
         private HomeScreenView _home;
 
+        /// Popup thắng màn KHÔNG làm tối nền: cả màn ăn mừng nằm ở bức tranh phía sau —
+        /// dải lấp lánh quét qua, camera thu về giữa. Phủ một lớp tối lên đó là che mất
+        /// đúng phần thưởng mà popup này sinh ra để chúc mừng.
+        public override bool DimsBackground => false;
+
         private Sequence _showSequence;
         private Vector2 _bannerHomePosition;
         private bool _hasBannerHome;

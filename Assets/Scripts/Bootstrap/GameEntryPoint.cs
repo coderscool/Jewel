@@ -43,6 +43,8 @@ namespace JewelPainter.Bootstrap
         private readonly WinCelebration _winCelebration;
         private readonly ColorPaletteBar _paletteBar;
         private readonly HintFocusController _hintFocus;
+        private readonly HintCredits _hintCredits;
+        private readonly PlayerWallet _wallet;
         private readonly IPopupService _popupService;
         private readonly WinPopupPresenter _winPopupPresenter;
         private readonly NotificationPresenter _notificationPresenter;
@@ -75,6 +77,8 @@ namespace JewelPainter.Bootstrap
             WinCelebration winCelebration,
             ColorPaletteBar paletteBar,
             HintFocusController hintFocus,
+            HintCredits hintCredits,
+            PlayerWallet wallet,
             IPopupService popupService,
             WinPopupPresenter winPopupPresenter,
             NotificationPresenter notificationPresenter,
@@ -107,6 +111,8 @@ namespace JewelPainter.Bootstrap
             _winCelebration = winCelebration;
             _paletteBar = paletteBar;
             _hintFocus = hintFocus;
+            _hintCredits = hintCredits;
+            _wallet = wallet;
             _popupService = popupService;
             _winPopupPresenter = winPopupPresenter;
             _notificationPresenter = notificationPresenter;
@@ -140,7 +146,7 @@ namespace JewelPainter.Bootstrap
             // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
             // ngay trong Init của mình, nên nó phải xong trước HUD.
             _hintMarker.Init(_boardView);
-            _hintFocus.Init(_paintService, _boardCamera, _hintMarker);
+            _hintFocus.Init(_paintService, _boardCamera, _hintMarker, _hintCredits);
             _hud.Init(_levelService, _hintFocus, _levelFlow, _popupService, _home);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
@@ -165,7 +171,7 @@ namespace JewelPainter.Bootstrap
             _notificationPresenter.Init(_paintService, _popupService);
 
             // Home dựng sẵn nhưng không tự mở — nút Home trong popup Cài đặt mới mở nó.
-            _home.Init(_levelService, _popupService, _paintProgressStore);
+            _home.Init(_levelService, _popupService, _paintProgressStore, _wallet);
 
             // KHÔNG gọi LoadLevel thẳng ở đây. Màn hình chờ nhường một frame cho Canvas
             // kịp vẽ rồi mới nạp; gọi thẳng thì cả việc hiện màn chờ lẫn việc dựng bàn

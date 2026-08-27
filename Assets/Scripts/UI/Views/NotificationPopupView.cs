@@ -30,6 +30,11 @@ namespace JewelPainter.UI.Views
         /// Đang trong lượt mờ dần. Cần cờ này để Show biết mình vừa cắt ngang một cú tắt.
         private bool _isFadingOut;
 
+        /// Lời nhắc KHÔNG làm tối nền. Nó chỉ ghé qua vài giây rồi tự tắt, mà người chơi
+        /// vẫn đang tô dở — tối cả màn hình cho một câu nhắc là chặn tay họ giữa chừng
+        /// vì một thứ không đòi hỏi gì.
+        public override bool DimsBackground => false;
+
         public override void Show()
         {
             _isFadingOut = false;

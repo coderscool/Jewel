@@ -23,6 +23,7 @@ Shader "JewelPainter/Jewel Facets"
         [NoScaleOffset] _ParamTex ("Bản đồ mặt cắt (R rực, G tương phản, B sáng)", 2D) = "grey" {}
         _FacetStrength ("Độ đậm mặt cắt", Range(0, 1)) = 1
         _HighlightWhite ("Độ trắng mặt đỉnh", Range(0, 1)) = 1
+        _DarkLift ("Loé trên màu tối", Range(0, 1)) = 0.35
         _Depth ("Tách khỏi nền", Range(0, 0.5)) = 0
 
         [Header(Chinh chung cho ca vien ngoc)]
@@ -111,6 +112,7 @@ Shader "JewelPainter/Jewel Facets"
             sampler2D _ParamTex;
             float _FacetStrength;
             float _HighlightWhite;
+            float _DarkLift;
             float _Depth;
             float _Saturation;
             float _Contrast;
@@ -136,8 +138,17 @@ Shader "JewelPainter/Jewel Facets"
                 fixed silhouette = tex2D(_MainTex, IN.texcoord).a;
                 float3 p = tex2D(_ParamTex, IN.texcoord).rgb;
 
-                // Bộ số của mặt cắt, rồi cộng thêm bộ số chung của cả viên.
-                // _FacetStrength = 0 làm phần mặt cắt biến mất, còn lại đúng màu ô.
+                float3 rgb = IN.color.rgb;
+
+                // Đổi sang hệ gamma TRƯỚC mọi phép tính.
+                //
+                // Không phải tuỳ chọn thẩm mỹ: bộ số dò trên byte 0..255 của ảnh, tức
+                // hệ gamma. Project bật Linear color space thì Unity đã đổi màu sang
+                // linear trước khi tới đây, chạy thẳng công thức lên đó ra màu khác hẳn.
+                #ifndef UNITY_COLORSPACE_GAMMA
+                rgb = LinearToGammaSpace(rgb);
+                #endif
+
                 float s = lerp(SAT_MIN, SAT_MAX, p.r) * _FacetStrength;
                 float k = (p.g * 2.0 - 1.0) * _FacetStrength;
                 float b = (p.b - 0.5) * _FacetStrength;
@@ -145,14 +156,25 @@ Shader "JewelPainter/Jewel Facets"
                 // Mọi mặt trong ảnh tham số đều là phép PHA THEO TỈ LỆ: pha về trắng
                 // một lượng t thì (k, b) = (-t, +t/2), pha về đen thì (-t, -t/2).
                 // Nên dấu của b cho biết mặt này đang pha về đâu, và -k chính là t.
-                // Nhờ vậy núm dưới đây tách được riêng mấy mặt loé mà không cần ảnh
+                // Nhờ vậy hai đoạn dưới tách được riêng mấy mặt loé mà không cần ảnh
                 // tham số mang thêm một kênh đánh dấu.
                 float towardWhite = step(0.0001, b);
                 float t = -k;
-                float trimmed = t - max(0.0, t - HIGHLIGHT_FLOOR) * (1.0 - _HighlightWhite);
 
-                k = lerp(k, -trimmed, towardWhite);
-                b = lerp(b, 0.5 * trimmed, towardWhite);
+                // Hạ riêng độ loé của mặt sáng nhất, mặt bàn giữ nguyên.
+                t -= max(0.0, t - HIGHLIGHT_FLOOR) * (1.0 - _HighlightWhite);
+
+                // Rồi hạ phần pha trắng theo độ sáng của MÀU Ô.
+                //
+                // Pha về trắng là một lượng cộng tuyệt đối: ô càng tối thì lượng ấy
+                // càng át màu gốc, tới mức ô đen cho ra mặt bàn xám sáng. Nhân với
+                // độ sáng của ô thì màu sáng giữ nguyên (V = 1 nên hệ số bằng 1) còn
+                // màu tối chỉ loé nhẹ. _DarkLift là phần còn giữ lại khi ô đen kịt —
+                // để 0 thì viên ngọc đen phẳng lì không còn mặt cắt nào.
+                t *= lerp(_DarkLift, 1.0, max(rgb.r, max(rgb.g, rgb.b)));
+
+                k = lerp(k, -t, towardWhite);
+                b = lerp(b, 0.5 * t, towardWhite);
 
                 // Bộ số chung của cả viên, cộng sau cùng.
                 s += _Saturation;
@@ -161,26 +183,10 @@ Shader "JewelPainter/Jewel Facets"
 
                 // Tách khỏi nền: dìm CẢ VIÊN về phía đen một lượng tỉ lệ.
                 //
-                // Mặt bên trái/phải mang bộ số (0,0,0), tức đúng bằng màu ô — nên
-                // trên nền cùng màu chúng biến mất, viên ngọc chỉ còn nhận ra nhờ
-                // đường viền một pixel. Dìm cả viên thì mọi mặt lùi khỏi màu ô cùng
-                // một tỉ lệ, cấu trúc bên trong giữ nguyên.
-                //
                 // Gộp vào (k, b) chứ không nhân vào màu đầu ra: phép chỉnh vẫn là
                 // MỘT lần gọi, khỏi sinh thêm một bước mà bên C# phải chép lại.
                 k = (1.0 + k) * (1.0 - _Depth) - 1.0;
                 b = (0.5 + b) * (1.0 - _Depth) - 0.5;
-
-                float3 rgb = IN.color.rgb;
-
-                // Phép chỉnh làm trong hệ gamma.
-                //
-                // Không phải tuỳ chọn thẩm mỹ: bộ số dò trên byte 0..255 của ảnh, tức
-                // hệ gamma. Project bật Linear color space thì Unity đã đổi màu sang
-                // linear trước khi tới đây, chạy thẳng công thức lên đó ra màu khác hẳn.
-                #ifndef UNITY_COLORSPACE_GAMMA
-                rgb = LinearToGammaSpace(rgb);
-                #endif
 
                 rgb = AdjustColor(rgb, s, k, b);
 

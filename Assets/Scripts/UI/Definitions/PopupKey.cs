@@ -15,5 +15,8 @@ namespace JewelPainter.UI.Definitions
 
         /// Nhắc người chơi làm gì đó, ví dụ chưa chọn màu mà đã tô.
         Notification = 6,
+
+        /// Hết lượt gợi ý miễn phí. Mở khi người chơi bấm nút gợi ý mà không còn lượt.
+        HintMove = 7,
     }
 }
