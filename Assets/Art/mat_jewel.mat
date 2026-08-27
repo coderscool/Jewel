@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: BoardGloss
-  m_Shader: {fileID: 4800000, guid: b6d5949eb1e05eb4cbe696963d4355ca, type: 3}
+  m_Name: mat_jewel
+  m_Shader: {fileID: 4800000, guid: 8ca56dad0c586514190c9c16dc4a4dd5, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -27,6 +27,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _FacetTex:
+        m_Texture: {fileID: 2800000, guid: eb84d8eefb74d0a4ca537e8a4c58e827, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -39,48 +43,21 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _ParamTex:
+        m_Texture: {fileID: 2800000, guid: a4e968bb080ff854887dc5a7cfa65e0b, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BandAngle: 45
-    - _BandBoost: 0.6
-    - _BandCenter: 0.5
-    - _BandWidth: 0.55
-    - _BevelSharpness: 0
-    - _BevelStrength: 0
-    - _BevelWidth: 0.01
+    - PixelSnap: 0
+    - _Brightness: 0.012
+    - _Contrast: 0
     - _EnableExternalAlpha: 0
-    - _FaceCurve: 0
-    - _GlintStrength: 1
-    - _Gloss: 0
-    - _GlossRadius: 0.34
-    - _GlossSoftness: 0.5
-    - _GlossStrength: 0.45
-    - _LightAngle: 120
-    - _RimLight: 0.28
-    - _SeamDepth: 0.35
-    - _SeamWidth: 0.05
-    - _ShadeDepth: 1
-    - _ShadeStrength: 0.22
-    - _ShadowDepth: 0
-    - _SheenLength: 0.3
-    - _SheenSoftness: 0.2
-    - _SheenStrength: 0.4
-    - _SheenWidth: 0.12
-    - _SpecRadius: 0.187
-    - _SpecSharpness: 0.6
-    - _SpecStrength: 0
-    - _Vibrance: 0.22
+    - _FacetStrength: 1
+    - _Saturation: 0
     - _ZWrite: 0
     m_Colors:
-    - _CellCount: {r: 0, g: 0, b: 0, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
-    - _GlintColor: {r: 1, g: 1, b: 1, a: 1}
-    - _GlossCenter: {r: 0.3, g: 0.7, b: 0, a: 0}
-    - _GlossColor: {r: 1, g: 1, b: 1, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
-    - _SheenCenter: {r: 0.5, g: 0.68, b: 0, a: 0}
-    - _SheenColor: {r: 1, g: 1, b: 1, a: 1}
-    - _SpecCenter: {r: 0.3, g: 0.72, b: 0, a: 0}
-    - _SpecColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
