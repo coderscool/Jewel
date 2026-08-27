@@ -108,11 +108,16 @@ namespace JewelPainter.Gameplay.Board
 
             // pixelsPerUnit = _cellPixels để sprite vẫn rộng đúng grid.Width world unit,
             // khớp chồng khít lên bảng dù texture mịn hơn.
+            // FullRect, không để mặc định Tight. Tight dò alpha NGAY LÚC TẠO SPRITE rồi
+            // đóng băng mesh ở đó — mà texture này lúc tạo còn TRONG SUỐT HOÀN TOÀN, nên
+            // mesh không phủ gì cả và hoạ tiết đóng dấu sau đó có thể không bao giờ vẽ ra.
             _sprite = Sprite.Create(
                 _texture,
                 new Rect(0f, 0f, width, height),
                 new Vector2(0.5f, 0.5f),
-                _cellPixels);
+                _cellPixels,
+                0,
+                SpriteMeshType.FullRect);
 
             _renderer.sprite = _sprite;
         }

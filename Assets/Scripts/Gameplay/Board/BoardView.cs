@@ -114,6 +114,25 @@ namespace JewelPainter.Gameplay.Board
 
         private bool _isTextureDirty;
 
+        /// Những ô đã đổi kể từ lần upload gần nhất. Danh sách để duyệt, tập để một ô
+        /// không bị ghi hai lần khi cùng một frame có hai lần lộ màu trùng ô.
+        private readonly List<Vector2Int> _dirtyCells = new();
+        private readonly HashSet<Vector2Int> _dirtyCellLookup = new();
+
+        /// Đổi quá nhiều ô trong một frame thì quay về đẩy trọn texture — xem
+        /// FullUploadCellThreshold.
+        private bool _needsFullUpload;
+
+        /// Chỗ chứa tạm cho khối texel của MỘT ô. Cấp một lần lúc dựng bảng và cỡ đúng
+        /// bằng _texelsPerCell bình phương: SetPixels32 dạng vùng đòi mảng khớp đúng
+        /// blockWidth * blockHeight, nên cỡ cố định vừa đúng luật vừa không sinh rác.
+        private Color32[] _cellBlock;
+
+        /// Quá ngần này ô đổi trong một frame thì đẩy trọn texture rẻ hơn là gọi
+        /// SetPixels32 từng ô. Ngưỡng này chỉ chạm tới ở những cú lộ màu hàng loạt,
+        /// không phải lúc kéo tay tô.
+        private const int FullUploadCellThreshold = 192;
+
         /// Những ô vừa lộ màu, chờ được đối chiếu sau lần upload kế tiếp.
         private readonly List<Vector2Int> _revealedSinceUpload = new();
 
@@ -170,13 +189,7 @@ namespace JewelPainter.Gameplay.Board
             {
                 _isTextureDirty = false;
 
-                // Apply phải dựng LẠI mipmap, không thì mức thu nhỏ vẫn mang nội dung của
-                // lúc vào màn và ô vừa tô không hiện ra khi zoom xa.
-                _unpaintedTexture.SetPixels32(_unpaintedPixels);
-                _unpaintedTexture.Apply(_generateMipmaps);
-
-                _paintedTexture.SetPixels32(_paintedPixels);
-                _paintedTexture.Apply(_generateMipmaps);
+                UploadDirtyCells();
 
                 ApplyUploadMode();
 
@@ -206,9 +219,97 @@ namespace JewelPainter.Gameplay.Board
             // phải nhớ giữ chúng khớp nhau.
             WritePixel(_unpaintedPixels, cell.x, cell.y, Transparent);
 
-            _isTextureDirty = true;
+            MarkDirty(cell);
 
             if (_verifyReveals) _revealedSinceUpload.Add(cell);
+        }
+
+        /// Ghi sổ ô vừa đổi để lần upload kế tiếp biết cần đẩy đúng chỗ nào.
+        private void MarkDirty(Vector2Int cell)
+        {
+            _isTextureDirty = true;
+
+            if (_needsFullUpload) return;
+
+            if (_dirtyCells.Count >= FullUploadCellThreshold)
+            {
+                // Ngưng ghi sổ hẳn: danh sách dài hơn ngưỡng thì đằng nào cũng đẩy trọn
+                // texture, mà giữ tiếp là tốn thêm một phép tra bảng băm cho mỗi ô.
+                _needsFullUpload = true;
+                ClearDirtyCells();
+                return;
+            }
+
+            if (_dirtyCellLookup.Add(cell)) _dirtyCells.Add(cell);
+        }
+
+        /// Đẩy lên GPU đúng những ô vừa đổi, thay vì đẩy trọn hai texture.
+        ///
+        /// Bản trước gọi SetPixels32 không tham số — chép trọn mảng pixel rồi upload trọn
+        /// texture, MỖI FRAME có ô được tô. Bảng 72x72 với 4 texel mỗi ô là 82.944 texel,
+        /// nhân hai lớp thành chừng 660 KB chép và đẩy mỗi frame, chỉ để đổi vài ô. Chi phí
+        /// đó đi theo CỠ BẢNG chứ không theo số ô vừa tô — nên bảng càng lớn càng giật, và
+        /// đó là lý do viên ngọc bay khựng ở màn 72x72 mà màn nhỏ thì không.
+        ///
+        /// Kéo tay tô thì mỗi frame chỉ có vài ô, mỗi ô là một khối 4x4 texel: từ 660 KB
+        /// xuống còn vài trăm byte.
+        private void UploadDirtyCells()
+        {
+            if (_needsFullUpload || _cellBlock == null)
+            {
+                _unpaintedTexture.SetPixels32(_unpaintedPixels);
+                _paintedTexture.SetPixels32(_paintedPixels);
+            }
+            else
+            {
+                for (var i = 0; i < _dirtyCells.Count; i++)
+                {
+                    var cell = _dirtyCells[i];
+
+                    UploadCell(_unpaintedTexture, _unpaintedPixels, cell.x, cell.y);
+                    UploadCell(_paintedTexture, _paintedPixels, cell.x, cell.y);
+                }
+            }
+
+            // Apply MỘT lần cho mỗi lớp, sau khi đã ghi xong hết. Gọi trong vòng lặp thì
+            // mỗi ô thành một cú đẩy GPU riêng, và với mipmap là một lần dựng lại cả chuỗi
+            // mip — đắt hơn hẳn thứ vừa đi tránh.
+            //
+            // Apply vẫn phải dựng LẠI TOÀN BỘ mipmap: mip là ảnh thu nhỏ của cả texture
+            // nên không có khái niệm 'chỉ dựng lại một góc'. Vì vậy Generate Mipmaps giờ
+            // là ô đắt nhất còn lại — tắt nó thì Apply chỉ còn là cú đẩy vùng vừa ghi.
+            _unpaintedTexture.Apply(_generateMipmaps);
+            _paintedTexture.Apply(_generateMipmaps);
+
+            _needsFullUpload = false;
+            ClearDirtyCells();
+        }
+
+        /// Rút khối texel của một ô ra khỏi mảng pixel của cả bảng rồi đẩy đúng khối đó.
+        private void UploadCell(Texture2D texture, Color32[] pixels, int x, int y)
+        {
+            var origin = TexelIndexOf(x, y);
+            var width = TextureWidth;
+
+            for (var row = 0; row < _texelsPerCell; row++)
+            {
+                Array.Copy(pixels, origin + row * width, _cellBlock, row * _texelsPerCell, _texelsPerCell);
+            }
+
+            // Toạ độ texel của GÓC DƯỚI TRÁI khối. PixelGrid có y = 0 ở trên, Texture2D
+            // có y = 0 ở dưới, nên hàng phải lật lại.
+            texture.SetPixels32(
+                x * _texelsPerCell,
+                (Grid.Height - 1 - y) * _texelsPerCell,
+                _texelsPerCell,
+                _texelsPerCell,
+                _cellBlock);
+        }
+
+        private void ClearDirtyCells()
+        {
+            _dirtyCells.Clear();
+            _dirtyCellLookup.Clear();
         }
 
         /// Hai nấc chẩn đoán bổ sung sau mỗi lần upload. Normal thì không làm gì.
@@ -447,6 +548,10 @@ namespace JewelPainter.Gameplay.Board
             _unpaintedPixels = new Color32[count];
             _paintedPixels = new Color32[count];
 
+            // Cấp lại theo _texelsPerCell hiện tại: ô đó đổi được trong Inspector, và mảng
+            // sai cỡ sẽ làm SetPixels32 dạng vùng ném lỗi ngay ô đầu tiên.
+            _cellBlock = new Color32[_texelsPerCell * _texelsPerCell];
+
             var reportedOutOfRange = false;
 
             for (var y = 0; y < Grid.Height; y++)
@@ -560,13 +665,31 @@ namespace JewelPainter.Gameplay.Board
         /// pixelsPerUnit = số texel mỗi ô, nên bảng vẫn rộng đúng Width x Height world
         /// unit dù texture mịn hơn. BoardLayout và mọi lớp khác không phải biết gì về
         /// chuyện độ mịn đã đổi.
+        ///
+        /// FullRect là BẮT BUỘC, không phải tuỳ chọn tối ưu.
+        ///
+        /// Sprite.Create mặc định SpriteMeshType.Tight: Unity dò alpha của texture NGAY LÚC
+        /// TẠO SPRITE rồi sinh một đa giác ôm sát vùng đục, và mesh đó ĐÓNG BĂNG ở đó. Lớp
+        /// đã tô lúc vào màn hoặc trống trơn, hoặc chỉ đục ở đúng những ô của phiên trước —
+        /// nên mesh chỉ phủ chừng ấy. Ô tô sau đó nằm ngoài mesh thì dù pixel đã ghi đúng và
+        /// đã upload lên GPU, KHÔNG CÓ TAM GIÁC NÀO để vẽ nó ra.
+        ///
+        /// Đây chính là 'tô rồi mà không lên màu, vào lại màn thì đúng': vào lại màn dựng
+        /// sprite mới, và mesh mới ôm đúng vùng đã tô tính tới lúc đó. Cùng lý do mà nấc
+        /// Recreate Texture che được lỗi — nó dựng lại sprite sau MỖI lần tô.
+        ///
+        /// FullRect luôn là hai tam giác phủ trọn khung, nên vùng vẽ không còn phụ thuộc
+        /// nội dung texture. Rẻ hơn Tight, và renderer.bounds cũng trở lại đúng bằng
+        /// WorldBounds — phép kiểm WarnOnLayerMisalignment mới có nghĩa.
         private Sprite CreateSprite(Texture2D texture)
         {
             return Sprite.Create(
                 texture,
                 new Rect(0f, 0f, texture.width, texture.height),
                 new Vector2(0.5f, 0.5f),
-                _texelsPerCell);
+                _texelsPerCell,
+                0,
+                SpriteMeshType.FullRect);
         }
 
         /// Bề rộng texture tính bằng texel.
@@ -628,6 +751,8 @@ namespace JewelPainter.Gameplay.Board
             _isTextureDirty = false;
 
             // Toạ độ của lưới cũ không còn nghĩa gì với lưới mới.
+            _needsFullUpload = false;
+            ClearDirtyCells();
             _revealedSinceUpload.Clear();
             _previousMismatches.Clear();
             _currentMismatches.Clear();

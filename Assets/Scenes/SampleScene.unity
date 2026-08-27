@@ -5008,10 +5008,10 @@ MonoBehaviour:
   _paintedRenderer: {fileID: 178997523}
   _grayscale: 1
   _texelsPerCell: 4
-  _generateMipmaps: 1
-  _uploadMode: 2
-  _verifyReveals: 1
-  _auditIntervalSeconds: 2
+  _generateMipmaps: 0
+  _uploadMode: 0
+  _verifyReveals: 0
+  _auditIntervalSeconds: 0
 --- !u!212 &2005522618
 SpriteRenderer:
   m_ObjectHideFlags: 0

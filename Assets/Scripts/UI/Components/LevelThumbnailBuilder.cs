@@ -78,11 +78,15 @@ namespace JewelPainter.UI.Components
             texture.SetPixels32(pixels);
             texture.Apply(false);
 
+            // FullRect để ảnh nhỏ luôn phủ trọn khung. Mesh Tight ôm sát vùng đục, nên
+            // tranh có viền trong suốt sẽ bị Image kéo giãn phần ruột cho vừa khung.
             return Sprite.Create(
                 texture,
                 new Rect(0f, 0f, grid.Width, grid.Height),
                 new Vector2(0.5f, 0.5f),
-                1f);
+                1f,
+                0,
+                SpriteMeshType.FullRect);
         }
 
         /// Cùng cách gói bit với PaintState.ToPaintedBits: chỉ số ô chạy theo hàng,

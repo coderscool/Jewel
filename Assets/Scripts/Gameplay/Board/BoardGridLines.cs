@@ -81,11 +81,15 @@ namespace JewelPainter.Gameplay.Board
 
             // pixelsPerUnit = cellPixels để sprite rộng đúng grid.Width world unit,
             // chồng khít lên bảng dù texture mịn hơn.
+            // FullRect: mesh Tight sinh từ đám đường kẻ mảnh này là một đa giác cả nghìn
+            // đỉnh, tốn lúc tạo mà bounds lại co về ôm sát nét vẽ thay vì phủ đúng bảng.
             _sprite = Sprite.Create(
                 _texture,
                 new Rect(0f, 0f, width, height),
                 new Vector2(0.5f, 0.5f),
-                cellPixels);
+                cellPixels,
+                0,
+                SpriteMeshType.FullRect);
 
             _renderer.sprite = _sprite;
         }
