@@ -346,15 +346,22 @@ namespace JewelPainter.UI.Views
             yield return ScrollToCurrentRoutine(_celebrateScrollSeconds);
         }
 
-        /// Màn đã xong thì vẽ tô kín mà không cần bản lưu: bản lưu của nó bị xoá ngay
-        /// lúc nó xong, và "đã xong" thì theo định nghĩa là mọi ô đều đã tô.
+        /// Hỏi BẢN LƯU trước, chỉ khi không có mới suy từ "màn này đã xong".
+        ///
+        /// Thứ tự đó quan trọng từ khi có nút Tô lại: bản lưu giờ tồn tại được cho cả một
+        /// màn đã xong, vì nút đó ghi một bản rỗng để mở lại lượt chơi. Cứ thấy "đã xong"
+        /// là vẽ tô kín thì ảnh nhỏ ở Home khoe một bức tranh hoàn chỉnh trong khi bảng
+        /// thật đang trắng trơn.
+        ///
+        /// Không có bản lưu thì "đã xong" theo định nghĩa là mọi ô đều đã tô — bản lưu của
+        /// nó bị xoá ngay lúc nó xong vì đó là dữ liệu thừa.
         private Sprite BuildThumbnail(
             Gameplay.Data.LevelGridData gridData, int levelId, bool isUnlocked, bool isCurrent)
         {
             if (!isUnlocked || gridData == null) return null;
 
-            var paintAll = !isCurrent;
-            var bits = isCurrent && _progressStore != null ? _progressStore.LoadBits(levelId) : null;
+            var bits = _progressStore != null ? _progressStore.LoadBits(levelId) : null;
+            var paintAll = bits == null && !isCurrent;
 
             var sprite = LevelThumbnailBuilder.Build(gridData, bits, paintAll, levelId);
             if (sprite != null) _thumbnails.Add(sprite);

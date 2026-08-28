@@ -57,5 +57,20 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Bên phát hiện gọi. Im lặng bỏ qua nếu thật ra đang có màu được chọn, nên bên
         /// gọi không cần tự kiểm tra trước.
         void RequireColor();
+
+        /// Đã tô được ít nhất một ô ở màn đang chơi — cũng chính là điều kiện để nút
+        /// Tô lại có việc để làm. false khi chưa nạp lưới.
+        ///
+        /// Không dùng !IsUntouched: hai câu đó trùng nhau hôm nay, nhưng IsUntouched là
+        /// câu hỏi của phần hướng dẫn người chơi mới, còn đây là câu hỏi của một cái nút.
+        /// Gộp lại thì sau này đổi luật cho bên này sẽ lặng lẽ đổi luôn bên kia.
+        bool CanReset { get; }
+
+        /// Xoá sạch tiến độ tô của màn đang chơi rồi nạp lại màn đó từ đầu.
+        ///
+        /// Đi qua đúng luồng nạp màn thật, không tự dọn bảng: mọi lớp hiển thị đều dựng
+        /// lại theo OnLevelStarted, nên tự xoá tay sẽ bỏ sót đúng những lớp mà người viết
+        /// quên mất là có.
+        void ResetCurrentLevel();
     }
 }

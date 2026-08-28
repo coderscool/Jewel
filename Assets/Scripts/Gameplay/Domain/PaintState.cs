@@ -100,6 +100,30 @@ namespace JewelPainter.Gameplay.Domain
             return true;
         }
 
+        /// Đánh dấu MỌI ô có màu là đã tô.
+        ///
+        /// Dùng khi mở lại một màn đã ghi nhận hoàn thành: bức tranh phải hiện ra nguyên
+        /// vẹn. Trạng thái đó suy thẳng từ TIẾN TRÌNH chứ không cần bản lưu nào — màn đã
+        /// xong thì theo định nghĩa là mọi ô đều đã tô, không có gì để mà lưu.
+        ///
+        /// Đi qua chính mảng _painted rồi đếm lại, thay vì đặt tay _remainingTotal = 0:
+        /// ô RỖNG không được đánh dấu đã tô, và RecountRemaining là nơi duy nhất giữ luật
+        /// đó. Đặt tay là dựng ra một trạng thái mà không cách nào tô tay ra được.
+        public void PaintAll()
+        {
+            for (var y = 0; y < _grid.Height; y++)
+            {
+                for (var x = 0; x < _grid.Width; x++)
+                {
+                    if (_grid.GetCell(x, y) == PixelGrid.EmptyCell) continue;
+
+                    _painted[Index(x, y)] = true;
+                }
+            }
+
+            RecountRemaining();
+        }
+
         /// Đếm lại từ đầu sau khi nạp: _remaining giảm dần theo từng nước tô nên không
         /// suy ngược ra được từ mảng _painted, phải quét lưới một lượt.
         private void RecountRemaining()

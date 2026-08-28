@@ -51,7 +51,16 @@ namespace JewelPainter.Gameplay.Managers
 
         /// PaintManager gọi ngay sau khi dựng PaintState mới, TRƯỚC khi bắn OnBoardReady.
         /// Nhờ vậy thanh màu và bảng đều đọc được con số đã khôi phục ngay từ đầu.
-        public void Restore(int levelId, PaintState state)
+        ///
+        /// TRẢ VỀ có nạp được bản lưu nào không — và con số đó mang nhiều nghĩa hơn nó
+        /// trông thấy. CÓ bản lưu nghĩa là "màn này đang có một lượt chơi dang dở", kể cả
+        /// khi lượt đó mới tô 0 ô. KHÔNG có bản lưu nghĩa là "chưa từng chạm vào, hoặc đã
+        /// chơi xong rồi" — và PaintManager dựa đúng vào đó để quyết định có tô kín lại
+        /// bức tranh của một màn đã hoàn thành hay không.
+        ///
+        /// Vì vậy nút Tô lại ghi một bản lưu RỖNG chứ không xoá key: xoá key là nói
+        /// "chưa từng chơi lại", và màn đã xong sẽ hiện ra tô kín y như cũ.
+        public bool Restore(int levelId, PaintState state)
         {
             Flush();
 
@@ -60,10 +69,10 @@ namespace JewelPainter.Gameplay.Managers
             _isDirty = false;
             _sinceLastSave = 0f;
 
-            if (_save == null || state == null) return;
+            if (_save == null || state == null) return false;
 
             var encoded = _save.GetString(KeyFor(levelId));
-            if (string.IsNullOrEmpty(encoded)) return;
+            if (string.IsNullOrEmpty(encoded)) return false;
 
             byte[] bytes;
 
@@ -76,35 +85,44 @@ namespace JewelPainter.Gameplay.Managers
                 // Chuỗi hỏng thì bỏ, đừng để một ký tự lỗi làm game không vào được màn.
                 Debug.LogWarning($"Bản lưu tiến độ tô của màn {levelId} bị hỏng — bỏ qua.");
                 _save.DeleteKey(KeyFor(levelId));
-                return;
+                return false;
             }
 
-            if (state.RestorePaintedBits(bytes)) return;
+            if (state.RestorePaintedBits(bytes)) return true;
 
             Debug.LogWarning($"Bản lưu tiến độ tô của màn {levelId} không khớp cỡ lưới " +
                              "(lưới đã được sinh lại?) — bỏ qua và xoá.");
             _save.DeleteKey(KeyFor(levelId));
+            return false;
         }
 
         /// PaintManager gọi mỗi lần một ô được tô.
         public void MarkDirty() => _isDirty = true;
 
-        /// Xoá bản lưu ô đã tô của màn ĐANG chơi. Bên gọi nạp lại màn để thấy bảng trống.
+        /// Đưa tiến độ tô của màn ĐANG chơi về 0 ô. Bên gọi nạp lại màn để thấy kết quả.
         ///
-        /// Chỉ công cụ dev gọi. Không tự nạp lại màn ở đây: kho tiến độ không có việc gì
-        /// phải biết tới luồng nạp màn, và trộn hai thứ đó vào một hàm là thêm một lý do
-        /// nữa để sau này ai đó gọi nhầm.
+        /// GHI một bản lưu toàn bit 0, KHÔNG xoá key — đây là chỗ dễ làm sai nhất của cả
+        /// file này. Xoá key là nói "màn này chưa từng có lượt chơi nào", mà với một màn
+        /// ĐÃ HOÀN THÀNH thì PaintManager hiểu câu đó là "hiện lại bức tranh đã xong" và
+        /// tô kín bảng ngay lần nạp sau. Nút Tô lại sẽ không làm được gì cả.
         ///
-        /// Hạ cờ bẩn TRƯỚC khi xoá là phần bắt buộc: lần Restore kế tiếp mở đầu bằng
-        /// Flush, mà Flush còn thấy cờ bẩn thì nó ghi lại đúng cái vừa xoá xong.
-        public void ClearCurrent()
+        /// Một bản lưu rỗng nói đúng thứ cần nói: có một lượt chơi đang mở, và nó mới tô
+        /// được 0 ô.
+        ///
+        /// Không tự nạp lại màn ở đây: kho tiến độ không có việc gì phải biết tới luồng
+        /// nạp màn, và trộn hai thứ đó vào một hàm là thêm một lý do nữa để sau này ai đó
+        /// gọi nhầm.
+        ///
+        /// Hạ cờ bẩn TRƯỚC khi ghi là phần bắt buộc: lần Restore kế tiếp mở đầu bằng
+        /// Flush, mà Flush còn thấy cờ bẩn thì nó ghi đè lại đúng bảng vừa xoá xong.
+        public void ResetCurrent()
         {
-            if (_save == null || _levelId < 0) return;
+            if (_save == null || _state == null || _levelId < 0) return;
 
             _isDirty = false;
             _sinceLastSave = 0f;
 
-            _save.DeleteKey(KeyFor(_levelId));
+            _save.SetString(KeyFor(_levelId), Convert.ToBase64String(new byte[_state.PaintedBitsLength]));
             _save.Save();
         }
 

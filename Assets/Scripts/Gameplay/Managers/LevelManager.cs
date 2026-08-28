@@ -85,8 +85,15 @@ namespace JewelPainter.Gameplay.Managers
             var finishedLevel = _progress.Level;
 
             _progress.Advance();
-            OnLevelCompleted?.Invoke(finishedLevel);
+
+            MarkLevelFinished(finishedLevel);
         }
+
+        /// Chỉ bắn tín hiệu "màn này đã tô xong", không đụng tới tiến trình.
+        ///
+        /// CompleteCurrentLevel đi qua đây thay vì tự bắn: hai đường phải phát ra CÙNG
+        /// một sự kiện, không thì người nghe chỉ dọn dẹp được cho một nửa số lượt chơi.
+        public void MarkLevelFinished(int levelId) => OnLevelCompleted?.Invoke(levelId);
 
         private LevelConfig FindConfig(int levelId)
         {

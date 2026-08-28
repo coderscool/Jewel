@@ -16,7 +16,7 @@ MonoBehaviour:
   _targetImage: {fileID: 21300000, guid: 2a5720de82e0b9d468370a91449f812e, type: 3}
   _gridData: {fileID: 11400000, guid: 8d25a79bd03290445ab14f8b5f39e7e4, type: 2}
   _timeLimitSeconds: 0
-  _rewardCoins: 10
+  _rewardCoins: 50
   _cameraMinSize: 9
-  _cameraMaxSize: 60
-  _fadeSwitchSize: 48
+  _cameraMaxSize: 68
+  _fadeSwitchSize: 56

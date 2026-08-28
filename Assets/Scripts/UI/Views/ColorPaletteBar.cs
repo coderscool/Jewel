@@ -10,6 +10,11 @@ namespace JewelPainter.UI.Views
     /// kèm số ô còn lại của mỗi màu.
     ///
     /// Nằm trên Canvas nên không bị zoom và kéo theo bảng.
+    ///
+    /// Tự ẩn khi thắng màn và hiện lại khi màn mới dựng xong — cùng khuôn với HudView, và
+    /// cùng lý do: popup thắng màn phải đứng một mình trên bức tranh vừa hoàn thành. Thanh
+    /// màu ở lại thì nó vừa che mất mép dưới bức tranh, vừa mời người chơi bấm vào những
+    /// ô màu đã không còn ô nào để tô.
     public class ColorPaletteBar : MonoBehaviour, IPaintOriginProvider
     {
         [SerializeField] private ColorSwatchView _swatchPrefab;
@@ -25,23 +30,37 @@ namespace JewelPainter.UI.Views
                  "thì vào màn sau nó vẫn nằm nguyên chỗ đó, dù danh sách màu đã khác hẳn.")]
         [SerializeField] private ScrollRect _scrollRect;
 
+        [Tooltip("Object bị ẩn khi thắng màn — kéo cả CANVAS của thanh màu vào đây " +
+                 "(Canvas-Palette), không phải object mang script này.\n\n" +
+                 "Script này sống trên Content bên trong Scroll Rect. Ẩn chính nó thì " +
+                 "Scroll Rect mất phần nội dung mà vẫn còn khung, và cái khung rỗng đó " +
+                 "vẫn nằm đè lên mép dưới bức tranh.\n\n" +
+                 "Để trống thì ẩn chính object này — vẫn chạy, chỉ là xấu.")]
+        [SerializeField] private GameObject _content;
+
         private readonly List<ColorSwatchView> _swatches = new();
 
         private IPaintService _paintService;
         private ILevelService _levelService;
+        private ILevelFlowService _levelFlow;
 
-        public void Init(IPaintService paintService, ILevelService levelService)
+        public void Init(IPaintService paintService, ILevelService levelService, ILevelFlowService levelFlow)
         {
             _paintService = paintService;
             _levelService = levelService;
+            _levelFlow = levelFlow;
 
             _paintService.OnBoardReady += HandleBoardReady;
             _paintService.OnCellPainted += HandleCellPainted;
             _paintService.OnColorSelected += HandleColorSelected;
+
+            if (_levelFlow != null) _levelFlow.OnLevelCleared += HandleLevelCleared;
         }
 
         private void OnDestroy()
         {
+            if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
+
             if (_paintService == null) return;
 
             _paintService.OnBoardReady -= HandleBoardReady;
@@ -49,8 +68,33 @@ namespace JewelPainter.UI.Views
             _paintService.OnColorSelected -= HandleColorSelected;
         }
 
+        private void HandleLevelCleared() => SetVisible(false);
+
+        /// Ẩn bằng SetActive chứ không đổi alpha: thanh tắt hẳn thì các ô màu cũng không
+        /// còn nhận được cú chạm nào, khỏi phải nhớ khoá riêng từng ô.
+        ///
+        /// Ẩn một object CHA vẫn an toàn dù script nằm bên trong nó: sự kiện C# giữ tham
+        /// chiếu tới instance, nên handler vẫn chạy khi GameObject đang tắt — đó chính là
+        /// cách thanh màu tự bật lại được ở màn sau.
+        private void SetVisible(bool visible)
+        {
+            var target = _content != null ? _content : gameObject;
+
+            if (target.activeSelf != visible) target.SetActive(visible);
+        }
+
         private void HandleBoardReady()
         {
+            // Bật lại TRƯỚC mọi thứ khác, không phải ở cuối hàm. RelayoutBar bỏ qua khi
+            // isActiveAndEnabled là false, nên còn tắt ở dòng này là màn kế tiếp mở ra với
+            // thanh màu nằm nguyên chỗ cuộn của màn trước — và vì nó vẫn dựng đủ ô nên
+            // nhìn qua chẳng có gì sai để mà lần.
+            //
+            // Màn mở ra đã tô kín sẵn thì không bật: đó là lượt XEM LẠI bức tranh đã xong,
+            // mọi màu đều hết ô nên thanh sẽ hiện ra như một dải trống nằm đè lên mép dưới
+            // tranh. Bấm nút Tô lại là bảng trắng trở lại và thanh hiện ngay ở lượt nạp sau.
+            SetVisible(!_paintService.IsComplete);
+
             HideAll();
 
             if (_swatchPrefab == null)

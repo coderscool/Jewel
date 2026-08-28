@@ -175,7 +175,7 @@ namespace JewelPainter.Bootstrap.Cheat
         /// Xoá tiến độ tô của màn đang chơi rồi nạp lại — bảng trở về trắng tinh.
         public void ClearSave()
         {
-            _paintStore?.ClearCurrent();
+            _paintStore?.ResetCurrent();
 
             ReloadCurrent();
         }

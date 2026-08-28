@@ -45,6 +45,7 @@ namespace JewelPainter.Bootstrap
         private readonly HintFocusController _hintFocus;
         private readonly HintCredits _hintCredits;
         private readonly PlayerWallet _wallet;
+        private readonly TutorialState _tutorialState;
         private readonly IPopupService _popupService;
         private readonly WinPopupPresenter _winPopupPresenter;
         private readonly NotificationPresenter _notificationPresenter;
@@ -79,6 +80,7 @@ namespace JewelPainter.Bootstrap
             HintFocusController hintFocus,
             HintCredits hintCredits,
             PlayerWallet wallet,
+            TutorialState tutorialState,
             IPopupService popupService,
             WinPopupPresenter winPopupPresenter,
             NotificationPresenter notificationPresenter,
@@ -113,6 +115,7 @@ namespace JewelPainter.Bootstrap
             _hintFocus = hintFocus;
             _hintCredits = hintCredits;
             _wallet = wallet;
+            _tutorialState = tutorialState;
             _popupService = popupService;
             _winPopupPresenter = winPopupPresenter;
             _notificationPresenter = notificationPresenter;
@@ -147,14 +150,14 @@ namespace JewelPainter.Bootstrap
             // ngay trong Init của mình, nên nó phải xong trước HUD.
             _hintMarker.Init(_boardView);
             _hintFocus.Init(_paintService, _boardCamera, _hintMarker, _hintCredits);
-            _hud.Init(_levelService, _hintFocus, _levelFlow, _popupService, _home);
+            _hud.Init(_levelService, _paintService, _hintFocus, _levelFlow, _popupService, _home);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
-            _paletteBar.Init(_paintService, _levelService);
+            _paletteBar.Init(_paintService, _levelService, _levelFlow);
 
             // Hướng dẫn Init SAU PaletteBar: cả hai nghe OnBoardReady, mà ngón tay chỉ
             // biết đứng ở đâu sau khi thanh màu đã dựng xong các ô.
-            _tutorial.Init(_levelService, _paintService, _paletteBar);
+            _tutorial.Init(_levelService, _paintService, _paletteBar, _tutorialState);
 
             // JewelFlyEffect quyết định lúc nào một ô coi như "xong": nó đổi màu ô,
             // gỡ marker gợi ý và cho hiện ngọc. Hai lớp dưới đều chờ tín hiệu của nó.

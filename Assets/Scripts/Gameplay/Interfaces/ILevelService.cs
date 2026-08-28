@@ -50,5 +50,13 @@ namespace JewelPainter.Gameplay.Interfaces
 
         void LoadLevel(int levelId);
         void CompleteCurrentLevel();
+
+        /// Ghi nhận một màn đã TÔ XONG mà KHÔNG nhích tiến trình.
+        ///
+        /// Dành cho lượt chơi lại một màn cũ. Tiến trình chỉ đi tới nên không được nhích,
+        /// nhưng mọi việc dọn dẹp theo màn thì vẫn phải chạy — trước hết là xoá bản lưu ô
+        /// đã tô. Không xoá thì lần vào sau bảng hiện ra đã tô kín sẵn, và không còn gì
+        /// để chơi lại.
+        void MarkLevelFinished(int levelId);
     }
 }

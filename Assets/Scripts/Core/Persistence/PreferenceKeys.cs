@@ -15,6 +15,10 @@ namespace JewelPainter.Core.Persistence
         /// Số lượt gợi ý miễn phí còn lại.
         public const string HintCredits = "hint_credits";
 
+        /// Người chơi đã từng tô được ô nào chưa. Hướng dẫn ngón tay đọc cờ này để chỉ
+        /// hiện đúng một lần trong đời máy.
+        public const string HasPaintedOnce = "has_painted_once";
+
         /// Đã phát lượt khởi đầu chưa. Tách khỏi con số ở trên vì "còn 0 lượt" và "chưa
         /// bao giờ được phát" là hai trạng thái khác nhau, mà cả hai đều đọc ra số 0.
         public const string HintCreditsGranted = "hint_credits_granted";

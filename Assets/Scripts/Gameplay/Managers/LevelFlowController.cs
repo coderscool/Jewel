@@ -129,6 +129,21 @@ namespace JewelPainter.Gameplay.Managers
             // handler này chạy. Thứ tự đó được cắm ở GameEntryPoint.
             if (_paintService == null || !_paintService.IsComplete) return;
 
+            // Màn ĐÃ ĐƯỢC GHI NHẬN rồi thì bảng tô kín chỉ có nghĩa là "đã từng chơi xong",
+            // không phải "vừa thắng mà chưa kịp nhận". Chơi lại một màn cũ không được mở
+            // popup thắng.
+            //
+            // Đây mới là câu hỏi đúng, và lưới an toàn bên dưới lúc viết ra đã hỏi nhầm.
+            // Hồi đó tiến trình chỉ nhích khi người chơi BẤM nút trong popup, nên "bảng
+            // kín mà tiến trình chưa nhích" đúng là cảnh kẹt. Từ khi BeginClear nhích ngay
+            // lúc phát hiện tô xong, cảnh đó chỉ còn xảy ra ở lượt CHƠI LẠI — tức lưới an
+            // toàn chỉ còn bắt đúng những lượt nó không nên bắt.
+            //
+            // Bảng tô kín ở đây là CỐ Ý: PaintManager gọi PaintAll cho mọi màn đã ghi nhận,
+            // để người chơi mở lại xem bức tranh mình đã tô. Không phải dữ liệu hỏng, và
+            // không có gì để dọn.
+            if (_levelService.IsCompleted(levelId)) return;
+
             // KHÔNG chạy WinCelebration: dải quét và cú thu camera là phần thưởng cho
             // khoảnh khắc vừa đặt viên ngọc cuối. Chiếu lại ở một phiên khác thì nó chỉ
             // còn là quãng chờ.
@@ -156,7 +171,14 @@ namespace JewelPainter.Gameplay.Managers
             // Home cho chọn chơi lại màn cũ, mà tiến trình chỉ đi tới. Không có phép so
             // này thì tô xong màn 2 lúc đang ở màn 5 sẽ đẩy tiến trình lên màn 6 — người
             // chơi được thưởng hai màn cho một lần chơi, và mất luôn màn 5 chưa đụng tới.
+            //
+            // Nhánh else báo "đã tô xong" mà không nhích tiến trình. Hôm nay nó gần như
+            // không chạy: màn đã ghi nhận thì mở ra là tô kín sẵn, không còn ô nào để tô
+            // nên cũng không có cú đáp nào dẫn tới đây. Giữ lại vì nó là nửa còn thiếu của
+            // phép so ngay trên — thêm chế độ chơi lại thật vào là nó có việc ngay, và
+            // thiếu nó thì bản lưu của lượt chơi lại nằm lại vĩnh viễn.
             if (ClearedLevel == _levelService.CurrentLevel) AdvanceProgress();
+            else _levelService.MarkLevelFinished(ClearedLevel);
 
             // Ăn mừng chạy NGAY, còn popup đếm giờ song song. Hai thứ độc lập nhau về
             // thời gian: đổi thời lượng dải quét không kéo theo lúc popup hiện, và

@@ -28,6 +28,7 @@ namespace JewelPainter.Bootstrap
             // Gameplay Domain — thuần C#, nhận ISaveService qua constructor
             builder.Register<PlayerProgress>(Lifetime.Singleton);
             builder.Register<PlayerWallet>(Lifetime.Singleton);
+            builder.Register<TutorialState>(Lifetime.Singleton);
 
             // Số lượt khởi đầu truyền thẳng ở đây chứ không để trong HintCredits: đây là
             // con số cân bằng game, mà composition root mới là nơi mọi con số như thế

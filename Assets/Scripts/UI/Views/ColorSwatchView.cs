@@ -47,6 +47,32 @@ namespace JewelPainter.UI.Views
                  "Chỉ nhô mà không to thì ô được chọn dễ bị đọc nhầm là ô bị lệch hàng.")]
         [SerializeField] private float _selectedScale = 1.25f;
 
+        [Header("Bóng đổ — để trống cũng chạy")]
+        [Tooltip("Vệt bóng mờ dưới chân viên đá.\n\n" +
+                 "PHẢI đặt NGOÀI Rise Target (con trực tiếp của ColorSwatch, nằm TRÊN CÙNG " +
+                 "trong danh sách con để vẽ sau lưng mọi thứ). Đặt trong Rise Target thì " +
+                 "bóng nhô lên theo viên đá — mà bóng dính chặt vào vật thì mắt đọc ra là " +
+                 "cả hai cùng nằm phẳng, và toàn bộ cảm giác 'được nhấc lên' biến mất.\n\n" +
+                 "Kiểu Graphic chứ không phải Image: sau này đổi sang RawImage hay một " +
+                 "graphic tự viết đều không phải sửa lại chỗ này.")]
+        [SerializeField] private Graphic _shadow;
+
+        [Tooltip("Cỡ bóng khi ô ĐƯỢC CHỌN, so với cỡ lúc thường. Lớn hơn 1 vì vật nhấc " +
+                 "cao thì bóng loang rộng ra.")]
+        [SerializeField] private float _selectedShadowScale = 1.4f;
+
+        [Tooltip("Độ đục của bóng khi KHÔNG được chọn.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _shadowAlpha = 0.35f;
+
+        [Tooltip("Độ đục của bóng khi ĐƯỢC CHỌN. Đặt NHẠT HƠN ô trên, đừng đậm hơn.\n\n" +
+                 "Đây là chỗ ai cũng đặt ngược lúc đầu: được chọn thì muốn nổi bật nên " +
+                 "tăng độ đục lên. Nhưng vật càng nhấc cao thì bóng càng LOANG RỘNG và " +
+                 "càng NHẠT — rộng ra mà lại đậm thêm thì mắt đọc ra là viên đá bị ấn " +
+                 "xuống chứ không phải nhấc lên.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _selectedShadowAlpha = 0.22f;
+
         private Action<int> _onClicked;
         private int _displayedRemaining = -1;
         private float _displayedProgress = -1f;
@@ -54,6 +80,10 @@ namespace JewelPainter.UI.Views
         private Vector2 _riseBasePosition;
         private Vector3 _riseBaseScale;
         private bool _hasRiseBase;
+
+        private RectTransform _shadowRect;
+        private Vector3 _shadowBaseScale;
+        private bool _hasShadowBase;
 
         public int PaletteIndex { get; private set; } = -1;
 
@@ -136,6 +166,36 @@ namespace JewelPainter.UI.Views
             if (_progressRing != null) _progressRing.enabled = selected;
 
             ApplyRise(selected);
+            ApplyShadow(selected);
+        }
+
+        /// Bóng loang rộng ra và nhạt đi khi viên đá được nhấc lên.
+        ///
+        /// Hai thứ phải đi CÙNG NHAU mới ra được cảm giác cao thấp. Chỉ phóng to bóng thì
+        /// nhìn như viên đá to ra tại chỗ; chỉ làm nhạt thì như bóng sắp tắt. Rộng cộng
+        /// nhạt mới là thứ mắt đọc thành 'nó đang lơ lửng'.
+        private void ApplyShadow(bool selected)
+        {
+            if (_shadow == null) return;
+
+            // Ghi lại cỡ gốc ở lần gọi ĐẦU TIÊN, cùng lý do đã ghi ở ApplyRise: lúc Awake
+            // layout chưa chạy, và prefab vốn có thể không ở cỡ 1.
+            if (!_hasShadowBase)
+            {
+                _shadowRect = (RectTransform)_shadow.transform;
+                _shadowBaseScale = _shadowRect.localScale;
+                _hasShadowBase = true;
+            }
+
+            _shadowRect.localScale = selected
+                ? _shadowBaseScale * Mathf.Max(0.01f, _selectedShadowScale)
+                : _shadowBaseScale;
+
+            // Chỉ đụng alpha, giữ nguyên RGB: màu bóng do prefab đặt, và đó là thứ designer
+            // chỉnh. Ghi đè cả màu ở đây là lấy mất quyền đó mà không nói một tiếng.
+            var color = _shadow.color;
+            color.a = selected ? _selectedShadowAlpha : _shadowAlpha;
+            _shadow.color = color;
         }
 
         private void ApplyRise(bool selected)

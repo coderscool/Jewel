@@ -28,6 +28,13 @@ namespace JewelPainter.UI.Views
                  "xem quảng cáo, mà một số 0 nằm cạnh lời mời chỉ gây nhiễu.")]
         [SerializeField] private GameObject _hintCreditsBadge;
 
+        [Tooltip("Nút Tô lại: xoá sạch tiến độ tô của màn đang chơi rồi nạp lại từ đầu.\n\n" +
+                 "Tự xám đi khi chưa tô ô nào — bấm vào lúc đó không có gì xảy ra, mà nút " +
+                 "bấm được nhưng không làm gì là lời nói dối nhỏ người chơi phải mất một " +
+                 "lúc mới nhận ra.\n\n" +
+                 "Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
+        [SerializeField] private Button _resetButton;
+
         [Tooltip("Nút bánh răng: mở popup Cài đặt. Đường về Home nằm TRONG popup đó.")]
         [FormerlySerializedAs("_collectionButton")]
         [FormerlySerializedAs("_homeButton")]
@@ -39,6 +46,7 @@ namespace JewelPainter.UI.Views
         private HomeScreenView _home;
 
         private ILevelService _levelService;
+        private IPaintService _paintService;
         private IHintService _hintService;
         private ILevelFlowService _levelFlow;
         private IPopupService _popupService;
@@ -47,18 +55,21 @@ namespace JewelPainter.UI.Views
 
         public void Init(
             ILevelService levelService,
+            IPaintService paintService,
             IHintService hintService,
             ILevelFlowService levelFlow,
             IPopupService popupService,
             HomeScreenView home)
         {
             _levelService = levelService;
+            _paintService = paintService;
             _hintService = hintService;
             _levelFlow = levelFlow;
             _popupService = popupService;
             _home = home;
 
             _levelService.OnLevelStarted += HandleLevelStarted;
+            _paintService.OnCellPainted += HandleCellPainted;
             _hintService.OnHintAvailabilityChanged += SetHintAvailable;
             _hintService.OnCreditsChanged += SetHintCredits;
 
@@ -74,6 +85,10 @@ namespace JewelPainter.UI.Views
 
             if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleSettingsClicked);
 
+            if (_resetButton != null) _resetButton.onClick.AddListener(HandleResetClicked);
+
+            RefreshResetAvailable();
+
             // Ẩn cho tới khi có màn được nạp. Lúc mới vào game màn hình chờ đang che,
             // mà HUD thì chưa có gì để hiện ngoài chữ "Level 0".
             SetVisible(false);
@@ -88,6 +103,7 @@ namespace JewelPainter.UI.Views
         private void OnDestroy()
         {
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
+            if (_paintService != null) _paintService.OnCellPainted -= HandleCellPainted;
             if (_hintService != null)
             {
                 _hintService.OnHintAvailabilityChanged -= SetHintAvailable;
@@ -98,13 +114,20 @@ namespace JewelPainter.UI.Views
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
             if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
+            if (_resetButton != null) _resetButton.onClick.RemoveListener(HandleResetClicked);
         }
 
         private void HandleLevelStarted(int levelId)
         {
             SetVisible(true);
             SetLevel(levelId);
+
+            RefreshResetAvailable();
         }
+
+        /// Ô đầu tiên được tô là lúc nút Tô lại có việc để làm. Nghe từng ô nghe thì phí,
+        /// nhưng thân hàm chỉ là một phép gán mà Unity tự bỏ qua khi giá trị không đổi.
+        private void HandleCellPainted(Vector2Int cell, int paletteIndex) => RefreshResetAvailable();
 
         private void HandleLevelCleared() => SetVisible(false);
 
@@ -123,6 +146,19 @@ namespace JewelPainter.UI.Views
         }
 
         private void HandleHintClicked() => _hintService.UseHint();
+
+        /// Xoá tiến độ tô của màn đang chơi rồi nạp lại. Gameplay lo phần còn lại — HUD
+        /// không biết bản lưu nằm ở đâu, cũng không biết bảng được dựng lại thế nào.
+        private void HandleResetClicked() => _paintService.ResetCurrentLevel();
+
+        private void RefreshResetAvailable()
+        {
+            if (_resetButton == null || _paintService == null) return;
+
+            // Selectable.interactable tự bỏ qua khi giá trị không đổi, nên gán thẳng mỗi
+            // lần là đủ — không cần nhớ giá trị cũ ở đây.
+            _resetButton.interactable = _paintService.CanReset;
+        }
 
         private void HandleHomeClicked()
         {

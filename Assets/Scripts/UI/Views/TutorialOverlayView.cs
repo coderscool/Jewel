@@ -1,5 +1,6 @@
 using System.Collections;
 using DG.Tweening;
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 
@@ -8,9 +9,14 @@ namespace JewelPainter.UI.Views
     /// Hướng dẫn cho người chơi mới: một ngón tay chỉ vào ô màu đầu tiên trên thanh chọn,
     /// kèm một bảng nhắc.
     ///
-    /// Hiện khi vào màn hướng dẫn mà CHƯA TÔ ô nào, tắt ngay khi người chơi chọn màu đầu
-    /// tiên. Không lưu cờ "đã xem" — điều kiện đọc thẳng từ trạng thái tô, nên chỉ cần
-    /// xoá tiến độ là thử lại được bao nhiêu lần cũng xong.
+    /// Hiện đúng MỘT LẦN trong đời máy: vào màn hướng dẫn, bảng chưa tô ô nào, và người
+    /// chơi chưa bao giờ tô được ô nào. Tắt ngay khi chọn màu đầu tiên.
+    ///
+    /// Điều kiện thứ ba là thứ mới, và nó không suy ra được từ hai cái đầu: "bảng này
+    /// chưa tô ô nào" với "người này chưa bao giờ tô" cho ra cùng một bảng trống, nhưng
+    /// nói hai chuyện khác hẳn nhau. Thiếu nó thì hướng dẫn hiện lại mỗi lần vào lại màn
+    /// 1 chưa tô — kể cả ngay sau khi người chơi bấm nút Tô lại, tức đúng lúc người ta đã
+    /// thạo tới mức chủ động chơi lại.
     ///
     /// KHÔNG dùng PopupService. Popup có nền chặn bấm, mà thứ ngón tay đang chỉ vào lại
     /// chính là cái người chơi phải bấm — người chơi sẽ chạm vào và không có gì xảy ra.
@@ -64,6 +70,7 @@ namespace JewelPainter.UI.Views
         private ILevelService _levelService;
         private IPaintService _paintService;
         private ColorPaletteBar _paletteBar;
+        private TutorialState _tutorialState;
 
         /// Hướng dẫn đang nằm trên màn hình. Lời nhắc "chưa chọn màu" đọc cờ này để im
         /// lặng — hai thứ nói cùng một điều, chồng lên nhau chỉ thành ồn.
@@ -76,11 +83,16 @@ namespace JewelPainter.UI.Views
         /// Đã quyết định là phải hiện, nhưng chưa chạy được vì object còn tắt.
         private bool _pendingShow;
 
-        public void Init(ILevelService levelService, IPaintService paintService, ColorPaletteBar paletteBar)
+        public void Init(
+            ILevelService levelService,
+            IPaintService paintService,
+            ColorPaletteBar paletteBar,
+            TutorialState tutorialState)
         {
             _levelService = levelService;
             _paintService = paintService;
             _paletteBar = paletteBar;
+            _tutorialState = tutorialState;
 
             if (_content == null || _content == gameObject)
             {
@@ -97,6 +109,7 @@ namespace JewelPainter.UI.Views
             // màu chưa dựng xong, mà ngón tay cần biết ô màu đầu tiên đứng ở đâu.
             _paintService.OnBoardReady += HandleBoardReady;
             _paintService.OnColorSelected += HandleColorSelected;
+            _paintService.OnCellPainted += HandleCellPainted;
 
             // KHÔNG đăng ký OnLevelStarted để tắt hướng dẫn. Nghe rất hợp lý, nhưng nó tự
             // bóp chết chính mình:
@@ -122,6 +135,7 @@ namespace JewelPainter.UI.Views
             {
                 _paintService.OnBoardReady -= HandleBoardReady;
                 _paintService.OnColorSelected -= HandleColorSelected;
+                _paintService.OnCellPainted -= HandleCellPainted;
             }
         }
 
@@ -133,16 +147,20 @@ namespace JewelPainter.UI.Views
 
             var loadedLevel = LoadedLevelId();
             var untouched = _paintService.IsUntouched;
+            var experienced = IsExperienced();
 
             if (_logDecision)
             {
+                var show = loadedLevel == _tutorialLevelId && untouched && !experienced;
+
                 Debug.Log($"[Tutorial] màn đang nạp {loadedLevel} (cần {_tutorialLevelId}), " +
-                          $"chưa tô ô nào: {untouched} → " +
-                          $"{(loadedLevel == _tutorialLevelId && untouched ? "HIỆN" : "bỏ qua")}", this);
+                          $"chưa tô ô nào: {untouched}, đã từng tô: {experienced} → " +
+                          $"{(show ? "HIỆN" : "bỏ qua")}", this);
             }
 
             if (loadedLevel != _tutorialLevelId) return;
             if (!untouched) return;
+            if (experienced) return;
 
             _pendingShow = true;
             TryStartShow();
@@ -187,6 +205,26 @@ namespace JewelPainter.UI.Views
 
             return config != null ? config.LevelId : _levelService.CurrentLevel;
         }
+
+        /// Người chơi đã biết tô rồi hay chưa.
+        ///
+        /// Hai nguồn, và nguồn thứ hai là đường CỨU cho những máy đã cài từ trước: cờ
+        /// has_painted_once mới có từ bản này, nên người chơi đang dở màn 20 vẫn đọc ra
+        /// false. Màn hướng dẫn đã hoàn thành là bằng chứng không thể chối rằng họ đã tô,
+        /// và nó có sẵn trong tiến trình từ lâu.
+        ///
+        /// Giữ luôn cả hai chứ không chỉ dùng nguồn thứ hai: người chơi mới bỏ dở màn 1
+        /// giữa chừng thì IsCompleted vẫn false, mà họ thì đã tô rồi.
+        private bool IsExperienced()
+        {
+            if (_tutorialState != null && _tutorialState.HasPaintedOnce) return true;
+
+            return _levelService != null && _levelService.IsCompleted(_tutorialLevelId);
+        }
+
+        /// Ô đầu tiên trong đời được tô. MarkPainted tự bỏ qua từ lần thứ hai trở đi nên
+        /// không cần huỷ đăng ký cho đúng lúc.
+        private void HandleCellPainted(Vector2Int cell, int paletteIndex) => _tutorialState?.MarkPainted();
 
         private void HandleColorSelected(int paletteIndex) => Hide();
 

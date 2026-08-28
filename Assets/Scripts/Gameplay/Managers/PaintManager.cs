@@ -16,6 +16,10 @@ namespace JewelPainter.Gameplay.Managers
         private PaintProgressStore _progressStore;
         private PaintState _state;
 
+        /// Màn đang NẠP. Khác CurrentLevel của ILevelService — con số đó là mốc tiến
+        /// trình, và hai bên tách nhau từ khi Home cho chơi lại màn cũ.
+        private int _loadedLevel = -1;
+
         public int SelectedPaletteIndex { get; private set; } = -1;
 
         public IReadOnlyList<int> UsedPaletteIndices =>
@@ -51,6 +55,7 @@ namespace JewelPainter.Gameplay.Managers
         {
             _state = null;
             SelectedPaletteIndex = -1;
+            _loadedLevel = levelId;
 
             var data = _levelService.CurrentGrid;
             var grid = data != null ? data.ToGrid() : null;
@@ -60,7 +65,25 @@ namespace JewelPainter.Gameplay.Managers
             // Nạp lại tiến độ TRƯỚC khi bắn OnBoardReady: thanh màu và bảng đều dựng
             // theo trạng thái đọc được lúc nhận sự kiện đó. Nạp sau thì chúng dựng theo
             // bảng trống rồi mới bị sửa, và người chơi thấy một nhịp nhấp nháy.
-            if (_state != null) _progressStore?.Restore(levelId, _state);
+            if (_state != null)
+            {
+                // Restore chạy TRƯỚC và chạy cho MỌI màn, kể cả màn đã xong: nó còn là chỗ
+                // kho tiến độ gắn mình vào lưới mới. Bỏ qua nó thì kho vẫn trỏ vào màn cũ,
+                // và cú ghi kế tiếp sẽ lưu nhầm bảng.
+                var restored = _progressStore != null && _progressStore.Restore(levelId, _state);
+
+                // Màn đã ghi nhận hoàn thành mà KHÔNG có lượt chơi nào đang mở thì hiện lại
+                // NGUYÊN bức tranh.
+                //
+                // Đọc từ tiến trình chứ không từ bản lưu, và đó là điểm mấu chốt: bản lưu
+                // của màn đã xong bị xoá đi (nó là dữ liệu thừa — "xong" nghĩa là mọi ô đều
+                // đã tô), nên chỉ dựa vào bản lưu thì tranh cũ mở ra trắng trơn.
+                //
+                // Còn `restored` là thứ chừa đường cho nút Tô lại: nó ghi một bản lưu rỗng,
+                // và chính sự TỒN TẠI của bản lưu đó nói rằng người chơi đang tô lại màn
+                // này — đừng tô kín hộ nữa.
+                if (!restored && _levelService.IsCompleted(levelId)) _state.PaintAll();
+            }
 
             OnBoardReady?.Invoke();
         }
@@ -120,6 +143,20 @@ namespace JewelPainter.Gameplay.Managers
         public float ProgressFor(int paletteIndex)
         {
             return _state != null ? _state.ProgressFor(paletteIndex) : 0f;
+        }
+
+        public bool CanReset => _state != null && !_state.IsUntouched;
+
+        public void ResetCurrentLevel()
+        {
+            if (_state == null || _loadedLevel < 0) return;
+
+            _progressStore?.ResetCurrent();
+
+            // Nạp lại chính màn đang chơi. LoadLevel bắn OnLevelStarted, và mọi lớp hiển
+            // thị đều dựng lại theo sự kiện đó — kể cả PaintManager này, nên _state mới
+            // sinh ra ở ngay dòng dưới của lượt sự kiện.
+            _levelService.LoadLevel(_loadedLevel);
         }
     }
 }
