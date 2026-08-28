@@ -89,6 +89,25 @@ namespace JewelPainter.Gameplay.Managers
         /// PaintManager gọi mỗi lần một ô được tô.
         public void MarkDirty() => _isDirty = true;
 
+        /// Xoá bản lưu ô đã tô của màn ĐANG chơi. Bên gọi nạp lại màn để thấy bảng trống.
+        ///
+        /// Chỉ công cụ dev gọi. Không tự nạp lại màn ở đây: kho tiến độ không có việc gì
+        /// phải biết tới luồng nạp màn, và trộn hai thứ đó vào một hàm là thêm một lý do
+        /// nữa để sau này ai đó gọi nhầm.
+        ///
+        /// Hạ cờ bẩn TRƯỚC khi xoá là phần bắt buộc: lần Restore kế tiếp mở đầu bằng
+        /// Flush, mà Flush còn thấy cờ bẩn thì nó ghi lại đúng cái vừa xoá xong.
+        public void ClearCurrent()
+        {
+            if (_save == null || _levelId < 0) return;
+
+            _isDirty = false;
+            _sinceLastSave = 0f;
+
+            _save.DeleteKey(KeyFor(_levelId));
+            _save.Save();
+        }
+
         /// Đọc trạng thái tô của một màn BẤT KỲ, kể cả màn chưa bao giờ được nạp.
         /// null khi màn đó chưa có bản lưu. Màn hình Home dùng để vẽ ảnh tiến độ.
         ///

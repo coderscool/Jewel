@@ -6,7 +6,9 @@
         "JewelPainter.Gameplay",
         "JewelPainter.UI",
         "VContainer",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "CoreModules.CheatKitSystem.Runtime",
+        "CoreModules.CheatKitSystem.Config"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

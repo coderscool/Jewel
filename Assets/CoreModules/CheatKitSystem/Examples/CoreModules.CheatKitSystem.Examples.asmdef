@@ -1,0 +1,19 @@
+{
+    "name": "CoreModules.CheatKitSystem.Examples",
+    "rootNamespace": "CoreModules.CheatKit.Examples",
+    "references": [
+        "CoreModules.CheatKitSystem.Runtime",
+        "CoreModules.CheatKitSystem.Config"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "CHEAT_ENABLED"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

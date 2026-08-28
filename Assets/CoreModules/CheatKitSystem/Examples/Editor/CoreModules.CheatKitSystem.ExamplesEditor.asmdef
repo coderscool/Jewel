@@ -1,0 +1,22 @@
+{
+    "name": "CoreModules.CheatKitSystem.ExamplesEditor",
+    "rootNamespace": "CoreModules.CheatKit.Examples.EditorTools",
+    "references": [
+        "CoreModules.CheatKitSystem.Examples",
+        "CoreModules.CheatKitSystem.Runtime",
+        "CoreModules.CheatKitSystem.Config"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "CHEAT_ENABLED"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

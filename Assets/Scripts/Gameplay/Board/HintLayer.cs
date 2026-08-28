@@ -20,11 +20,20 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private SpriteRenderer _hintPrefab;
         [SerializeField] private Transform _root;
 
-        [Tooltip("Ô nhỏ hơn ngần này pixel trên màn hình thì ngừng hiện marker. " +
-                 "Để THẤP (4-6) vì gợi ý chủ yếu dùng lúc zoom xa để dò xem còn ô nào; " +
-                 "đặt cao như lớp số sẽ làm nó biến mất đúng lúc cần nhất. " +
-                 "Càng thấp thì càng nhiều object cùng lúc.")]
-        [SerializeField] private float _minCellScreenPixels = 5f;
+        [Tooltip("Ô nhỏ hơn ngần này pixel trên màn hình thì ngừng hiện marker.\n\n" +
+                 "Để THẤP vì gợi ý chủ yếu dùng lúc zoom xa để dò xem còn ô nào; đặt cao " +
+                 "như lớp số sẽ làm nó biến mất đúng lúc cần nhất.\n\n" +
+                 "PHẢI ngắm theo BẢNG LỚN NHẤT của game, không theo bảng đang mở. Mức zoom " +
+                 "lúc vào màn là mức vừa khít cả bảng, nên bảng càng lớn thì ô chiếu xuống " +
+                 "màn hình càng bé: một ô chỉ còn Screen.height / (2 * orthographicSize) " +
+                 "pixel. Bảng 72x72 ở orthographicSize 70 là Screen.height / 140 — màn 1080 " +
+                 "cho 7.7 pixel, màn ngắn hơn 700 tụt xuống dưới 5 và marker TẮT SẠCH ngay " +
+                 "ở mức zoom mặc định. Chính ngưỡng này là thứ khiến gợi ý chỉ hiện sau khi " +
+                 "phóng to.\n\n" +
+                 "Càng thấp thì càng nhiều object cùng lúc — nhưng ô Prewarm From Largest " +
+                 "Color bên dưới đã dựng sẵn đúng bằng trường hợp xấu nhất, nên hạ ngưỡng " +
+                 "không làm phát sinh Instantiate lúc chơi.")]
+        [SerializeField] private float _minCellScreenPixels = 2f;
 
         [Tooltip("Số marker dựng sẵn lúc vào màn. Chọn màu là lúc duy nhất sinh hàng " +
                  "loạt object cùng lúc — dựng sẵn thì cú đó chỉ là lấy đồ khỏi kho.\n\n" +
@@ -61,6 +70,9 @@ namespace JewelPainter.Gameplay.Board
         private float _lastOrthographicSize = -1f;
         private bool _needsRefresh;
 
+        /// Đã báo một lần cho màn này rằng mức zoom đang chặn marker.
+        private bool _reportedZoomGate;
+
         public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect)
         {
             _boardView = boardView;
@@ -91,6 +103,7 @@ namespace JewelPainter.Gameplay.Board
             Prewarm();
 
             _lastOrthographicSize = -1f;
+            _reportedZoomGate = false;
         }
 
         private void HandleColorSelected(int paletteIndex)
@@ -144,8 +157,11 @@ namespace JewelPainter.Gameplay.Board
                 return true;
             }
 
-            if (CellScreenPixels() < _minCellScreenPixels)
+            var cellPixels = CellScreenPixels();
+
+            if (cellPixels < _minCellScreenPixels)
             {
+                ReportZoomGate(cellPixels);
                 ReleaseAll();
                 return true;
             }
@@ -180,6 +196,31 @@ namespace JewelPainter.Gameplay.Board
             }
 
             return true;
+        }
+
+        /// Marker biến mất mà không nói gì là kiểu hỏng khó lần nhất: người ta đi kiểm
+        /// prefab, kiểm sorting order, kiểm cả luật chọn màu, trong khi thủ phạm chỉ là một
+        /// con số trong Inspector.
+        ///
+        /// Bảng càng LỚN càng dễ dính, và đó là lý do lỗi chỉ hiện ra ở màn to nhất: mức
+        /// zoom lúc vào màn phải kéo đủ xa để thấy trọn bảng, nên ô chiếu xuống màn hình
+        /// càng bé. Bảng 32x32 ở mức vừa khít cho chừng 19 pixel mỗi ô, bảng 72x72 chỉ còn
+        /// chừng 8 — cùng một ngưỡng, một bên qua một bên không.
+        ///
+        /// Báo đúng một lần mỗi màn: kéo zoom qua lại quanh ngưỡng sẽ in liên tục.
+        private void ReportZoomGate(float cellPixels)
+        {
+            if (_reportedZoomGate) return;
+
+            _reportedZoomGate = true;
+
+            Debug.Log(
+                $"[HintLayer] Mức zoom hiện tại cho {cellPixels:0.0} pixel mỗi ô, dưới ngưỡng " +
+                $"Min Cell Screen Pixels = {_minCellScreenPixels} nên marker gợi ý bị ẩn — " +
+                "phải phóng to mới thấy. " +
+                $"(Screen.height = {Screen.height}, orthographicSize = {_camera.orthographicSize:0.##}, " +
+                $"bảng {_boardView.Layout.Width}x{_boardView.Layout.Height}). " +
+                "Hạ ngưỡng xuống nếu muốn thấy gợi ý ngay ở mức zoom này.", this);
         }
 
         /// Nới rộng tầm nhìn thêm vài ô để camera nhích một chút không làm ô ở rìa bị

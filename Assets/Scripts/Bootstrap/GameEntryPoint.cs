@@ -177,6 +177,17 @@ namespace JewelPainter.Bootstrap
             // kịp vẽ rồi mới nạp; gọi thẳng thì cả việc hiện màn chờ lẫn việc dựng bàn
             // rơi vào cùng một frame và người chơi không bao giờ thấy màn chờ.
             _loading.Begin(_levelService);
+
+            // Cheat dựng SAU cùng: bridge hỏi màn đang chơi và trạng thái tô ngay lúc bind,
+            // nên mọi thứ ở trên phải xong trước.
+            //
+            // Không có define CHEAT_ENABLED thì cả CheatInstaller lẫn asmdef của CheatKit
+            // đều không tồn tại, và ba dòng này biến mất cùng nhau — bản phát hành không
+            // còn một byte cheat nào.
+#if CHEAT_ENABLED
+            Cheat.CheatInstaller.Install(
+                _levelService, _paintService, _paintProgressStore, _progress, _wallet, _hintCredits);
+#endif
         }
     }
 }
