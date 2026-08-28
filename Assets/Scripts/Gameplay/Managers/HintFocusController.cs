@@ -34,11 +34,16 @@ namespace JewelPainter.Gameplay.Managers
             {
                 if (_paintService == null) return false;
 
-                var selected = _paintService.SelectedPaletteIndex;
-
+                // Hỏi CẢ BẢNG, không hỏi riêng màu đang chọn.
+                //
+                // Bản trước hỏi "màu đang chọn còn ô không", nên tô xong MỘT màu là nút
+                // xám ngay — trong khi cả chục màu khác còn nguyên và đó đúng là lúc gợi ý
+                // hữu ích nhất. Màu đang chọn hết ô là chuyện của UseHint: nó tự chuyển
+                // sang màu còn ô.
+                //
                 // Chưa chọn màu vẫn cho BẤM: bấm vào sẽ hiện lời nhắc chọn màu. Nút xám
                 // ngắt không nói được gì, mà đó lại đúng lúc người chơi cần biết nhất.
-                return selected < 0 || _paintService.RemainingFor(selected) > 0;
+                return !_paintService.IsComplete;
             }
         }
 
@@ -87,16 +92,11 @@ namespace JewelPainter.Gameplay.Managers
 
             if (!CanUseHint) return false;
 
-            // Trừ lượt TRƯỚC khi làm gì khác, và thoát ngay nếu hết.
-            //
-            // Đặt sau phép kiểm màu ở trên là có chủ ý: chưa chọn màu thì cú bấm đó không
-            // phải một lần dùng gợi ý, nó chỉ là một cú bấm nhầm — trừ lượt ở đó là ăn
-            // cắp của người chơi.
-            if (_credits != null && !_credits.TrySpend())
-            {
-                OnCreditsExhausted?.Invoke();
-                return false;
-            }
+            // Chốt màu và kiểm camera TRƯỚC khi trừ lượt. Mọi đường thoát phải nằm hết ở
+            // trên cú trừ, không thì có đường nào đó lấy mất một lượt rồi trả về false —
+            // người chơi mất lượt mà không thấy gì xảy ra.
+            var paletteIndex = ResolveHintColor();
+            if (paletteIndex < 0) return false;
 
             if (_boardCamera == null)
             {
@@ -105,7 +105,22 @@ namespace JewelPainter.Gameplay.Managers
                 return false;
             }
 
-            var paletteIndex = _paintService.SelectedPaletteIndex;
+            // Trừ lượt rồi mới đi tiếp, và thoát ngay nếu hết.
+            //
+            // Đặt sau phép kiểm màu ở đầu hàm là có chủ ý: chưa chọn màu thì cú bấm đó
+            // không phải một lần dùng gợi ý, nó chỉ là một cú bấm nhầm — trừ lượt ở đó là
+            // ăn cắp của người chơi.
+            if (_credits != null && !_credits.TrySpend())
+            {
+                OnCreditsExhausted?.Invoke();
+                return false;
+            }
+
+            // Màu đang chọn đã tô hết thì chuyển hẳn sang màu được gợi ý. Ô màu cũ đã biến
+            // khỏi thanh chọn rồi, giữ nguyên nó chỉ để người chơi bay tới nơi và không tô
+            // được gì.
+            if (paletteIndex != _paintService.SelectedPaletteIndex) _paintService.SelectColor(paletteIndex);
+
             var remaining = _paintService.RemainingFor(paletteIndex);
 
             // RemainingFor chính là số ô chưa tô của màu này, nên bốc số trong khoảng đó
@@ -121,6 +136,24 @@ namespace JewelPainter.Gameplay.Managers
             if (_markerEffect != null) _markerEffect.Play(cell);
 
             return true;
+        }
+
+        /// Màu để gợi ý: màu đang chọn nếu nó còn ô, không thì màu ĐẦU TIÊN còn ô.
+        /// -1 khi bảng đã tô kín — CanUseHint đã chặn từ trước, đây chỉ là chốt cuối.
+        private int ResolveHintColor()
+        {
+            var selected = _paintService.SelectedPaletteIndex;
+            if (selected >= 0 && _paintService.RemainingFor(selected) > 0) return selected;
+
+            var used = _paintService.UsedPaletteIndices;
+            if (used == null) return -1;
+
+            for (var i = 0; i < used.Count; i++)
+            {
+                if (_paintService.RemainingFor(used[i]) > 0) return used[i];
+            }
+
+            return -1;
         }
 
         private void HandleCreditsChanged(int remaining) => OnCreditsChanged?.Invoke(remaining);

@@ -1841,6 +1841,7 @@ MonoBehaviour:
   _root: {fileID: 655999411}
   _worldCamera: {fileID: 519420031}
   _scrollRect: {fileID: 1246029922}
+  _content: {fileID: 441934544}
 --- !u!114 &655999413
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2234,6 +2235,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6cfd2a9412ac3d14ebe61b675e9e4e99, type: 2}
   - {fileID: 11400000, guid: fae6e0a105ea1324b8d607d714bebec7, type: 2}
   - {fileID: 11400000, guid: b863d7f8bc985b94ea125822eab04ff2, type: 2}
+  - {fileID: 11400000, guid: c065fcb35f40795479b662e6b501af23, type: 2}
+  - {fileID: 11400000, guid: 333e6864b0f815747a02577a62c24a47, type: 2}
+  - {fileID: 11400000, guid: f4d2153d91852f348ba166c402bce905, type: 2}
   _jewelTint: {fileID: 0}
 --- !u!4 &986912015
 Transform:

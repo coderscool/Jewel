@@ -239,11 +239,18 @@ namespace JewelPainter.UI.Views
                 var isUnlocked = _levelService.IsUnlocked(levelId);
                 var isCurrent = levelId == currentLevel;
 
+                // Ảnh nhỏ hỏi ĐÃ HOÀN THÀNH, không hỏi "có phải màn hiện tại không".
+                //
+                // Hai câu trùng nhau ở mọi màn trừ màn cuối: xong hết rồi thì CurrentLevel
+                // bị kẹp lại đúng bằng màn cuối, nên nó vừa là "màn hiện tại" vừa là màn
+                // đã xong — hỏi câu cũ là bức tranh cuối cùng hiện ra một ô xám trắng.
+                var isCompleted = _levelService.IsCompleted(levelId);
+
                 var item = GetItem(slot++);
 
                 item.Bind(
                     levelId,
-                    BuildThumbnail(config.GridData, levelId, isUnlocked, isCurrent),
+                    BuildThumbnail(config.GridData, levelId, isUnlocked, isCompleted),
                     isUnlocked,
                     isCurrent,
                     HandleItemClicked);
@@ -356,12 +363,12 @@ namespace JewelPainter.UI.Views
         /// Không có bản lưu thì "đã xong" theo định nghĩa là mọi ô đều đã tô — bản lưu của
         /// nó bị xoá ngay lúc nó xong vì đó là dữ liệu thừa.
         private Sprite BuildThumbnail(
-            Gameplay.Data.LevelGridData gridData, int levelId, bool isUnlocked, bool isCurrent)
+            Gameplay.Data.LevelGridData gridData, int levelId, bool isUnlocked, bool isCompleted)
         {
             if (!isUnlocked || gridData == null) return null;
 
             var bits = _progressStore != null ? _progressStore.LoadBits(levelId) : null;
-            var paintAll = bits == null && !isCurrent;
+            var paintAll = bits == null && isCompleted;
 
             var sprite = LevelThumbnailBuilder.Build(gridData, bits, paintAll, levelId);
             if (sprite != null) _thumbnails.Add(sprite);
@@ -542,7 +549,7 @@ namespace JewelPainter.UI.Views
                 return;
             }
 
-            var previous = PreviousUnlockedLevel();
+            var previous = LastCompletedLevel();
 
             if (previous < 0)
             {
@@ -554,23 +561,26 @@ namespace JewelPainter.UI.Views
             ShowCelebrating(previous);
         }
 
-        /// Màn đã mở khoá đứng ngay trước màn hiện tại trong danh sách. -1 nếu không có.
+        /// Màn ĐÃ HOÀN THÀNH đứng cuối cùng trong danh sách. -1 nếu chưa xong màn nào.
         ///
         /// Đi theo THỨ TỰ của Levels chứ không lấy CurrentLevel trừ một: id không bắt buộc
-        /// liên tiếp, và mảng Levels mới là thứ quyết định ô nào đứng cạnh ô nào.
-        private int PreviousUnlockedLevel()
+        /// liên tiếp, và mảng Levels mới là thứ quyết định ô nào đứng sau ô nào.
+        ///
+        /// Bản trước dừng lại khi gặp CurrentLevel và trả về màn ĐỨNG TRƯỚC nó. Cách đó
+        /// hỏng đúng ở cuối nội dung: xong hết rồi thì CurrentLevel bị kẹp lại bằng màn
+        /// cuối, nên nó dừng sớm một ô và bỏ qua chính bức tranh vừa hoàn thành.
+        private int LastCompletedLevel()
         {
-            var previous = -1;
+            var last = -1;
 
             foreach (var config in _levelService.Levels)
             {
                 if (config == null) continue;
-                if (config.LevelId == _levelService.CurrentLevel) return previous;
 
-                if (_levelService.IsUnlocked(config.LevelId)) previous = config.LevelId;
+                if (_levelService.IsCompleted(config.LevelId)) last = config.LevelId;
             }
 
-            return previous;
+            return last;
         }
 
         private void HandleItemClicked(int levelId) => SelectLevel(levelId);

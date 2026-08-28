@@ -10,6 +10,15 @@ namespace JewelPainter.Gameplay.Interfaces
     /// Gameplay không bao giờ using ngược lên UI.
     public interface ILevelService
     {
+        /// Màn đang chơi, và cũng là màn để MỞ khi vào game. LUÔN là một màn CÓ THẬT.
+        ///
+        /// Tô xong màn cuối thì con số lưu trong tiến trình vượt qua màn cuối cùng — nó
+        /// phải vượt, không thì IsCompleted không bao giờ tính màn cuối là đã xong và bức
+        /// tranh đó không vào được bộ sưu tập. Nhưng con số vượt ngưỡng ấy là chuyện NỘI
+        /// BỘ của tiến trình: ai đọc CurrentLevel cũng để hiện ra màn hình hoặc để nạp
+        /// màn, và cả hai việc đó đều cần một màn có thật.
+        ///
+        /// Nên nó được kẹp ở đây, một lần, thay vì bắt từng nơi gọi tự nhớ mà kẹp.
         int CurrentLevel { get; }
 
         /// Cấu hình của màn đang chơi. null nếu chưa nạp màn nào.

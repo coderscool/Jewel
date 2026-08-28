@@ -23,7 +23,14 @@ namespace JewelPainter.Gameplay.Managers
         private LevelConfig _currentConfig;
         private IReadOnlyList<Color32> _jewelColors = Array.Empty<Color32>();
 
-        public int CurrentLevel => _progress?.Level ?? 0;
+        /// Con số THÔ trong tiến trình — "đã xong tới đâu". Vượt qua màn cuối được, và
+        /// phải vượt: IsCompleted đọc nó, mà màn cuối chỉ tính là xong khi có thứ gì đó
+        /// đứng sau nó.
+        ///
+        /// Không lộ ra ngoài. Mọi thứ bên ngoài đọc CurrentLevel đã kẹp.
+        private int RawLevel => _progress?.Level ?? 0;
+
+        public int CurrentLevel => HasLevel(RawLevel) ? RawLevel : HighestLevelId();
         public LevelConfig CurrentConfig => _currentConfig;
 
         // Không dùng `_currentConfig?.GridData` — LevelConfig là UnityEngine.Object,
@@ -36,11 +43,14 @@ namespace JewelPainter.Gameplay.Managers
 
         /// Mở khoá theo tiến trình, không lưu riêng cờ cho từng màn: game chỉ chơi tuần
         /// tự nên "đã tới màn 5" đã nói đủ rằng 1–4 xong rồi.
-        public bool IsUnlocked(int levelId) => levelId <= CurrentLevel;
+        public bool IsUnlocked(int levelId) => levelId <= RawLevel;
 
         /// Tiến trình chỉ nhích khi một màn tô xong, nên "đứng trước màn hiện tại" đã đủ
         /// nghĩa là "đã hoàn thành" — không cần lưu riêng cờ cho từng màn.
-        public bool IsCompleted(int levelId) => levelId < CurrentLevel;
+        ///
+        /// Đọc con số THÔ, không đọc CurrentLevel đã kẹp: kẹp rồi thì màn cuối đứng ngang
+        /// bằng chứ không đứng trước, và nó vĩnh viễn không được tính là đã hoàn thành.
+        public bool IsCompleted(int levelId) => levelId < RawLevel;
 
         public event Action<int> OnLevelStarted;
         public event Action<int> OnLevelCompleted;
@@ -52,6 +62,20 @@ namespace JewelPainter.Gameplay.Managers
         }
 
         public bool HasLevel(int levelId) => FindConfig(levelId) != null;
+
+        /// Level Id LỚN NHẤT đang khai, không phải phần tử cuối mảng: thứ tự trong
+        /// Inspector không có gì bắt phải trùng với thứ tự id.
+        private int HighestLevelId()
+        {
+            var highest = 0;
+
+            foreach (var config in _levels)
+            {
+                if (config != null && config.LevelId > highest) highest = config.LevelId;
+            }
+
+            return highest;
+        }
 
         public void LoadLevel(int levelId)
         {

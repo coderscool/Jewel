@@ -82,6 +82,17 @@ namespace JewelPainter.Gameplay.Managers
 
         /// Ghi nhận đã qua màn. Chạy NGAY lúc phát hiện tô xong, không đợi người chơi bấm.
         ///
+        /// Nhích cả khi vừa xong MÀN CUỐI. Bản trước dừng lại ở đó vì sợ lần mở game sau
+        /// nạp một màn không tồn tại — nỗi lo có thật, nhưng chặn ở đây là chữa sai chỗ và
+        /// làm hỏng ba thứ khác cùng lúc: màn cuối không bao giờ vào được bộ sưu tập
+        /// (IsCompleted đọc "id < CurrentLevel"), bản lưu ô đã tô của nó không bao giờ được
+        /// dọn, và vào lại nó thì popup thắng bật lên lần nữa.
+        ///
+        /// Chỗ đúng để chữa là lúc ĐỌC: ILevelService.CurrentLevel tự kẹp về màn cuối cùng
+        /// còn tồn tại, còn IsCompleted đọc con số thô bên dưới. Nhờ vậy tiến trình vẫn nói
+        /// thật là "đã xong hết" mà không ai ở ngoài nhìn thấy một màn không tồn tại, và
+        /// thêm màn mới vào bản sau là người chơi tiếp tục đúng chỗ.
+        ///
         /// Tô xong là đã xong — bấm nút chỉ là chuyện đi tiếp. Để việc ghi nhận nằm sau
         /// cú bấm thì người chơi thắng màn rồi thoát game trong lúc popup đang mở sẽ mất
         /// trắng màn vừa qua, và lần mở sau lại phải tô lại từ đầu.
@@ -89,15 +100,11 @@ namespace JewelPainter.Gameplay.Managers
         {
             if (_levelService == null) return;
 
-            var nextLevel = _levelService.CurrentLevel + 1;
-
-            if (!_levelService.HasLevel(nextLevel))
+            if (!_levelService.HasLevel(_levelService.CurrentLevel + 1))
             {
-                // Màn cuối: KHÔNG tăng tiến trình. Tăng rồi thì lần mở game sau sẽ nạp
-                // một màn không tồn tại và người chơi nhận được bảng trống.
                 Debug.Log($"Đã hoàn thành màn cuối ({_levelService.CurrentLevel}). " +
-                          "Không còn màn nào tiếp theo.");
-                return;
+                          "Tiến trình vẫn nhích bên trong để màn này vào được bộ sưu tập; " +
+                          "CurrentLevel tự kẹp lại nên bên ngoài không thấy con số vượt ngưỡng.");
             }
 
             _levelService.CompleteCurrentLevel();
@@ -166,24 +173,48 @@ namespace JewelPainter.Gameplay.Managers
             // mà popup và màn ăn mừng ở Home đều cần biết màn nào vừa xong.
             ClearedLevel = _loadedLevel >= 0 ? _loadedLevel : _levelService.CurrentLevel;
 
-            // CHỈ nhích khi màn vừa xong đúng là màn tiến trình đang đứng.
+            // Màn này đã từng xong TRƯỚC lượt chơi vừa rồi chưa.
             //
-            // Home cho chọn chơi lại màn cũ, mà tiến trình chỉ đi tới. Không có phép so
+            // Phải chụp ở ĐÂY, trước AdvanceProgress. Nhích xong thì IsCompleted(ClearedLevel)
+            // thành true cho cả lượt thắng LẦN ĐẦU — hỏi muộn một dòng là không màn nào
+            // còn được mở popup nữa.
+            var isReplay = _levelService.IsCompleted(ClearedLevel);
+
+            // CHỈ nhích khi màn này CHƯA từng được ghi nhận.
+            //
+            // Home cho chọn chơi lại màn cũ, mà tiến trình chỉ đi tới. Không có phép hỏi
             // này thì tô xong màn 2 lúc đang ở màn 5 sẽ đẩy tiến trình lên màn 6 — người
             // chơi được thưởng hai màn cho một lần chơi, và mất luôn màn 5 chưa đụng tới.
             //
-            // Nhánh else báo "đã tô xong" mà không nhích tiến trình. Hôm nay nó gần như
-            // không chạy: màn đã ghi nhận thì mở ra là tô kín sẵn, không còn ô nào để tô
-            // nên cũng không có cú đáp nào dẫn tới đây. Giữ lại vì nó là nửa còn thiếu của
-            // phép so ngay trên — thêm chế độ chơi lại thật vào là nó có việc ngay, và
-            // thiếu nó thì bản lưu của lượt chơi lại nằm lại vĩnh viễn.
-            if (ClearedLevel == _levelService.CurrentLevel) AdvanceProgress();
+            // Hỏi isReplay chứ KHÔNG so ClearedLevel với CurrentLevel. Hai câu đó trùng
+            // nhau ở mọi màn trừ màn cuối: xong hết rồi thì CurrentLevel bị kẹp lại đúng
+            // bằng màn cuối, nên phép so cũ thấy chúng bằng nhau và nhích tiến trình THÊM
+            // một lần nữa mỗi lượt chơi lại màn đó.
+            //
+            // Nhánh else báo "đã tô xong" mà không nhích tiến trình. Đây là đường của lượt
+            // CHƠI LẠI: nút Tô lại mở một lượt mới trên màn đã xong, và khi tô hết lần nữa
+            // thì bản lưu rỗng kia phải được dọn để màn trở về chế độ xem tranh. Thiếu nó
+            // thì bản lưu của lượt chơi lại nằm lại vĩnh viễn.
+            if (!isReplay) AdvanceProgress();
             else _levelService.MarkLevelFinished(ClearedLevel);
 
             // Ăn mừng chạy NGAY, còn popup đếm giờ song song. Hai thứ độc lập nhau về
             // thời gian: đổi thời lượng dải quét không kéo theo lúc popup hiện, và
             // ngược lại.
             if (playCelebration && _winCelebration != null) _winCelebration.Play();
+
+            // Chơi lại thì DỪNG Ở ĐÂY: dải lấp lánh vẫn chạy vì nó là phần thưởng cho cú
+            // đặt viên ngọc cuối, nhưng không bắn OnLevelCleared.
+            //
+            // Sự kiện đó không chỉ mở popup — HudView và thanh chọn màu cũng nghe nó để tự
+            // ẩn, dọn chỗ cho popup đứng một mình. Không có popup mà vẫn bắn thì người chơi
+            // ngồi trước một bức tranh xong xuôi với HUD biến mất và không còn đường nào
+            // bấm tiếp.
+            //
+            // Phần thưởng cũng đã trao từ lần thắng đầu rồi: tiến trình không nhích, tiền
+            // không cộng thêm. Mở lại popup ăn mừng cho một lượt không thưởng gì là hứa
+            // nhầm với người chơi.
+            if (isReplay) return;
 
             StartCoroutine(AnnounceCleared());
         }
