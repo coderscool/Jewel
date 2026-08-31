@@ -21,6 +21,10 @@ namespace JewelPainter.Gameplay.Board
     [RequireComponent(typeof(SpriteRenderer))]
     public class BoardColorFade : MonoBehaviour
     {
+        /// Dưới mức này coi như vô hình và tắt renderer. Không dùng 0 tuyệt đối vì
+        /// InverseLerp trả về số dấu phẩy động, hiếm khi ra đúng 0.
+        private const float AlphaVisibilityThreshold = 0.002f;
+
         [SerializeField] private Camera _camera;
         [SerializeField] private SpriteRenderer _renderer;
         [SerializeField] private BoardView _boardView;
@@ -58,6 +62,11 @@ namespace JewelPainter.Gameplay.Board
         private void OnDisable()
         {
             if (_boardView != null) _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
+
+            // Trả renderer về trạng thái bật. Không trả thì tắt component lúc nó đang
+            // vô hình sẽ khoá luôn lớp đó, và người sau đi tìm sẽ không ngờ thủ phạm là
+            // một component đã tắt.
+            if (_renderer != null) _renderer.enabled = true;
         }
 
         private void HandleBoardRebuilt() => _needsBaseCapture = true;
@@ -87,6 +96,13 @@ namespace JewelPainter.Gameplay.Board
             var color = _renderer.color;
             color.a = AlphaFor(_camera.orthographicSize);
             _renderer.color = color;
+
+            // Alpha 0 mà renderer còn bật thì GPU vẫn phải trộn trọn một tấm phủ kín
+            // bảng, mỗi frame, để ra đúng con số không. Máy yếu tắc ở fill rate trước
+            // khi tắc ở bất cứ đâu khác, và bảng lớn thì tấm này phủ gần hết màn — nên
+            // không thấy gì thì tắt hẳn.
+            var visible = color.a > AlphaVisibilityThreshold;
+            if (_renderer.enabled != visible) _renderer.enabled = visible;
         }
 
         private float AlphaFor(float currentSize)

@@ -2993,6 +2993,7 @@ GameObject:
   - component: {fileID: 1369701346}
   - component: {fileID: 1369701345}
   - component: {fileID: 1369701344}
+  - component: {fileID: 1369701347}
   m_Layer: 0
   m_Name: GridLines
   m_TagString: Untagged
@@ -3046,7 +3047,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _renderer: {fileID: 1369701346}
-  _pixelsPerCell: 64
+  _pixelsPerCell: 16
+  _maxTextureSize: 2048
   _lineThickness: 1
   _inset: 0
   _lineColor:
@@ -3107,6 +3109,24 @@ SpriteRenderer:
   m_WasSpriteAssigned: 0
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!114 &1369701347
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1369701342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3487a1f4c5e80c64bac114ae9ba785e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _renderer: {fileID: 1369701346}
+  _shader: {fileID: 4800000, guid: e24db48c272918743b9e58b3911165e5, type: 3}
+  _lineWidthPixels: 1.5
+  _edgeSoftness: 1
+  _referenceScreenHeight: 1080
+  _lineColor: {r: 0.62352943, g: 0.62352943, b: 0.62352943, a: 1}
 --- !u!1 &1385524980
 GameObject:
   m_ObjectHideFlags: 0

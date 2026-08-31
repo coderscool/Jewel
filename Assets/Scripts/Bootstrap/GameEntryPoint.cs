@@ -32,7 +32,7 @@ namespace JewelPainter.Bootstrap
         private readonly BoardNumberLayer _numberLayer;
         private readonly BoardCamera _boardCamera;
         private readonly BoardInput _boardInput;
-        private readonly BoardGridLines _gridLines;
+        private readonly IBoardGridLines _gridLines;
         private readonly HintLayer _hintLayer;
         private readonly HintMarkerEffect _hintMarker;
         private readonly LevelFlowController _levelFlow;
@@ -67,7 +67,7 @@ namespace JewelPainter.Bootstrap
             BoardNumberLayer numberLayer,
             BoardCamera boardCamera,
             BoardInput boardInput,
-            BoardGridLines gridLines,
+            IBoardGridLines gridLines,
             HintLayer hintLayer,
             HintMarkerEffect hintMarker,
             LevelFlowController levelFlow,

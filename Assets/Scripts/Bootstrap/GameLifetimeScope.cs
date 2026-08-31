@@ -70,7 +70,13 @@ namespace JewelPainter.Bootstrap
             builder.RegisterComponentInHierarchy<BoardNumberLayer>();
             builder.RegisterComponentInHierarchy<BoardCamera>();
             builder.RegisterComponentInHierarchy<BoardInput>();
-            builder.RegisterComponentInHierarchy<BoardGridLines>();
+            // Đổi bản kẻ viền ô ngay tại dòng này — GameEntryPoint đi qua
+            // IBoardGridLines nên không phải sửa gì thêm:
+            //   BoardGridLines       nướng nét vào texture cỡ cả bảng (bản cũ)
+            //   BoardGridLinesShaded mask 1 texel mỗi ô, nét do shader kẻ (nhẹ hơn ~3000 lần)
+            // Component tương ứng phải nằm sẵn trên object GridLines trong scene.
+            builder.RegisterComponentInHierarchy<BoardGridLinesShaded>()
+                   .AsImplementedInterfaces().AsSelf();
             builder.RegisterComponentInHierarchy<HintLayer>();
             builder.RegisterComponentInHierarchy<HintMarkerEffect>();
             builder.RegisterComponentInHierarchy<JewelFlyEffect>();
