@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
@@ -36,6 +37,12 @@ namespace JewelPainter.Gameplay.Board
                  "dựng mất cỡ 80ms. Việc đó chạy lúc màn hình chờ đang che.")]
         [SerializeField] private bool _prewarmFromBoardSize = true;
 
+        [Tooltip("Dựng sẵn tối đa bao nhiêu viên trong MỘT frame. Dồn hết vào frame vào " +
+                 "màn là cú đơ bạn thấy khi từ Home bấm vào một màn lớn.\n\n" +
+                 "500 thì bảng 67x68 trải ra ~10 frame, nằm gọn sau màn hình chờ.\n\n" +
+                 "Để 0 là quay lại dựng hết trong một frame.")]
+        [SerializeField] private int _prewarmPerFrame = 500;
+
         [Tooltip("Số ngọc được sinh tối đa trong MỘT frame.\n\n" +
                  "**Để 0 là tất cả hiện cùng một lúc** — đây là mặc định. Zoom ra nhanh " +
                  "thì cả vùng mới hiện trọn ngay, không thấy ngọc lần lượt mọc lên.\n\n" +
@@ -50,6 +57,9 @@ namespace JewelPainter.Gameplay.Board
         private readonly Dictionary<Vector2Int, SpriteRenderer> _active = new();
         private readonly Stack<SpriteRenderer> _pool = new();
         private readonly List<Vector2Int> _toRelease = new();
+
+        /// Lượt dựng sẵn đang chạy. Vào màn mới giữa chừng thì huỷ lượt cũ.
+        private Coroutine _prewarmRoutine;
 
         private BoardView _boardView;
         private IPaintService _paintService;
@@ -82,7 +92,7 @@ namespace JewelPainter.Gameplay.Board
         private void HandleBoardRebuilt()
         {
             ReleaseAll();
-            Prewarm();
+            StartPrewarm();
 
             _lastOrthographicSize = -1f;   // ép tính lại ở LateUpdate kế tiếp
         }
@@ -273,18 +283,47 @@ namespace JewelPainter.Gameplay.Board
         }
 
         /// Dựng sẵn lúc vào màn, lúc màn hình chờ đang che nên không ai thấy.
-        private void Prewarm()
+        /// Dựng sẵn TRẢI RA nhiều frame thay vì dồn hết vào frame vào màn.
+        ///
+        /// Vắt cạn ngay tại chỗ nếu object đang tắt: coroutine không chạy được lúc đó,
+        /// mà thà khựng một nhịp còn hơn vào màn thiếu đồ dựng sẵn.
+        private void StartPrewarm()
         {
-            if (_jewelPrefab == null) return;
+            if (_prewarmRoutine != null) StopCoroutine(_prewarmRoutine);
+            _prewarmRoutine = null;
+
+            var routine = PrewarmRoutine();
+
+            if (!isActiveAndEnabled)
+            {
+                while (routine.MoveNext()) { }
+                return;
+            }
+
+            _prewarmRoutine = StartCoroutine(routine);
+        }
+
+        private IEnumerator PrewarmRoutine()
+        {
+            if (_jewelPrefab == null) yield break;
 
             var target = Mathf.Max(_prewarmCount, ColoredCellCount());
+            var perFrame = _prewarmPerFrame > 0 ? _prewarmPerFrame : int.MaxValue;
+            var budget = perFrame;
 
             while (_pool.Count < target)
             {
                 var jewel = Instantiate(_jewelPrefab, _root);
                 jewel.enabled = false;
                 _pool.Push(jewel);
+
+                if (--budget > 0) continue;
+
+                budget = perFrame;
+                yield return null;
             }
+
+            _prewarmRoutine = null;
         }
 
         /// Số ô CÓ MÀU của màn — cũng chính là số viên ngọc tối đa có thể cần cùng lúc,

@@ -44,7 +44,17 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Màn đã mở khoá: id nhỏ hơn hoặc bằng màn đang chơi.
         bool IsUnlocked(int levelId);
 
+        /// Bắn NGAY khi có yêu cầu nạp màn, TRƯỚC khi bàn chơi được dựng.
+        ///
+        /// Tách khỏi OnLevelStarted để màn hình chờ có chỗ chen vào: nó hiện lên ở sự
+        /// kiện này, rồi LevelManager mới nhường vài frame cho Canvas kịp vẽ. Gộp một
+        /// sự kiện thì màn chờ và cú dựng bàn lại rơi vào cùng một frame, và người chơi
+        /// chỉ thấy game đứng hình chứ không thấy màn chờ.
+        event Action<int> OnLevelLoadStarted;
+
+        /// Bàn chơi đã dựng xong. Mọi lớp hiển thị dựng lại theo sự kiện này.
         event Action<int> OnLevelStarted;
+
         event Action<int> OnLevelCompleted;
 
         /// Có LevelConfig nào mang id này không. Dùng để biết còn màn kế hay đã hết.

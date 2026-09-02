@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Domain;
 using TMPro;
@@ -76,6 +77,15 @@ namespace JewelPainter.Gameplay.Board
                  "Đổi lại thời gian vào màn dài thêm chút, nhưng lúc đó màn hình chờ đang che.")]
         [SerializeField] private bool _prewarmFromBoardSize = true;
 
+        [Tooltip("Dựng sẵn tối đa bao nhiêu chữ trong MỘT frame.\n\n" +
+                 "Đây là thứ giữ cho lúc vào màn không đứng hình. Bảng 67x68 cần ~4.600 " +
+                 "chữ; dồn hết vào một frame là Instantiate cộng ForceMeshUpdate ngần ấy " +
+                 "lần liên tiếp — trên máy yếu mất cả giây, và đó đúng là cú đơ khi vào màn.\n\n" +
+                 "250 thì 4.600 chữ trải ra ~19 frame, tức khoảng 0.3 giây — nằm gọn trong " +
+                 "khoảng màn hình chờ đang che.\n\n" +
+                 "Để 0 là quay lại dựng hết trong một frame.")]
+        [SerializeField] private int _prewarmPerFrame = 250;
+
         /// Một chữ, kèm SỐ nó đang mang và renderer của nó.
         ///
         /// Nhớ con số vì lúc trả về kho cần biết trả vào ngăn nào — mà lúc đó lưới có thể
@@ -102,6 +112,15 @@ namespace JewelPainter.Gameplay.Board
 
         /// Số ô mang mỗi con số trong lưới màn hiện tại. Dùng để dựng sẵn đúng lượng cần.
         private readonly Dictionary<int, int> _cellCountByNumber = new();
+
+        /// Danh sách các số cần dựng, tách ra khỏi dictionary ở trên.
+        ///
+        /// Vòng dựng sẵn giờ chạy qua nhiều frame, mà duyệt thẳng dictionary thì chỉ cần
+        /// một chỗ khác chạm vào nó giữa hai frame là cả vòng lặp ném lỗi.
+        private readonly List<int> _prewarmNumbers = new();
+
+        /// Lượt dựng sẵn đang chạy. Vào màn mới giữa chừng thì huỷ lượt cũ.
+        private Coroutine _prewarmRoutine;
 
         private BoardView _boardView;
         private Vector3 _lastCameraPosition;
@@ -162,7 +181,7 @@ namespace JewelPainter.Gameplay.Board
             if (!ValidatePrefab()) return;
 
             ReleaseAll();
-            Prewarm();
+            StartPrewarm();
 
             _numbersShown = false;
 
@@ -179,30 +198,64 @@ namespace JewelPainter.Gameplay.Board
         /// số hiện ra thì gần như cả bảng nằm trong khung hình, nên số ô của một con số
         /// CHÍNH LÀ số chữ cần cùng lúc cho con số đó. Dùng hằng số thì bảng càng lớn
         /// càng thiếu, mà phần thiếu phải Instantiate ngay giữa lúc người chơi đang zoom.
-        private void Prewarm()
+        /// Dựng sẵn TRẢI RA nhiều frame thay vì dồn hết vào frame vào màn.
+        ///
+        /// Vắt cạn ngay tại chỗ nếu object đang tắt: coroutine không chạy được lúc đó,
+        /// mà thà khựng một nhịp còn hơn vào màn thiếu đồ dựng sẵn.
+        private void StartPrewarm()
         {
-            if (_numberPrefab == null) return;
+            if (_prewarmRoutine != null) StopCoroutine(_prewarmRoutine);
+            _prewarmRoutine = null;
+
+            var routine = PrewarmRoutine();
+
+            if (!isActiveAndEnabled)
+            {
+                while (routine.MoveNext()) { }
+                return;
+            }
+
+            _prewarmRoutine = StartCoroutine(routine);
+        }
+
+        private IEnumerator PrewarmRoutine()
+        {
+            if (_numberPrefab == null) yield break;
 
             var grid = _boardView.Grid;
             var colors = _boardView.Colors;
 
-            if (grid == null || colors == null) return;
+            if (grid == null || colors == null) yield break;
 
             CountCellsByNumber(grid, colors.Count);
 
-            foreach (var pair in _cellCountByNumber)
-            {
-                var number = pair.Key;
+            _prewarmNumbers.Clear();
+            foreach (var pair in _cellCountByNumber) _prewarmNumbers.Add(pair.Key);
 
+            var perFrame = _prewarmPerFrame > 0 ? _prewarmPerFrame : int.MaxValue;
+            var budget = perFrame;
+
+            foreach (var number in _prewarmNumbers)
+            {
                 // Con số cứng thành mức SÀN, để vẫn chỉnh tay lên được nếu cần.
                 var target = _prewarmFromBoardSize
-                    ? Mathf.Max(_prewarmPerNumber, pair.Value)
+                    ? Mathf.Max(_prewarmPerNumber, _cellCountByNumber[number])
                     : _prewarmPerNumber;
 
                 var pool = PoolFor(number);
 
-                while (pool.Count < target) pool.Push(CreateLabel(number));
+                while (pool.Count < target)
+                {
+                    pool.Push(CreateLabel(number));
+
+                    if (--budget > 0) continue;
+
+                    budget = perFrame;
+                    yield return null;
+                }
             }
+
+            _prewarmRoutine = null;
         }
 
         private void CountCellsByNumber(PixelGrid grid, int colorCount)

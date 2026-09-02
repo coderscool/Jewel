@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
@@ -47,6 +48,10 @@ namespace JewelPainter.Gameplay.Board
                  "bảng lớn tới đâu kho cũng không bao giờ thiếu, khỏi chỉnh tay từng màn.")]
         [SerializeField] private bool _prewarmFromLargestColor = true;
 
+        [Tooltip("Dựng sẵn tối đa bao nhiêu marker trong MỘT frame. Để 0 là dựng hết " +
+                 "trong một frame như trước.")]
+        [SerializeField] private int _prewarmPerFrame = 200;
+
         [Tooltip("Số marker được sinh tối đa trong MỘT frame.\n\n" +
                  "**Để 0 là tất cả hiện cùng một lúc** — đây là mặc định, và nó an toàn vì " +
                  "kho đã dựng sẵn đủ hàng: lấy ra chỉ là bật object và đặt vị trí.\n\n" +
@@ -61,6 +66,9 @@ namespace JewelPainter.Gameplay.Board
         private readonly Stack<SpriteRenderer> _pool = new();
         private readonly List<Vector2Int> _toRelease = new();
         private readonly Dictionary<int, int> _colorCounts = new();
+
+        /// Lượt dựng sẵn đang chạy. Vào màn mới giữa chừng thì huỷ lượt cũ.
+        private Coroutine _prewarmRoutine;
 
         private BoardView _boardView;
         private IPaintService _paintService;
@@ -100,7 +108,7 @@ namespace JewelPainter.Gameplay.Board
         private void HandleBoardRebuilt()
         {
             ReleaseAll();
-            Prewarm();
+            StartPrewarm();
 
             _lastOrthographicSize = -1f;
             _reportedZoomGate = false;
@@ -321,18 +329,47 @@ namespace JewelPainter.Gameplay.Board
             return null;
         }
 
-        private void Prewarm()
+        /// Dựng sẵn TRẢI RA nhiều frame thay vì dồn hết vào frame vào màn.
+        ///
+        /// Vắt cạn ngay tại chỗ nếu object đang tắt: coroutine không chạy được lúc đó,
+        /// mà thà khựng một nhịp còn hơn vào màn thiếu đồ dựng sẵn.
+        private void StartPrewarm()
         {
-            if (_hintPrefab == null) return;
+            if (_prewarmRoutine != null) StopCoroutine(_prewarmRoutine);
+            _prewarmRoutine = null;
+
+            var routine = PrewarmRoutine();
+
+            if (!isActiveAndEnabled)
+            {
+                while (routine.MoveNext()) { }
+                return;
+            }
+
+            _prewarmRoutine = StartCoroutine(routine);
+        }
+
+        private IEnumerator PrewarmRoutine()
+        {
+            if (_hintPrefab == null) yield break;
 
             var target = Mathf.Max(_prewarmCount, LargestColorCellCount());
+            var perFrame = _prewarmPerFrame > 0 ? _prewarmPerFrame : int.MaxValue;
+            var budget = perFrame;
 
             while (_pool.Count < target)
             {
                 var marker = Instantiate(_hintPrefab, _root);
                 marker.enabled = false;
                 _pool.Push(marker);
+
+                if (--budget > 0) continue;
+
+                budget = perFrame;
+                yield return null;
             }
+
+            _prewarmRoutine = null;
         }
 
         /// Số ô của màu chiếm nhiều ô nhất trong màn — cũng chính là số marker tối đa

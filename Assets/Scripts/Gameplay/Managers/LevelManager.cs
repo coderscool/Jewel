@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Config;
 using JewelPainter.Gameplay.Data;
@@ -52,8 +53,13 @@ namespace JewelPainter.Gameplay.Managers
         /// bằng chứ không đứng trước, và nó vĩnh viễn không được tính là đã hoàn thành.
         public bool IsCompleted(int levelId) => levelId < RawLevel;
 
+        public event Action<int> OnLevelLoadStarted;
         public event Action<int> OnLevelStarted;
         public event Action<int> OnLevelCompleted;
+
+        /// Lượt nạp đang chạy. Bấm nạp màn mới giữa chừng thì huỷ lượt cũ — không huỷ
+        /// thì hai lượt cùng bắn OnLevelStarted và bàn chơi dựng hai lần.
+        private Coroutine _loadRoutine;
 
         /// Bootstrap đưa phụ thuộc xuống — không tự đi tìm.
         public void Init(PlayerProgress progress)
@@ -77,7 +83,50 @@ namespace JewelPainter.Gameplay.Managers
             return highest;
         }
 
+        /// KHÔNG dựng bàn ngay trong lời gọi này.
+        ///
+        /// Dựng bàn là việc nặng nhất của cả game — texture, hàng nghìn object dựng sẵn,
+        /// mười một lớp cùng dựng lại. Làm hết trong frame của cú bấm thì người chơi thấy
+        /// game đứng hình ngay dưới ngón tay mình, và màn hình chờ có tồn tại cũng vô ích
+        /// vì nó chưa kịp được vẽ lần nào.
+        ///
+        /// Nên: bắn OnLevelLoadStarted để màn chờ hiện lên, nhường vài frame cho nó thật
+        /// sự lên màn hình, rồi mới dựng. Mọi nơi gọi LoadLevel — Home, chơi lại, cheat,
+        /// lúc khởi động — đều được che mà không phải tự lo gì.
+        ///
+        /// Cái giá: LoadLevel KHÔNG còn đồng bộ. Đọc CurrentConfig ngay dòng sau lời gọi
+        /// sẽ ra màn CŨ. Muốn chạy việc gì sau khi bàn dựng xong thì nghe OnLevelStarted.
         public void LoadLevel(int levelId)
+        {
+            if (_loadRoutine != null) StopCoroutine(_loadRoutine);
+
+            // Object tắt thì không chạy được coroutine. Hiếm, nhưng nếu xảy ra thì thà
+            // dựng thẳng còn hơn im lặng không nạp màn nào.
+            if (!isActiveAndEnabled)
+            {
+                Build(levelId);
+                return;
+            }
+
+            _loadRoutine = StartCoroutine(LoadRoutine(levelId));
+        }
+
+        private IEnumerator LoadRoutine(int levelId)
+        {
+            OnLevelLoadStarted?.Invoke(levelId);
+
+            // HAI frame, không phải một: frame đầu Canvas dựng lại layout của màn chờ,
+            // frame sau nó mới thật sự được vẽ ra. Một frame đủ trên máy khoẻ, và không
+            // đủ đúng trên những máy mà cú khựng này khó chịu nhất.
+            yield return null;
+            yield return null;
+
+            _loadRoutine = null;
+
+            Build(levelId);
+        }
+
+        private void Build(int levelId)
         {
             _currentConfig = FindConfig(levelId);
 
