@@ -28,6 +28,11 @@ namespace JewelPainter.Gameplay.Board
     {
         private static readonly Vector2Int NoCell = new Vector2Int(int.MinValue, int.MinValue);
 
+        /// Chặn trên cho bán kính quét, tính bằng ô. Ở mọi mức zoom thật bán kính chỉ
+        /// vài ô, nhưng một LevelConfig đặt Camera Max Size rất lớn sẽ làm ô bé xíu và
+        /// vòng quét nở ra vô tội vạ.
+        private const int MaxSnapReachCells = 8;
+
         public enum StrokeOwner
         {
             /// Chưa có nét nào, hoặc nét bắt đầu trên UI nên không ai được nhận.
@@ -46,6 +51,32 @@ namespace JewelPainter.Gameplay.Board
         [Tooltip("Ngón tay xê dịch quá ngần này PIXEL MÀN HÌNH thì coi như đang kéo camera " +
                  "và huỷ đếm giờ. Màn hình càng nhiều điểm ảnh thì càng nên nới ra.")]
         [SerializeField] private float _holdMoveTolerancePixels = 24f;
+
+        [Header("Hút vào ô tô được")]
+        [Tooltip("Chạm hụt thì tìm ô TÔ ĐƯỢC gần nhất quanh đó thay vì bỏ qua.\n\n" +
+                 "BỎ TICK là chạy y hệt bản cũ: chỉ ô nằm đúng dưới ngón mới được tính. " +
+                 "Toàn bộ phép hút nằm sau ô tick này, không tick thì không một dòng nào " +
+                 "của nó chạy.\n\n" +
+                 "Vì sao hút được mà không đoán mò: 'tô được' đã lọc theo màu ĐANG CHỌN và " +
+                 "ô CHƯA TÔ, nên tập đích rất thưa — khác app vẽ tự do, nơi điểm nào cũng " +
+                 "hợp lệ và hút thành ra đoán bừa.")]
+        [SerializeField] private bool _snapToNearestPaintable;
+
+        [Tooltip("Bán kính hút TRONG LÚC TÔ, tính bằng pixel màn hình.\n\n" +
+                 "Khai bằng pixel nên đây là một khoảng cách VẬT LÝ cố định trên tay người " +
+                 "chơi. Quy sang ô thì zoom càng xa bán kính theo ô càng lớn — đúng chiều " +
+                 "với vấn đề, vì đó cũng là lúc ô nhỏ và khó chạm nhất. Ngược lại, phóng " +
+                 "sát thì bán kính chỉ còn một phần tư ô và phép hút gần như tự tắt.\n\n" +
+                 "32 là điểm khởi đầu. Màn hình càng nhiều điểm ảnh càng nên nới ra — sai " +
+                 "số của đầu ngón là vài milimét, mà một milimét trên máy 400 dpi là ~16 px.")]
+        [SerializeField] private float _snapRadiusPixels = 32f;
+
+        [Tooltip("Bán kính hút LÚC ĐẶT TAY XUỐNG, tức lúc quyết nét này là tô hay kéo camera.\n\n" +
+                 "Hẹp hơn bán kính khi tô, và đó là chủ ý: nét bắt đầu gần một ô tô được sẽ " +
+                 "thành nét TÔ, nên để rộng quá thì ở vùng dày ô gợi ý người chơi không còn " +
+                 "kéo bảng bằng một ngón được nữa. Hai ngón thì vẫn luôn là kéo và zoom.\n\n" +
+                 "Để 0 là bắt chạm trúng mới bắt đầu tô được, nhưng khi đã tô thì vẫn hút.")]
+        [SerializeField] private float _snapBeginRadiusPixels = 24f;
 
         private IPaintService _paintService;
         private Vector2Int _lastCell = NoCell;
@@ -209,9 +240,15 @@ namespace JewelPainter.Gameplay.Board
                 return StrokeOwner.Camera;
             }
 
-            if (!TryGetCell(screenPosition, out var cell)) return StrokeOwner.Camera;
+            // Bán kính lúc BẮT ĐẦU nét hẹp hơn lúc đang tô — xem chú thích của hai ô đó
+            // trong Inspector.
+            if (TryResolvePaintCell(screenPosition, CellUnder(screenPosition),
+                    _snapBeginRadiusPixels, out _))
+            {
+                return StrokeOwner.Paint;
+            }
 
-            if (_paintService.CanPaint(cell.x, cell.y)) return StrokeOwner.Paint;
+            if (!TryGetCell(screenPosition, out var cell)) return StrokeOwner.Camera;
 
             // Chạm trúng một ô ĐÁNG LẼ tô được mà chưa chọn màu nào: ghi nhận để nhắc,
             // nhưng chờ tới lúc nhấc tay. Im lặng hẳn thì người chơi mới vào màn cứ quẹt
@@ -310,17 +347,105 @@ namespace JewelPainter.Gameplay.Board
 
         private void PaintAt(Vector2 screenPosition)
         {
-            if (!TryGetCell(screenPosition, out var cell))
+            if (!TryGetCell(screenPosition, out var directCell))
             {
                 _lastCell = NoCell;
                 return;
             }
 
-            // Kéo chậm thì một ô nằm dưới ngón nhiều frame liền — chỉ xử lý lần đầu.
-            if (cell == _lastCell) return;
+            // Chốt theo ô DƯỚI NGÓN, không theo ô được tô.
+            //
+            // Kéo chậm thì một ô nằm dưới ngón nhiều frame liền — chỉ xử lý lần đầu. Từ
+            // khi có phép hút còn một lý do nặng hơn: ô vừa tô xong không còn hợp lệ nữa,
+            // nên nếu chốt theo ô ĐƯỢC TÔ thì frame sau phép hút đi tìm và vớ ngay ô kế
+            // bên rồi tô luôn, frame sau nữa là ô kế tiếp — giữ tay yên một chỗ sẽ thấy
+            // màu loang ra thành vệt.
+            if (directCell == _lastCell) return;
 
-            _lastCell = cell;
-            _paintService.TryPaint(cell.x, cell.y);
+            _lastCell = directCell;
+
+            if (!TryResolvePaintCell(screenPosition, directCell, _snapRadiusPixels, out var target))
+            {
+                return;
+            }
+
+            _paintService.TryPaint(target.x, target.y);
+        }
+
+        /// Ô sẽ được tô cho điểm chạm này.
+        ///
+        /// KHÔNG bật hút: đúng ô dưới ngón, và chỉ khi ô đó tô được — hệt bản cũ.
+        /// Bật hút: ô dưới ngón nếu tô được, không thì ô TÔ ĐƯỢC gần điểm chạm nhất
+        /// trong bán kính.
+        ///
+        /// Chưa chọn màu nào thì CanPaint luôn trả false, nên hàm này cũng trả false và
+        /// phép hút không đụng gì tới đường nhắc "hãy chọn màu" bên dưới.
+        private bool TryResolvePaintCell(
+            Vector2 screenPosition, Vector2Int directCell, float radiusPixels, out Vector2Int target)
+        {
+            target = directCell;
+
+            // CanPaint tự kiểm biên nên ô nằm ngoài lưới cũng hỏi được.
+            if (_paintService.CanPaint(directCell.x, directCell.y)) return true;
+
+            if (!_snapToNearestPaintable) return false;
+
+            var grid = _boardView.Grid;
+            var layout = _boardView.Layout;
+            if (grid == null || layout == null) return false;
+
+            var cellPixels = BoardLayout.CellScreenPixels(Screen.height, _camera.orthographicSize);
+            if (cellPixels <= 0f) return false;
+
+            // Một ô rộng đúng một world unit, nên số ô cũng chính là khoảng cách world.
+            var radiusCells = Mathf.Max(0f, radiusPixels) / cellPixels;
+            if (radiusCells <= 0f) return false;
+
+            var reach = Mathf.Min(Mathf.CeilToInt(radiusCells), MaxSnapReachCells);
+
+            var world = ScreenToWorld(screenPosition);
+
+            // Khởi tạo bằng bình phương bán kính: vừa là mốc so sánh, vừa là hàng rào
+            // TRÒN cho vùng quét — ô ở góc hình vuông duyệt nằm ngoài bán kính tự bị loại.
+            var bestSqr = radiusCells * radiusCells;
+            var found = false;
+
+            var minX = Mathf.Max(0, directCell.x - reach);
+            var maxX = Mathf.Min(grid.Width - 1, directCell.x + reach);
+            var minY = Mathf.Max(0, directCell.y - reach);
+            var maxY = Mathf.Min(grid.Height - 1, directCell.y + reach);
+
+            for (var y = minY; y <= maxY; y++)
+            {
+                for (var x = minX; x <= maxX; x++)
+                {
+                    if (!_paintService.CanPaint(x, y)) continue;
+
+                    // Đo tới TÂM ô trong world chứ không đếm theo số ô: đếm ô thì bốn ô
+                    // chéo góc cùng "cách 1 ô" với bốn ô kề cạnh, và phép hút chọn nhầm ô
+                    // chéo chỉ vì nó được duyệt trước.
+                    var sqr = (layout.CellToWorldCenter(x, y) - world).sqrMagnitude;
+
+                    if (sqr >= bestSqr) continue;
+
+                    bestSqr = sqr;
+                    target = new Vector2Int(x, y);
+                    found = true;
+                }
+            }
+
+            return found;
+        }
+
+        /// Ô dưới ngón, KỂ CẢ khi nó nằm ngoài lưới.
+        ///
+        /// Cần cho phép hút: chạm hụt ra ngoài mép bảng vẫn nên hút được vào ô sát mép,
+        /// mà TryGetCell thì trả false ở đó nên bên gọi không có tâm để quét quanh.
+        private Vector2Int CellUnder(Vector2 screenPosition)
+        {
+            _boardView.Layout.TryWorldToCell(ScreenToWorld(screenPosition), out var cell);
+
+            return cell;
         }
 
         private bool TryGetCell(Vector2 screenPosition, out Vector2Int cell)

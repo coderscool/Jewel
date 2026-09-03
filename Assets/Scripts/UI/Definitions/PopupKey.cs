@@ -18,5 +18,9 @@ namespace JewelPainter.UI.Definitions
 
         /// Hết lượt gợi ý miễn phí. Mở khi người chơi bấm nút gợi ý mà không còn lượt.
         HintMove = 7,
+
+        /// Mời người chơi đánh giá. RatePopupPresenter mở sau mỗi vài màn, và tắt hẳn
+        /// khi người chơi đã bấm đánh giá.
+        Rate = 8,
     }
 }

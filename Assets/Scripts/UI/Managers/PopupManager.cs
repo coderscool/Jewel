@@ -79,6 +79,19 @@ namespace JewelPainter.UI.Managers
             }
         }
 
+        /// Duyệt lại mỗi lần hỏi chứ không giữ bộ đếm — cùng lý do đã ghi ở LateUpdate:
+        /// popup tự đóng bằng nút của chính nó, không đi qua manager, nên bộ đếm nào ở
+        /// đây rồi cũng lệch.
+        public bool IsAnyVisible()
+        {
+            foreach (var popup in _instances.Values)
+            {
+                if (popup.IsVisible) return true;
+            }
+
+            return false;
+        }
+
         /// Đọc LẠI trạng thái thật mỗi frame thay vì đếm lượt bật/tắt.
         ///
         /// Popup tự đóng bằng nút đóng của chính nó — nó gọi thẳng PopupView.Hide chứ

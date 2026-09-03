@@ -22,5 +22,12 @@ namespace JewelPainter.Core.Persistence
         /// Đã phát lượt khởi đầu chưa. Tách khỏi con số ở trên vì "còn 0 lượt" và "chưa
         /// bao giờ được phát" là hai trạng thái khác nhau, mà cả hai đều đọc ra số 0.
         public const string HintCreditsGranted = "hint_credits_granted";
+
+        /// Đã bấm nút đánh giá chưa. Bấm rồi thì popup mời đánh giá tắt vĩnh viễn.
+        public const string HasRated = "has_rated";
+
+        /// Số màn đã tô xong kể từ lần mời đánh giá gần nhất. Đếm lại từ 0 sau mỗi lần
+        /// mời, nên bỏ qua một lần thì phải xong thêm đủ số màn nữa mới bị hỏi lại.
+        public const string LevelsSinceRatePrompt = "levels_since_rate_prompt";
     }
 }

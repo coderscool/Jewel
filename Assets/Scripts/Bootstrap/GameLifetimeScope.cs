@@ -20,6 +20,10 @@ namespace JewelPainter.Bootstrap
         /// Hết thì nút gợi ý chuyển sang mở popup mời thêm lượt.
         private const int FreeHintCredits = 3;
 
+        /// Xong bao nhiêu màn thì mời đánh giá một lần. Đếm lại từ đầu sau mỗi lần mời,
+        /// và tắt hẳn khi người chơi đã bấm đánh giá.
+        private const int LevelsPerRatePrompt = 4;
+
         protected override void Configure(IContainerBuilder builder)
         {
             // Core — class thuần, container tự dựng
@@ -35,6 +39,9 @@ namespace JewelPainter.Bootstrap
             // gặp nhau. Domain chỉ biết đếm và ghi.
             builder.Register(_ => new HintCredits(
                 _.Resolve<ISaveService>(), FreeHintCredits), Lifetime.Singleton);
+
+            builder.Register(_ => new RatePrompt(
+                _.Resolve<ISaveService>(), LevelsPerRatePrompt), Lifetime.Singleton);
 
             // MonoBehaviour có sẵn trong scene — Find một lần lúc khởi động, hợp lệ ở đây
             builder.RegisterComponentInHierarchy<SoundService>()
@@ -87,6 +94,10 @@ namespace JewelPainter.Bootstrap
 
             builder.RegisterComponentInHierarchy<ColorPaletteBar>()
                    .AsImplementedInterfaces().AsSelf();
+
+            // Rình lúc màn hình sạch để mời đánh giá. Thuần C# nên không cần object nào
+            // trong scene — ITickable của VContainer cấp nhịp Update cho nó.
+            builder.RegisterEntryPoint<RatePopupPresenter>();
 
             // Điểm khởi động: nối dây rồi bắt đầu màn chơi
             builder.RegisterEntryPoint<GameEntryPoint>();
