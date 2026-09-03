@@ -86,6 +86,23 @@ namespace JewelPainter.Gameplay.Board
                  "Để 0 là quay lại dựng hết trong một frame.")]
         [SerializeField] private int _prewarmPerFrame = 250;
 
+        [Tooltip("Cắt bớt lượng dựng sẵn theo SỨC CHỨA CỦA MÀN HÌNH.\n\n" +
+                 "Số chữ cần cùng lúc bị chặn bởi màn hình chứ không bởi cỡ bảng: ở mức " +
+                 "zoom mà số bắt đầu hiện, khung nhìn chỉ phủ được một vùng nhất định. " +
+                 "Bảng càng lớn thì phần dựng thừa càng lớn, vì sức chứa của màn là hằng " +
+                 "số còn số ô thì tăng theo bình phương cạnh.\n\n" +
+                 "Bỏ tick là quay lại dựng đủ một chữ cho MỌI ô có màu.")]
+        [SerializeField] private bool _capPrewarmToScreen = true;
+
+        [Tooltip("Hệ số an toàn nhân vào sức chứa màn hình khi cắt.\n\n" +
+                 "Cần vì phép cắt chia đều theo tỉ lệ ô của từng số, mà một màu dồn cục " +
+                 "vào một góc thì lúc người chơi zoom đúng vào góc đó sẽ cần nhiều chữ " +
+                 "của số ấy hơn phần chia. Thiếu thì kho phải Instantiate bù ngay giữa " +
+                 "lúc zoom — đúng cú khựng mà việc dựng sẵn sinh ra để tránh.\n\n" +
+                 "1.3 là điểm khởi đầu. Thấy khựng lúc zoom qua ngưỡng hiện số thì nâng lên.")]
+        [Range(1f, 3f)]
+        [SerializeField] private float _prewarmScreenSafety = 1.3f;
+
         /// Một chữ, kèm SỐ nó đang mang và renderer của nó.
         ///
         /// Nhớ con số vì lúc trả về kho cần biết trả vào ngăn nào — mà lúc đó lưới có thể
@@ -232,6 +249,13 @@ namespace JewelPainter.Gameplay.Board
             _prewarmNumbers.Clear();
             foreach (var pair in _cellCountByNumber) _prewarmNumbers.Add(pair.Key);
 
+            // Nhường một frame TRƯỚC khi tính trần. ResolveShowSize đọc _baseSize, mà
+            // _baseSize chỉ được chụp ở LateUpdate đầu tiên sau khi bảng dựng xong — hỏi
+            // sớm hơn thì nó còn là -1 và cái trần tính ra vô nghĩa.
+            yield return null;
+
+            var ratio = ResolvePrewarmRatio(grid);
+
             var perFrame = _prewarmPerFrame > 0 ? _prewarmPerFrame : int.MaxValue;
             var budget = perFrame;
 
@@ -239,7 +263,8 @@ namespace JewelPainter.Gameplay.Board
             {
                 // Con số cứng thành mức SÀN, để vẫn chỉnh tay lên được nếu cần.
                 var target = _prewarmFromBoardSize
-                    ? Mathf.Max(_prewarmPerNumber, _cellCountByNumber[number])
+                    ? Mathf.Max(_prewarmPerNumber,
+                        Mathf.CeilToInt(_cellCountByNumber[number] * ratio))
                     : _prewarmPerNumber;
 
                 var pool = PoolFor(number);
@@ -256,6 +281,42 @@ namespace JewelPainter.Gameplay.Board
             }
 
             _prewarmRoutine = null;
+        }
+
+        /// Tỉ lệ cắt cho lượng chữ dựng sẵn — 1 nghĩa là không cắt.
+        ///
+        /// Chia đều theo tỉ lệ số ô của từng con số, không cắt phẳng mỗi số một lượng
+        /// bằng nhau: ở mức zoom mà số hiện ra, vùng nhìn thấy là một mẫu khá đều của cả
+        /// bức tranh, nên màu chiếm nửa tranh thì cũng cần chừng nửa số chữ.
+        ///
+        /// Sàn _prewarmPerNumber vẫn giữ nguyên, nên màu hiếm không bị cắt về gần 0.
+        private float ResolvePrewarmRatio(PixelGrid grid)
+        {
+            if (!_capPrewarmToScreen || !_prewarmFromBoardSize) return 1f;
+
+            var showSize = ResolveShowSize();
+            if (showSize <= 0f) return 1f;
+
+            // Mức zoom RỘNG NHẤT mà chữ còn sống: ngưỡng đã nới thêm dải trễ. Lấy ngay
+            // ngưỡng thì hụt, vì đã hiện rồi người chơi còn kéo ra được thêm một quãng
+            // nữa mà chữ chưa tắt.
+            var ceiling = Mathf.Max(showSize, _baseSize);
+            var widest = Mathf.Lerp(showSize, ceiling, Mathf.Clamp01(_showHysteresis));
+
+            // Khung nhìn quy ra ô — một ô rộng đúng một world unit. Cộng phần nới của
+            // ExpandedCameraRect, và kẹp theo cạnh bảng vì VisibleCells cũng kẹp như vậy.
+            var margin = 2f * Mathf.Max(0, _visibleMarginCells) + 1f;
+
+            var viewCells =
+                Mathf.Min(grid.Width, 2f * widest * _camera.aspect + margin) *
+                Mathf.Min(grid.Height, 2f * widest + margin);
+
+            var filled = 0;
+            foreach (var pair in _cellCountByNumber) filled += pair.Value;
+
+            if (filled <= 0) return 1f;
+
+            return Mathf.Clamp01(viewCells * Mathf.Max(1f, _prewarmScreenSafety) / filled);
         }
 
         private void CountCellsByNumber(PixelGrid grid, int colorCount)
