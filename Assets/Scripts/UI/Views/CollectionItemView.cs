@@ -37,6 +37,19 @@ namespace JewelPainter.UI.Views
                 _artwork.sprite = artwork;
                 _artwork.color = unlocked ? Color.white : _lockedTint;
 
+                // Giữ đúng tỉ lệ tranh: cạnh chạm khung trước thì dừng ở khung, cạnh kia
+                // co theo. Không có nó thì Image kéo ảnh phủ kín ô, và tranh không vuông
+                // bị bóp méo.
+                //
+                // Đặt bằng CODE chứ không tick trong prefab. Đây là luật hiển thị của bộ
+                // sưu tập, không phải lựa chọn thẩm mỹ của từng ô: tranh bị kéo giãn là
+                // tranh SAI. Một cái tick trong Inspector thì lần sau ai dựng lại prefab
+                // là mất, mà mất thì không có gì báo.
+                //
+                // Chỉ có tác dụng khi Image Type là Simple hoặc Filled — Sliced và Tiled
+                // bỏ qua preserveAspect. Prefab hiện đang để Simple.
+                _artwork.preserveAspect = true;
+
                 if (_lockedMaterial != null)
                 {
                     _artwork.material = unlocked ? _unlockedMaterial : _lockedMaterial;
