@@ -2138,10 +2138,12 @@ MonoBehaviour:
   _camera: {fileID: 519420031}
   _jewelPrefab: {fileID: 6352456925884473337, guid: 34a6a5cd170b873408d83dee24c35489, type: 3}
   _root: {fileID: 929957782}
-  _minCellScreenPixels: 8
+  _minCellScreenPixels: 5
   _prewarmCount: 200
   _prewarmFromBoardSize: 1
   _prewarmPerFrame: 500
+  _capPrewarmToScreen: 1
+  _prewarmScreenSafety: 1.3
   _maxSpawnPerFrame: 0
   _visibleMarginCells: 2
 --- !u!1 &986912013
@@ -2990,13 +2992,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _renderer: {fileID: 1369701346}
-  _pixelsPerCell: 16
+  _pixelsPerCell: 12
   _maxTextureSize: 2048
   _lineThickness: 1
   _inset: 0
   _lineColor:
     serializedVersion: 2
     rgba: 4288651167
+  _generateMipmaps: 1
 --- !u!212 &1369701346
 SpriteRenderer:
   m_ObjectHideFlags: 0
@@ -4301,10 +4304,12 @@ MonoBehaviour:
   _camera: {fileID: 519420031}
   _hintPrefab: {fileID: 7774231148693821494, guid: 59b0f41eab642384dad89f3d5efb4d47, type: 3}
   _root: {fileID: 1769084357}
-  _minCellScreenPixels: 5
+  _minCellScreenPixels: 2
   _prewarmCount: 400
   _prewarmFromLargestColor: 1
   _prewarmPerFrame: 200
+  _capPrewarmToScreen: 1
+  _prewarmScreenSafety: 1.3
   _maxSpawnPerFrame: 0
   _visibleMarginCells: 2
 --- !u!1 &1805261086

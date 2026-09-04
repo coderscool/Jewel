@@ -51,6 +51,21 @@ namespace JewelPainter.Gameplay.Board
 
         [SerializeField] private Color32 _lineColor = new Color32(255, 255, 255, 255);
 
+        [Tooltip("Sinh mipmap cho texture viền. ĐỂ BẬT.\n\n" +
+                 "Đây là thứ chữa đúng cảnh 'chỗ có đường chỗ không' mà tooltip của Pixels " +
+                 "Per Cell mô tả. Không mipmap thì lúc thu nhỏ, lọc Point lấy đúng MỘT texel " +
+                 "cho mỗi pixel màn hình — đường kẻ dày 1 texel nằm giữa 15 texel trống nên " +
+                 "phần lớn bị bốc trượt, chỉ vài đường sống sót và hiện ra lỗ chỗ.\n\n" +
+                 "Có mipmap thì mức thu nhỏ đã TRUNG BÌNH sẵn đường kẻ với chỗ trống, nên " +
+                 "MỌI ranh giới đều còn dấu vết, chỉ là nhạt dần theo mức zoom. Đường mờ đều " +
+                 "nhìn đúng hơn hẳn đường sắc nét mọc lỗ chỗ.\n\n" +
+                 "Giữ lọc Point: Unity vẫn chọn mipmap, chỉ là không nội suy trong một mức — " +
+                 "nên phóng to vẫn sắc cạnh y như cũ.\n\n" +
+                 "Cái giá là thêm một phần ba bộ nhớ texture. Rẻ ở đây vì viền chỉ upload " +
+                 "MỘT lần lúc vào màn, khác hẳn hai lớp của BoardView vốn bị ghi lại mỗi " +
+                 "lần tô — đó là lý do bên kia tắt mipmap còn bên này bật.")]
+        [SerializeField] private bool _generateMipmaps = true;
+
         private BoardView _boardView;
         private Texture2D _texture;
         private Sprite _sprite;
@@ -85,7 +100,7 @@ namespace JewelPainter.Gameplay.Board
             var width = grid.Width * cellPixels;
             var height = grid.Height * cellPixels;
 
-            _texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            _texture = new Texture2D(width, height, TextureFormat.RGBA32, _generateMipmaps)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
@@ -118,9 +133,11 @@ namespace JewelPainter.Gameplay.Board
                     0,
                     SpriteMeshType.FullRect);
 
+                // Apply dựng nốt các mức mipmap từ mức 0 mà SetPixelData vừa ghi.
+                //
                 // makeNoLongerReadable: viền dựng một lần rồi không ai đọc lại, nên bỏ
                 // bản sao trên CPU đi — nửa số bộ nhớ của texture này biến mất ở đây.
-                _texture.Apply(false, true);
+                _texture.Apply(_generateMipmaps, true);
             }
             finally
             {

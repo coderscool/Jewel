@@ -197,7 +197,11 @@ namespace JewelPainter.UI.Views
         }
 
         /// Cộng lượt không mất gì. Nối nút xem quảng cáo hoặc quà theo ngày vào đây.
-        public void GrantFreeHints() => GrantHints(Mathf.Max(1, _freeHintReward));
+        public void GrantFreeHints() 
+        { 
+            GrantHints(Mathf.Max(1, _freeHintReward));
+            Hide();
+        }
 
         /// Cửa DUY NHẤT để thêm lượt. Mọi đường nhận lượt đều đổ về đây.
         ///

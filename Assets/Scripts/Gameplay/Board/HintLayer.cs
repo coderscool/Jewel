@@ -52,6 +52,24 @@ namespace JewelPainter.Gameplay.Board
                  "trong một frame như trước.")]
         [SerializeField] private int _prewarmPerFrame = 200;
 
+        [Tooltip("Cắt bớt lượng dựng sẵn theo SỨC CHỨA CỦA MÀN HÌNH.\n\n" +
+                 "Số marker cần cùng lúc bị chặn bởi HAI thứ, không phải một: số ô của " +
+                 "lưới, VÀ vùng mà khung nhìn phủ được ở mức zoom rộng nhất mà lớp này còn " +
+                 "sống (xem Min Cell Screen Pixels). Sức chứa của màn là hằng số, còn số ô " +
+                 "thì tăng theo BÌNH PHƯƠNG cạnh — nên bảng càng lớn, phần dựng thừa càng " +
+                 "lớn. Bảng 72 lên 108 là số ô gấp 2.25 lần mà màn hình vẫn thế.\n\n" +
+                 "Trên màn hình rất cao thì cận thứ hai có thể vẫn phủ trọn bảng và không " +
+                 "cắt được gì. Điều đó ĐÚNG: ở máy đó cả bảng hiện thật, không phải chỗ " +
+                 "này tính hụt.\n\n" +
+                 "Bỏ tick là quay lại dựng đủ cho mọi ô.")]
+        [SerializeField] private bool _capPrewarmToScreen = true;
+
+        [Tooltip("Hệ số an toàn nhân vào sức chứa màn hình khi cắt. Thiếu thì kho phải " +
+                 "Instantiate bù ngay giữa lúc zoom — đúng cú khựng mà việc dựng sẵn sinh " +
+                 "ra để tránh.")]
+        [Range(1f, 3f)]
+        [SerializeField] private float _prewarmScreenSafety = 1.3f;
+
         [Tooltip("Số marker được sinh tối đa trong MỘT frame.\n\n" +
                  "**Để 0 là tất cả hiện cùng một lúc** — đây là mặc định, và nó an toàn vì " +
                  "kho đã dựng sẵn đủ hàng: lấy ra chỉ là bật object và đặt vị trí.\n\n" +
@@ -353,7 +371,10 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_hintPrefab == null) yield break;
 
-            var target = Mathf.Max(_prewarmCount, LargestColorCellCount());
+            // Nhường một frame TRƯỚC khi tính trần — xem chú thích cùng chỗ ở JewelLayer.
+            yield return null;
+
+            var target = Mathf.Max(_prewarmCount, ResolvePrewarmTarget());
             var perFrame = _prewarmPerFrame > 0 ? _prewarmPerFrame : int.MaxValue;
             var budget = perFrame;
 
@@ -372,8 +393,55 @@ namespace JewelPainter.Gameplay.Board
             _prewarmRoutine = null;
         }
 
-        /// Số ô của màu chiếm nhiều ô nhất trong màn — cũng chính là số marker tối đa
-        /// có thể cần tới cùng lúc.
+        /// Số marker cần dựng sẵn: số ô của màu đông nhất, đã cắt theo sức chứa màn hình.
+        ///
+        /// Cắt theo TỈ LỆ chứ không cắt phẳng: ở mức zoom mà marker còn sống, vùng nhìn
+        /// thấy là một mẫu khá đều của cả bức tranh, nên màu chiếm nửa tranh thì trong
+        /// khung hình cũng chiếm chừng nửa số ô.
+        private int ResolvePrewarmTarget()
+        {
+            var largest = LargestColorCellCount();
+
+            if (!_capPrewarmToScreen || largest <= 0) return largest;
+
+            // _colorCounts vừa được LargestColorCellCount điền lại, dùng luôn khỏi quét lần hai.
+            var colored = 0;
+            foreach (var pair in _colorCounts) colored += pair.Value;
+
+            if (colored <= 0) return largest;
+
+            var capacity = VisibleCellCapacity();
+            if (capacity <= 0f) return largest;
+
+            var ratio = Mathf.Clamp01(capacity * Mathf.Max(1f, _prewarmScreenSafety) / colored);
+
+            return Mathf.CeilToInt(largest * ratio);
+        }
+
+        /// Số ô nhiều nhất lọt vào khung nhìn, ở mức zoom RỘNG NHẤT mà lớp này còn sống.
+        ///
+        /// Hai cận, lấy cái chặt hơn: kéo ra quá Min Cell Screen Pixels là cả lớp bị thu
+        /// về hết, mà BoardCamera cũng không cho kéo xa hơn mức lúc vào màn.
+        ///
+        /// 0 khi chưa dựng bảng — bên gọi hiểu là "không cắt".
+        private float VisibleCellCapacity()
+        {
+            var layout = _boardView != null ? _boardView.Layout : null;
+            if (layout == null || _camera == null) return 0f;
+
+            var threshold = Mathf.Max(0.01f, _minCellScreenPixels);
+            var widest = Mathf.Min(_camera.orthographicSize, Screen.height / (2f * threshold));
+
+            // Cộng phần nới của ExpandedCameraRect, và kẹp theo cạnh bảng vì VisibleCells
+            // cũng kẹp như vậy.
+            var margin = 2f * Mathf.Max(0, _visibleMarginCells) + 1f;
+
+            return Mathf.Min(layout.Width, 2f * widest * _camera.aspect + margin) *
+                   Mathf.Min(layout.Height, 2f * widest + margin);
+        }
+
+        /// Số ô của màu chiếm nhiều ô nhất trong màn — cận trên tuyệt đối của số marker
+        /// cần tới cùng lúc.
         ///
         /// Quét cả lưới một lượt. Chạy đúng một lần mỗi khi vào màn, và lúc đó màn hình
         /// chờ đang che, nên vài nghìn phép tra dictionary không ai thấy.
