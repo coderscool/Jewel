@@ -20,6 +20,12 @@ namespace JewelPainter.Bootstrap.Cheat
         /// Số lượt gợi ý còn lại. -1 khi chưa dựng xong.
         int HintCredits { get; }
 
+        /// Số lượt booster "tô tự do" còn lại. -1 khi chưa dựng xong.
+        int FreePaintCredits { get; }
+
+        /// Số lượt booster "tô hết màu" còn lại. -1 khi chưa dựng xong.
+        int FillColorCredits { get; }
+
         /// Đang có một cú tô hàng loạt chạy dở.
         bool IsFilling { get; }
 
@@ -36,6 +42,13 @@ namespace JewelPainter.Bootstrap.Cheat
 
         /// Cộng lượt gợi ý, để test nút gợi ý mà không phải xem quảng cáo.
         void AddHintCredits(int amount);
+
+        /// Cộng lượt tô tự do. Người chơi mới chỉ được đúng một lượt, mà cái booster này
+        /// thì phải bấm đi bấm lại mới soát hết được — hết lượt là tắc đường test.
+        void AddFreePaintCredits(int amount);
+
+        /// Cộng lượt tô hết màu.
+        void AddFillColorCredits(int amount);
     }
 }
 #endif

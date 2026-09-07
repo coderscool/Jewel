@@ -76,6 +76,16 @@ namespace JewelPainter.Gameplay.Board
                  "Đặt số dương chỉ cần khi kho có thể thiếu và phải Instantiate bù.")]
         [SerializeField] private int _maxSpawnPerFrame;
 
+        [Tooltip("Hạn mức sinh mỗi frame RIÊNG cho lúc booster tô tự do đang chạy.\n\n" +
+                 "Cần một con số riêng vì lúc đó marker phủ MỌI ô chưa tô, không phải chỉ " +
+                 "ô của một màu — trên bảng lớn ở mức zoom vừa khít, số marker cần cùng " +
+                 "lúc nhảy lên gấp cả chục lần và kho dựng sẵn chắc chắn thiếu. Không chia " +
+                 "frame thì cú bấm nút sinh ra vài nghìn Instantiate trong đúng một frame, " +
+                 "và người chơi thấy game khựng hẳn một nhịp.\n\n" +
+                 "Chia frame nên marker hiện dần trong khoảng nửa giây — đọc ra như một " +
+                 "cú quét, không phải như lỗi. Để 0 là hiện hết cùng lúc.")]
+        [SerializeField] private int _freePaintMaxSpawnPerFrame = 250;
+
         [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn, để ô ở rìa " +
                  "không bị thu về rồi sinh lại liên tục khi camera nhích.")]
         [SerializeField] private int _visibleMarginCells = 2;
@@ -109,6 +119,10 @@ namespace JewelPainter.Gameplay.Board
             _boardView.OnCoverChanged += HandleCoverChanged;
             _paintService.OnColorSelected += HandleColorSelected;
 
+            // Booster bật/tắt là đổi hẳn TẬP ô được đánh dấu, không phải thêm bớt vài ô —
+            // cùng loại thay đổi với việc chọn màu khác, nên dùng chung cách xử lý.
+            _paintService.OnFreePaintChanged += HandleFreePaintChanged;
+
             // Gỡ marker lúc viên ngọc ĐÁP XUỐNG, không phải lúc bấm tô — gỡ sớm thì
             // ô trống trơn suốt quãng viên đang bay.
             _flyEffect.OnJewelLanded += HandleJewelLanded;
@@ -127,6 +141,7 @@ namespace JewelPainter.Gameplay.Board
             if (_paintService == null) return;
 
             _paintService.OnColorSelected -= HandleColorSelected;
+            _paintService.OnFreePaintChanged -= HandleFreePaintChanged;
         }
 
         private void HandleBoardRebuilt()
@@ -139,6 +154,15 @@ namespace JewelPainter.Gameplay.Board
         }
 
         private void HandleColorSelected(int paletteIndex)
+        {
+            ReleaseAll();
+            _needsRefresh = true;
+        }
+
+        /// Thu hết về kho rồi dựng lại từ đầu. Thu trước là cần thiết ở chiều TẮT: những
+        /// marker của các màu khác phải biến đi, mà vòng quét ở Refresh chỉ biết THÊM ô,
+        /// nó không đi gỡ ô không còn hợp lệ nữa.
+        private void HandleFreePaintChanged(bool active)
         {
             ReleaseAll();
             _needsRefresh = true;
@@ -192,8 +216,12 @@ namespace JewelPainter.Gameplay.Board
                 return true;
             }
 
+            // Booster tô tự do: đánh dấu MỌI ô chưa tô, bất kể màu đang chọn — và bất kể
+            // có chọn màu nào hay chưa, vì lúc này tô không cần màu.
+            var freePaint = _paintService.FreePaintActive;
+
             var selected = _paintService.SelectedPaletteIndex;
-            if (selected < 0)
+            if (!freePaint && selected < 0)
             {
                 ReleaseAll();
                 return true;
@@ -219,7 +247,10 @@ namespace JewelPainter.Gameplay.Board
             // 0 nghĩa là không giới hạn — marker lấy từ kho dựng sẵn nên rẻ, không cần
             // chia frame. int.MaxValue thay vì rẽ nhánh riêng: lưới lớn nhất cũng chỉ
             // vài nghìn ô nên phép trừ không bao giờ chạm đáy.
-            var budget = _maxSpawnPerFrame > 0 ? _maxSpawnPerFrame : int.MaxValue;
+            //
+            // Lúc booster chạy thì dùng hạn mức riêng — xem tooltip của ô đó.
+            var perFrame = freePaint ? _freePaintMaxSpawnPerFrame : _maxSpawnPerFrame;
+            var budget = perFrame > 0 ? perFrame : int.MaxValue;
 
             for (var y = visible.yMin; y < visible.yMax; y++)
             {
@@ -228,7 +259,17 @@ namespace JewelPainter.Gameplay.Board
                     var cell = new Vector2Int(x, y);
                     if (_active.ContainsKey(cell)) continue;
 
-                    if (grid.GetCell(x, y) != selected) continue;
+                    var index = grid.GetCell(x, y);
+
+                    if (freePaint)
+                    {
+                        if (index == PixelGrid.EmptyCell) continue;
+                    }
+                    else if (index != selected)
+                    {
+                        continue;
+                    }
+
                     if (IsDone(cell)) continue;
 
                     Show(cell);

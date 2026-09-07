@@ -1,25 +1,45 @@
 using DG.Tweening;
 using JewelPainter.Gameplay.Domain;
+using JewelPainter.UI.Definitions;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 using VContainer;
 
 namespace JewelPainter.UI.Views
 {
-    /// Popup mở khi người chơi bấm nút gợi ý mà đã hết lượt miễn phí.
+    /// Popup mở khi người chơi bấm một nút booster mà đã hết lượt miễn phí.
+    ///
+    /// MỘT script cho CẢ BA booster: khác nhau ở chữ, ảnh và giá — toàn những thứ đã là ô
+    /// Inspector sẵn — chứ không khác nhau ở code. Ô Pool ngay dưới đây nói prefab này
+    /// đang bán lượt của kho nào.
+    ///
+    /// Chép ra ba script gần y hệt thì bản thứ ba sẽ lệch khỏi bản đầu ngay ở lần sửa
+    /// hiệu ứng đầu tiên, và lệch ở một popup mà người chơi chỉ thấy khi hết lượt — tức
+    /// là nơi lâu nhất mới có ai phát hiện.
     ///
     /// HudView mở nó — không đi qua presenter nào, vì popup này bật lên từ chính cái nút
     /// mà HudView đang giữ, và HudView thì luôn sống. Presenter chỉ cần khi popup được mở
     /// bởi một sự kiện mà không ai đang nghe.
     ///
-    /// Hai đường nhận lượt hiện có, cả hai đều đổ về GrantHints:
-    ///   BuyHintWithCoins — trừ tiền rồi cộng lượt. Không đủ tiền thì lắc nút báo lại.
-    ///   GrantFreeHints   — cộng lượt không mất gì. Nối nút xem quảng cáo vào đây.
-    public class HintPopupView : PopupView
+    /// Hai đường nhận lượt hiện có, cả hai đều đổ về GrantCredits:
+    ///   BuyWithCoins     — trừ tiền rồi cộng lượt. Không đủ tiền thì lắc nút báo lại.
+    ///   GrantFreeCredits — cộng lượt không mất gì. Nối nút xem quảng cáo vào đây.
+    public class CreditPopupView : PopupView
     {
-        [Tooltip("Số lượt gợi ý còn lại. Thường là 0 lúc popup này mở, nhưng vẫn cập nhật " +
-                 "để người chơi thấy con số nhảy lên ngay sau khi nhận thêm lượt.")]
+        [Tooltip("Prefab này bán lượt của kho nào.\n\n" +
+                 "Đặt SAI thì popup vẫn chạy trơn tru và vẫn cộng lượt — chỉ là cộng nhầm " +
+                 "kho. Người chơi trả 250 tiền cho nút Tô hết màu rồi thấy lượt gợi ý tăng " +
+                 "lên. Không có lỗi nào hiện ra, nên đây là ô đáng kiểm lại nhất trong cả " +
+                 "prefab.")]
+        [SerializeField] private CreditPoolKind _pool = CreditPoolKind.Hint;
+
+        [Tooltip("Số lượt còn lại của kho đã chọn ở trên. Thường là 0 lúc popup này mở, " +
+                 "nhưng vẫn cập nhật để người chơi thấy con số nhảy lên ngay sau khi nhận " +
+                 "thêm lượt.\n\n" +
+                 "Để TRỐNG thì popup không hiện số, và cú nảy báo 'đã nhận' cũng không " +
+                 "chạy — hiệu ứng đó nảy trên chính cái nhãn này.")]
         [SerializeField] private TMP_Text _creditsText;
 
         [SerializeField] private Button _closeButton;
@@ -32,8 +52,9 @@ namespace JewelPainter.UI.Views
         [Tooltip("Giá một lần mua, tính bằng tiền. Để 0 là cho không.")]
         [SerializeField] private int _coinCost = 250;
 
-        [Tooltip("Mua một lần được bao nhiêu lượt gợi ý.")]
-        [SerializeField] private int _coinHintReward = 1;
+        [Tooltip("Mua một lần được bao nhiêu lượt.")]
+        [FormerlySerializedAs("_coinHintReward")]
+        [SerializeField] private int _coinCreditReward = 1;
 
         [Tooltip("Nhãn hiện giá. Tuỳ chọn — gán vào thì script tự ghi con số ở Coin Cost " +
                  "lên nhãn lúc Awake, nên giá trên nút không bao giờ lệch với giá thật " +
@@ -45,8 +66,9 @@ namespace JewelPainter.UI.Views
                  "Cũng tự nối vào OnClick lúc Awake.")]
         [SerializeField] private Button _freeButton;
 
-        [Tooltip("Bấm một lần được bao nhiêu lượt gợi ý.")]
-        [SerializeField] private int _freeHintReward = 3;
+        [Tooltip("Bấm một lần được bao nhiêu lượt.")]
+        [FormerlySerializedAs("_freeHintReward")]
+        [SerializeField] private int _freeCreditReward = 3;
 
         [Header("Hiệu ứng báo không đủ tiền")]
         [Tooltip("Thứ bị lắc. Để trống thì lắc chính nút tiền. Gán ô này khi muốn lắc cả " +
@@ -79,7 +101,7 @@ namespace JewelPainter.UI.Views
 
         [SerializeField] private float _grantPunchDuration = 0.35f;
 
-        private HintCredits _credits;
+        private CreditPool _credits;
         private PlayerWallet _wallet;
 
         /// Lượt hiệu ứng đang chạy. Hai hiệu ứng loại trừ nhau — hoặc mua được, hoặc
@@ -95,24 +117,38 @@ namespace JewelPainter.UI.Views
         private Color _flashBaseColor;
         private Vector3 _creditsBaseScale;
 
-        /// Nhận HintCredits chứ không nhận IHintService.
+        /// Nhận thẳng ba KHO LƯỢT, không nhận IHintService hay IFreePaintService.
         ///
-        /// IHintService là contract cho việc DÙNG gợi ý — nó cố tình không có đường thêm
-        /// lượt, vì nút gợi ý không được phép tự phát lượt cho mình. Popup này thì ngược
-        /// lại: việc duy nhất của nó là thêm lượt. Hai vai trò khác nhau nên nhận hai thứ
-        /// khác nhau.
+        /// Mấy interface đó là contract cho việc DÙNG booster — chúng cố tình không có
+        /// đường thêm lượt, vì cái nút không được phép tự phát lượt cho mình. Popup này
+        /// thì ngược lại: việc duy nhất của nó là thêm lượt. Hai vai trò khác nhau nên
+        /// nhận hai thứ khác nhau.
+        ///
+        /// Nhận CẢ BA rồi tự chọn, thay vì để container đưa đúng một cái: prefab không
+        /// khai được kiểu C# cho container, nó chỉ khai được một enum. Ba tham số ở đây
+        /// đổi lấy việc chỉ có MỘT script cho cả ba popup.
         [Inject]
-        public void Construct(HintCredits credits, PlayerWallet wallet)
+        public void Construct(
+            HintCredits hintCredits,
+            FreePaintCredits freePaintCredits,
+            FillColorCredits fillColorCredits,
+            PlayerWallet wallet)
         {
-            _credits = credits;
+            _credits = _pool switch
+            {
+                CreditPoolKind.FreePaint => freePaintCredits,
+                CreditPoolKind.FillColor => fillColorCredits,
+                _ => hintCredits,
+            };
+
             _wallet = wallet;
         }
 
         private void Awake()
         {
             if (_closeButton != null) _closeButton.onClick.AddListener(Hide);
-            if (_coinButton != null) _coinButton.onClick.AddListener(BuyHintWithCoins);
-            if (_freeButton != null) _freeButton.onClick.AddListener(GrantFreeHints);
+            if (_coinButton != null) _coinButton.onClick.AddListener(BuyWithCoins);
+            if (_freeButton != null) _freeButton.onClick.AddListener(GrantFreeCredits);
 
             if (_denyShakeTarget == null && _coinButton != null)
             {
@@ -130,8 +166,8 @@ namespace JewelPainter.UI.Views
         private void OnDestroy()
         {
             if (_closeButton != null) _closeButton.onClick.RemoveListener(Hide);
-            if (_coinButton != null) _coinButton.onClick.RemoveListener(BuyHintWithCoins);
-            if (_freeButton != null) _freeButton.onClick.RemoveListener(GrantFreeHints);
+            if (_coinButton != null) _coinButton.onClick.RemoveListener(BuyWithCoins);
+            if (_freeButton != null) _freeButton.onClick.RemoveListener(GrantFreeCredits);
 
             if (_credits != null) _credits.OnCreditsChanged -= SetCredits;
 
@@ -172,7 +208,7 @@ namespace JewelPainter.UI.Views
         /// nhất tới cảnh tiền đã mất mà lượt chưa cộng, hoặc ngược lại.
         ///
         /// KHÔNG tự đóng popup: người chơi có thể muốn mua thêm lần nữa.
-        public void BuyHintWithCoins()
+        public void BuyWithCoins()
         {
             if (!EnsureCredits()) return;
 
@@ -193,24 +229,25 @@ namespace JewelPainter.UI.Views
             }
 
             // Sàn 1: mua rồi mà nhận 0 lượt thì đó là mất tiền, không phải là mua.
-            GrantHints(Mathf.Max(1, _coinHintReward));
+            GrantCredits(Mathf.Max(1, _coinCreditReward));
         }
 
         /// Cộng lượt không mất gì. Nối nút xem quảng cáo hoặc quà theo ngày vào đây.
-        public void GrantFreeHints() 
-        { 
-            GrantHints(Mathf.Max(1, _freeHintReward));
+        public void GrantFreeCredits()
+        {
+            GrantCredits(Mathf.Max(1, _freeCreditReward));
             Hide();
         }
 
-        /// Cửa DUY NHẤT để thêm lượt. Mọi đường nhận lượt đều đổ về đây.
+        /// Cửa DUY NHẤT để thêm lượt, cho đúng kho mà ô Pool đã chọn. Mọi đường nhận
+        /// lượt đều đổ về đây.
         ///
         /// Gọi được từ sự kiện OnClick trong Inspector vì nó public và nhận đúng một int —
         /// nên thêm một đường nhận lượt mới không nhất thiết phải sửa file này.
         ///
         /// KHÔNG tự đóng popup: người chơi có thể muốn nhận thêm lần nữa, và quyết định
         /// đóng hay không thuộc về đường nhận lượt cụ thể chứ không thuộc về chỗ cộng số.
-        public void GrantHints(int amount)
+        public void GrantCredits(int amount)
         {
             if (!EnsureCredits()) return;
 
@@ -227,13 +264,13 @@ namespace JewelPainter.UI.Views
         {
             if (_credits != null) return true;
 
-            WarnMissingDependency(nameof(HintCredits));
+            WarnMissingDependency($"kho lượt {_pool}");
             return false;
         }
 
         private void WarnMissingDependency(string what)
         {
-            Debug.LogWarning($"{nameof(HintPopupView)} chưa được inject {what} — popup phải " +
+            Debug.LogWarning($"{nameof(CreditPopupView)} chưa được inject {what} — popup phải " +
                              "do PopupManager tạo qua IObjectResolver, Object.Instantiate " +
                              "thường thì [Inject] không chạy.", this);
         }

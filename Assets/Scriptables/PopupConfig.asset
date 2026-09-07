@@ -25,5 +25,9 @@ MonoBehaviour:
     prefab: {fileID: 3620295374184190191, guid: 81e5e26e61580234c9af7a8094dbc5fc, type: 3}
   - key: 7
     prefab: {fileID: -7671222786103039985, guid: 71dfe6164a0513f46b0b242a67f0b276, type: 3}
+  - key: 9
+    prefab: {fileID: -7671222786103039985, guid: 3029b7c0e41b7544e95572a208ca1df7, type: 3}
+  - key: 10
+    prefab: {fileID: -7671222786103039985, guid: 8970d16d33ebee34d86d98ce6607d943, type: 3}
   - key: 8
     prefab: {fileID: 1028169401390687870, guid: 2def21270e98aac41aab4bac441c19ab, type: 3}

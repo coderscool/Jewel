@@ -15,6 +15,18 @@ namespace JewelPainter.Core.Persistence
         /// Số lượt gợi ý miễn phí còn lại.
         public const string HintCredits = "hint_credits";
 
+        /// Số lượt dùng booster "tô tự do" còn lại.
+        public const string FreePaintCredits = "free_paint_credits";
+
+        /// Đã phát lượt tô tự do khởi đầu chưa. Cùng lý do tách cờ như HintCreditsGranted.
+        public const string FreePaintCreditsGranted = "free_paint_credits_granted";
+
+        /// Số lượt dùng booster "tô hết màu đang chọn" còn lại.
+        public const string FillColorCredits = "fill_color_credits";
+
+        /// Đã phát lượt tô hết màu khởi đầu chưa.
+        public const string FillColorCreditsGranted = "fill_color_credits_granted";
+
         /// Người chơi đã từng tô được ô nào chưa. Hướng dẫn ngón tay đọc cờ này để chỉ
         /// hiện đúng một lần trong đời máy.
         public const string HasPaintedOnce = "has_painted_once";

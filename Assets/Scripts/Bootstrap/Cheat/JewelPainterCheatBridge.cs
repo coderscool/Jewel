@@ -44,6 +44,8 @@ namespace JewelPainter.Bootstrap.Cheat
         private readonly PlayerProgress _progress;
         private readonly PlayerWallet _wallet;
         private readonly HintCredits _hintCredits;
+        private readonly FreePaintCredits _freePaintCredits;
+        private readonly FillColorCredits _fillColorCredits;
         private readonly CheatRunner _runner;
 
         private readonly HashSet<string> _warnings = new();
@@ -57,6 +59,8 @@ namespace JewelPainter.Bootstrap.Cheat
             PlayerProgress progress,
             PlayerWallet wallet,
             HintCredits hintCredits,
+            FreePaintCredits freePaintCredits,
+            FillColorCredits fillColorCredits,
             CheatRunner runner)
         {
             _levelService = levelService;
@@ -65,6 +69,8 @@ namespace JewelPainter.Bootstrap.Cheat
             _progress = progress;
             _wallet = wallet;
             _hintCredits = hintCredits;
+            _freePaintCredits = freePaintCredits;
+            _fillColorCredits = fillColorCredits;
             _runner = runner;
         }
 
@@ -201,6 +207,10 @@ namespace JewelPainter.Bootstrap.Cheat
 
         public int HintCredits => _hintCredits?.Remaining ?? -1;
 
+        public int FreePaintCredits => _freePaintCredits?.Remaining ?? -1;
+
+        public int FillColorCredits => _fillColorCredits?.Remaining ?? -1;
+
         public bool IsFilling => _fill != null;
 
         public void PaintCells(int count)
@@ -230,6 +240,10 @@ namespace JewelPainter.Bootstrap.Cheat
         }
 
         public void AddHintCredits(int amount) => _hintCredits?.Grant(amount);
+
+        public void AddFreePaintCredits(int amount) => _freePaintCredits?.Grant(amount);
+
+        public void AddFillColorCredits(int amount) => _fillColorCredits?.Grant(amount);
 
         // ─────────────────────────────────── nội bộ ────────────────────────────────────
 

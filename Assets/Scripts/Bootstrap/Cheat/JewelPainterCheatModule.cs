@@ -17,6 +17,8 @@ namespace JewelPainter.Bootstrap.Cheat
         private const int SmallBatch = 10;
         private const int LargeBatch = 200;
         private const int HintGrant = 5;
+        private const int FreePaintGrant = 5;
+        private const int FillColorGrant = 5;
 
         private IJewelPainterCheatService _game;
 
@@ -25,6 +27,8 @@ namespace JewelPainter.Bootstrap.Cheat
         private Button _paintColor;
         private Button _stop;
         private Button _addHints;
+        private Button _addFreePaint;
+        private Button _addFillColor;
         private Text _stats;
 
         /// Giá trị đã VẼ lần gần nhất. Có nó thì OnUpdate chỉ chạm Text.text khi số thật
@@ -48,13 +52,21 @@ namespace JewelPainter.Bootstrap.Cheat
             _paintColor = CheatUi.Button(colorRow, "Xong 1 màu", new Color(0.55f, 0.45f, 0.80f));
             _stop = CheatUi.Button(colorRow, "Dừng tô", new Color(0.75f, 0.35f, 0.35f));
 
-            _addHints = CheatUi.Button(section, $"+{HintGrant} lượt gợi ý", new Color(0.85f, 0.70f, 0.25f));
+            var creditRow = CheatUi.Row(section);
+            _addHints = CheatUi.Button(creditRow, $"+{HintGrant} gợi ý", new Color(0.85f, 0.70f, 0.25f));
+            _addFreePaint = CheatUi.Button(
+                creditRow, $"+{FreePaintGrant} tô tự do", new Color(0.90f, 0.50f, 0.30f));
+
+            _addFillColor = CheatUi.Button(
+                section, $"+{FillColorGrant} tô hết màu", new Color(0.40f, 0.75f, 0.45f));
 
             _paintSmall.onClick.AddListener(OnPaintSmall);
             _paintLarge.onClick.AddListener(OnPaintLarge);
             _paintColor.onClick.AddListener(OnPaintColor);
             _stop.onClick.AddListener(OnStop);
             _addHints.onClick.AddListener(OnAddHints);
+            _addFreePaint.onClick.AddListener(OnAddFreePaint);
+            _addFillColor.onClick.AddListener(OnAddFillColor);
 
             _stats = CheatUi.Label(section, "Còn — ô · Gợi ý —", 24);
         }
@@ -74,6 +86,8 @@ namespace JewelPainter.Bootstrap.Cheat
             if (_paintColor != null) _paintColor.onClick.RemoveListener(OnPaintColor);
             if (_stop != null) _stop.onClick.RemoveListener(OnStop);
             if (_addHints != null) _addHints.onClick.RemoveListener(OnAddHints);
+            if (_addFreePaint != null) _addFreePaint.onClick.RemoveListener(OnAddFreePaint);
+            if (_addFillColor != null) _addFillColor.onClick.RemoveListener(OnAddFillColor);
         }
 
         public override void OnUpdate()
@@ -96,6 +110,8 @@ namespace JewelPainter.Bootstrap.Cheat
         private void OnPaintColor() => _game?.PaintOneColor();
         private void OnStop() => _game?.StopFilling();
         private void OnAddHints() => _game?.AddHintCredits(HintGrant);
+        private void OnAddFreePaint() => _game?.AddFreePaintCredits(FreePaintGrant);
+        private void OnAddFillColor() => _game?.AddFillColorCredits(FillColorGrant);
 
         /// Nút "Dừng tô" chỉ bấm được khi thật sự đang tô — nút bấm được mà không làm gì
         /// là lời nói dối nhỏ mà người test phải mất một lúc mới nhận ra.
@@ -107,6 +123,8 @@ namespace JewelPainter.Bootstrap.Cheat
             if (_paintLarge != null) _paintLarge.interactable = has;
             if (_paintColor != null) _paintColor.interactable = has;
             if (_addHints != null) _addHints.interactable = has;
+            if (_addFreePaint != null) _addFreePaint.interactable = has;
+            if (_addFillColor != null) _addFillColor.interactable = has;
             if (_stop != null) _stop.interactable = has && _game.IsFilling;
         }
 

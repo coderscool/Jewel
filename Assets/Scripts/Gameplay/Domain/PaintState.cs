@@ -183,6 +183,38 @@ namespace JewelPainter.Gameplay.Domain
             return false;
         }
 
+        /// Gom MỌI ô chưa tô của một màu vào danh sách cho sẵn, quét trái→phải,
+        /// trên→dưới. Trả về số ô đã thêm. Danh sách được Clear trước.
+        ///
+        /// Nhận buffer từ ngoài thay vì tự trả về một List mới: booster tô hết màu gọi
+        /// hàm này mỗi lần bấm nút, mà một màu có thể vài nghìn ô — cấp phát mới mỗi lần
+        /// là rác GC đúng vào lúc bảng đang bận nhất.
+        ///
+        /// Gom MỘT LẦN rồi tô dần theo danh sách, thay vì mỗi frame lại hỏi
+        /// TryGetUnpainted(ordinal 0): hàm đó quét cả lưới cho MỖI ô, nên tô n ô là quét
+        /// n lần cả lưới — bảng 108x108 thành hơn trăm triệu phép so.
+        public int CollectUnpainted(int paletteIndex, List<Vector2Int> buffer)
+        {
+            if (buffer == null) return 0;
+
+            buffer.Clear();
+
+            if (paletteIndex == PixelGrid.EmptyCell) return 0;
+
+            for (var y = 0; y < _grid.Height; y++)
+            {
+                for (var x = 0; x < _grid.Width; x++)
+                {
+                    if (_grid.GetCell(x, y) != paletteIndex) continue;
+                    if (_painted[Index(x, y)]) continue;
+
+                    buffer.Add(new Vector2Int(x, y));
+                }
+            }
+
+            return buffer.Count;
+        }
+
         /// false nếu toạ độ ngoài bảng, ô rỗng, ô đã tô, hoặc màu không khớp.
         public bool CanPaint(int x, int y, int paletteIndex)
         {
@@ -197,6 +229,42 @@ namespace JewelPainter.Gameplay.Domain
         public bool TryPaint(int x, int y, int paletteIndex)
         {
             if (!CanPaint(x, y, paletteIndex)) return false;
+
+            _painted[Index(x, y)] = true;
+            _remaining[paletteIndex] -= 1;
+            _remainingTotal -= 1;
+
+            return true;
+        }
+
+        /// Ô này tô được KHÔNG CẦN đúng màu: chỉ cần nằm trong bảng, có màu, và chưa tô.
+        ///
+        /// Dùng cho booster "tô tự do". Cố ý KHÔNG thêm tham số paletteIndex nhận -1 vào
+        /// CanPaint ở trên: luật thường và luật booster là hai câu hỏi khác nhau, gộp lại
+        /// thì mọi chỗ gọi CanPaint đều phải tự nhớ truyền đúng thứ, và quên một chỗ là
+        /// người chơi tô được bất kỳ ô nào suốt cả màn.
+        public bool CanPaintAny(int x, int y)
+        {
+            if (!IsInside(x, y)) return false;
+            if (_painted[Index(x, y)]) return false;
+
+            return _grid.GetCell(x, y) != PixelGrid.EmptyCell;
+        }
+
+        /// Tô một ô bằng CHÍNH MÀU CỦA NÓ, bất kể người chơi đang chọn màu nào.
+        ///
+        /// paletteIndex là màu thật sự được tô, để bên gọi bắn kèm trong sự kiện — ngọc
+        /// bay ra từ ô màu nào, vòng tiến độ nào nhích lên đều đọc con số này.
+        ///
+        /// Tô bằng màu ĐANG CHỌN thì bức tranh sẽ hỏng: ô đó vĩnh viễn sai màu, mà số
+        /// đếm của cả hai màu cũng lệch. Booster rút ngắn đường đi, không đổi đáp án.
+        public bool TryPaintAny(int x, int y, out int paletteIndex)
+        {
+            paletteIndex = PixelGrid.EmptyCell;
+
+            if (!CanPaintAny(x, y)) return false;
+
+            paletteIndex = _grid.GetCell(x, y);
 
             _painted[Index(x, y)] = true;
             _remaining[paletteIndex] -= 1;

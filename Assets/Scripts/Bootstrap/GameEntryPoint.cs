@@ -44,6 +44,10 @@ namespace JewelPainter.Bootstrap
         private readonly ColorPaletteBar _paletteBar;
         private readonly HintFocusController _hintFocus;
         private readonly HintCredits _hintCredits;
+        private readonly FreePaintController _freePaint;
+        private readonly FreePaintCredits _freePaintCredits;
+        private readonly FillColorController _fillColor;
+        private readonly FillColorCredits _fillColorCredits;
         private readonly PlayerWallet _wallet;
         private readonly TutorialState _tutorialState;
         private readonly IPopupService _popupService;
@@ -79,6 +83,10 @@ namespace JewelPainter.Bootstrap
             ColorPaletteBar paletteBar,
             HintFocusController hintFocus,
             HintCredits hintCredits,
+            FreePaintController freePaint,
+            FreePaintCredits freePaintCredits,
+            FillColorController fillColor,
+            FillColorCredits fillColorCredits,
             PlayerWallet wallet,
             TutorialState tutorialState,
             IPopupService popupService,
@@ -114,6 +122,10 @@ namespace JewelPainter.Bootstrap
             _paletteBar = paletteBar;
             _hintFocus = hintFocus;
             _hintCredits = hintCredits;
+            _freePaint = freePaint;
+            _freePaintCredits = freePaintCredits;
+            _fillColor = fillColor;
+            _fillColorCredits = fillColorCredits;
             _wallet = wallet;
             _tutorialState = tutorialState;
             _popupService = popupService;
@@ -150,7 +162,22 @@ namespace JewelPainter.Bootstrap
             // ngay trong Init của mình, nên nó phải xong trước HUD.
             _hintMarker.Init(_boardView);
             _hintFocus.Init(_paintService, _boardCamera, _hintMarker, _hintCredits);
-            _hud.Init(_levelService, _paintService, _hintFocus, _levelFlow, _popupService, _home);
+
+            // Booster tô tự do nhận PaintManager chứ không nhận IPaintService: nó là bên
+            // DUY NHẤT được phép bật luật tô tự do, mà hàm bật thì cố ý không nằm trên
+            // interface — xem chú thích ở IPaintService.FreePaintActive.
+            //
+            // Init trước HUD vì HUD hỏi nó "bấm được chưa", "còn mấy lượt" ngay trong
+            // Init của mình.
+            _freePaint.Init(_paintManager, _freePaintCredits);
+
+            // Cũng nhận PaintManager: nó tô bằng TryPaintAs, cửa sau cố ý không nằm trên
+            // IPaintService — xem chú thích ở chính hàm đó.
+            _fillColor.Init(_paintManager, _fillColorCredits);
+
+            _hud.Init(
+                _levelService, _paintService, _hintFocus, _freePaint, _fillColor, _levelFlow,
+                _popupService, _home);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService, _levelFlow);
@@ -189,7 +216,8 @@ namespace JewelPainter.Bootstrap
             // còn một byte cheat nào.
 #if CHEAT_ENABLED
             Cheat.CheatInstaller.Install(
-                _levelService, _paintService, _paintProgressStore, _progress, _wallet, _hintCredits);
+                _levelService, _paintService, _paintProgressStore, _progress, _wallet, _hintCredits,
+                _freePaintCredits, _fillColorCredits);
 #endif
 
             // Nạp màn là việc CUỐI CÙNG của lượt nối dây, và nó không dựng bàn ngay trong

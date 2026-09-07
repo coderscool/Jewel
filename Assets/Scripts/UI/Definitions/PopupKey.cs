@@ -22,5 +22,11 @@ namespace JewelPainter.UI.Definitions
         /// Mời người chơi đánh giá. RatePopupPresenter mở sau mỗi vài màn, và tắt hẳn
         /// khi người chơi đã bấm đánh giá.
         Rate = 8,
+
+        /// Hết lượt booster "tô tự do". Cùng vai với HintMove, nhưng cho cái nút kia.
+        FreePaint = 9,
+
+        /// Hết lượt booster "tô hết màu đang chọn".
+        FillColor = 10,
     }
 }

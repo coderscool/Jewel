@@ -20,6 +20,21 @@ namespace JewelPainter.Bootstrap
         /// Hết thì nút gợi ý chuyển sang mở popup mời thêm lượt.
         private const int FreeHintCredits = 3;
 
+        /// Số lượt booster "tô tự do" phát cho người chơi mới, cũng đúng một lần trong
+        /// đời máy.
+        ///
+        /// Một lượt ở đây đáng giá hơn hẳn một lượt gợi ý — 20 giây tô ô nào cũng được,
+        /// so với một lần chỉ ra đúng một ô — nên khi lên bảng giá thật thì đây là con số
+        /// nên hạ trước. Để 3 vì hai lượt đầu người chơi còn đang đoán xem nút này làm gì.
+        private const int FreeFreePaintUses = 3;
+
+        /// Số lượt booster "tô hết màu đang chọn" phát cho người chơi mới.
+        ///
+        /// Đây là booster MẠNH NHẤT trong ba cái — một lượt xoá sạch cả một màu, tức là
+        /// bỏ qua hẳn một phần việc của màn chơi. Phát nhiều thì người chơi bấm ba cái là
+        /// xong tranh và không còn gì để chơi nữa.
+        private const int FreeFillColorUses = 2;
+
         /// Xong bao nhiêu màn thì mời đánh giá một lần. Đếm lại từ đầu sau mỗi lần mời,
         /// và tắt hẳn khi người chơi đã bấm đánh giá.
         private const int LevelsPerRatePrompt = 4;
@@ -39,6 +54,12 @@ namespace JewelPainter.Bootstrap
             // gặp nhau. Domain chỉ biết đếm và ghi.
             builder.Register(_ => new HintCredits(
                 _.Resolve<ISaveService>(), FreeHintCredits), Lifetime.Singleton);
+
+            builder.Register(_ => new FreePaintCredits(
+                _.Resolve<ISaveService>(), FreeFreePaintUses), Lifetime.Singleton);
+
+            builder.Register(_ => new FillColorCredits(
+                _.Resolve<ISaveService>(), FreeFillColorUses), Lifetime.Singleton);
 
             builder.Register(_ => new RatePrompt(
                 _.Resolve<ISaveService>(), LevelsPerRatePrompt), Lifetime.Singleton);
@@ -70,6 +91,12 @@ namespace JewelPainter.Bootstrap
             builder.RegisterComponentInHierarchy<NotificationPresenter>();
 
             builder.RegisterComponentInHierarchy<HintFocusController>()
+                   .AsImplementedInterfaces().AsSelf();
+
+            builder.RegisterComponentInHierarchy<FreePaintController>()
+                   .AsImplementedInterfaces().AsSelf();
+
+            builder.RegisterComponentInHierarchy<FillColorController>()
                    .AsImplementedInterfaces().AsSelf();
 
             // Board — mặt sân chơi trong world

@@ -18,6 +18,9 @@ namespace JewelPainter.Gameplay.Interfaces
 
         /// Ô này có tô được bằng màu đang chọn không — cũng chính là điều kiện để nó
         /// đang hiện dấu gợi ý. false khi sai màu, đã tô, ngoài bảng, hoặc chưa chọn màu.
+        ///
+        /// Trong lúc FreePaintActive thì câu hỏi đổi thành "ô này có màu và chưa tô
+        /// không" — bên gọi KHÔNG phải tự biết điều đó, cứ hỏi như thường.
         bool CanPaint(int x, int y);
 
         /// true nếu ô được tô lần này. Sai màu, đã tô, hoặc ngoài bảng đều trả false.
@@ -57,6 +60,20 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Bên phát hiện gọi. Im lặng bỏ qua nếu thật ra đang có màu được chọn, nên bên
         /// gọi không cần tự kiểm tra trước.
         void RequireColor();
+
+        /// Booster "tô tự do" đang chạy: MỌI ô chưa tô đều tô được, và tô ra chính màu
+        /// của ô đó chứ không phải màu đang chọn.
+        ///
+        /// Nằm ở đây chứ không ở IFreePaintService vì đây là một LUẬT TÔ, và chỗ hỏi nó
+        /// nhiều nhất là những chỗ vốn đã cầm IPaintService — lớp gợi ý, lớp nhận chạm.
+        /// Cái nút, số lượt, đồng hồ đếm ngược thì thuộc về IFreePaintService.
+        ///
+        /// KHÔNG có hàm bật/tắt ở đây: chỉ Gameplay được phép bật, và nó cầm PaintManager
+        /// chứ không cầm interface này.
+        bool FreePaintActive { get; }
+
+        /// Bắn khi booster bật hoặc tắt. Lớp gợi ý nghe cái này để dựng lại dấu hiệu.
+        event Action<bool> OnFreePaintChanged;
 
         /// Đã tô được ít nhất một ô ở màn đang chơi — cũng chính là điều kiện để nút
         /// Tô lại có việc để làm. false khi chưa nạp lưới.

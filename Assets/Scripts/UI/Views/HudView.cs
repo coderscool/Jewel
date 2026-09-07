@@ -28,6 +28,45 @@ namespace JewelPainter.UI.Views
                  "xem quảng cáo, mà một số 0 nằm cạnh lời mời chỉ gây nhiễu.")]
         [SerializeField] private GameObject _hintCreditsBadge;
 
+        [Header("Booster tô tự do")]
+        [Tooltip("Nút bật booster: trong ít giây, MỌI ô chưa tô đều hiện dấu gợi ý và " +
+                 "chạm vào ô nào cũng tô được ô đó (ra đúng màu của ô, không phải màu " +
+                 "đang chọn).\n\n" +
+                 "Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
+        [SerializeField] private Button _freePaintButton;
+
+        [Tooltip("Số lượt tô tự do còn lại. Để trống thì không hiện số.")]
+        [SerializeField] private TMP_Text _freePaintCreditsText;
+
+        [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — cùng lý do như huy hiệu của " +
+                 "nút gợi ý.")]
+        [SerializeField] private GameObject _freePaintCreditsBadge;
+
+        [Tooltip("Đồng hồ đếm ngược, chỉ hiện trong lúc booster chạy. Ghi số GIÂY nguyên. " +
+                 "Để trống thì không hiện.")]
+        [SerializeField] private TMP_Text _freePaintTimerText;
+
+        [Tooltip("Vòng/thanh chạy vơi dần theo thời gian còn lại, thang 0..1. Image phải " +
+                 "để Image Type = Filled. Để trống thì bỏ qua.")]
+        [SerializeField] private Image _freePaintTimerFill;
+
+        [Header("Booster tô hết màu")]
+        [Tooltip("Nút bật booster: tô nốt MỌI ô còn lại của màu đang chọn.\n\n" +
+                 "Chưa chọn màu mà bấm thì nó hiện lời nhắc chọn màu và KHÔNG trừ lượt.\n\n" +
+                 "Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
+        [SerializeField] private Button _fillColorButton;
+
+        [Tooltip("Số lượt tô hết màu còn lại. Để trống thì không hiện số.")]
+        [SerializeField] private TMP_Text _fillColorCreditsText;
+
+        [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — cùng lý do như huy hiệu của " +
+                 "nút gợi ý.")]
+        [SerializeField] private GameObject _fillColorCreditsBadge;
+
+        [Tooltip("Vòng/thanh chạy đầy dần theo tiến độ đợt tô, thang 0..1. Image phải để " +
+                 "Image Type = Filled. Chỉ hiện trong lúc đang tô. Để trống thì bỏ qua.")]
+        [SerializeField] private Image _fillColorProgressFill;
+
         [Tooltip("Nút Tô lại: xoá sạch tiến độ tô của màn đang chơi rồi nạp lại từ đầu.\n\n" +
                  "Tự xám đi khi chưa tô ô nào — bấm vào lúc đó không có gì xảy ra, mà nút " +
                  "bấm được nhưng không làm gì là lời nói dối nhỏ người chơi phải mất một " +
@@ -48,15 +87,25 @@ namespace JewelPainter.UI.Views
         private ILevelService _levelService;
         private IPaintService _paintService;
         private IHintService _hintService;
+        private IFreePaintService _freePaintService;
+        private IFillColorService _fillColorService;
         private ILevelFlowService _levelFlow;
         private IPopupService _popupService;
         private int _displayedLevel = -1;
         private int _displayedCredits = -1;
+        private int _displayedFreePaintCredits = -1;
+        private int _displayedFillColorCredits = -1;
+
+        /// Số giây nguyên đã ghi ra lần gần nhất. Đồng hồ chỉ hiện tới giây, nên đổi chữ
+        /// mỗi frame là 59 lần SetText thừa cho mỗi giây thật — mà SetText thì sinh rác GC.
+        private int _displayedFreePaintSeconds = -1;
 
         public void Init(
             ILevelService levelService,
             IPaintService paintService,
             IHintService hintService,
+            IFreePaintService freePaintService,
+            IFillColorService fillColorService,
             ILevelFlowService levelFlow,
             IPopupService popupService,
             HomeScreenView home)
@@ -64,6 +113,8 @@ namespace JewelPainter.UI.Views
             _levelService = levelService;
             _paintService = paintService;
             _hintService = hintService;
+            _freePaintService = freePaintService;
+            _fillColorService = fillColorService;
             _levelFlow = levelFlow;
             _popupService = popupService;
             _home = home;
@@ -80,8 +131,42 @@ namespace JewelPainter.UI.Views
             _hintService.OnCreditsExhausted += HandleCreditsExhausted;
             _levelFlow.OnLevelCleared += HandleLevelCleared;
 
+            if (_freePaintService != null)
+            {
+                _freePaintService.OnAvailabilityChanged += SetFreePaintAvailable;
+                _freePaintService.OnCreditsChanged += SetFreePaintCredits;
+                _freePaintService.OnCreditsExhausted += HandleFreePaintExhausted;
+                _freePaintService.OnActiveChanged += HandleFreePaintActiveChanged;
+            }
+
+            if (_fillColorService != null)
+            {
+                _fillColorService.OnAvailabilityChanged += SetFillColorAvailable;
+                _fillColorService.OnCreditsChanged += SetFillColorCredits;
+                _fillColorService.OnCreditsExhausted += HandleFillColorExhausted;
+                _fillColorService.OnFillingChanged += HandleFillingChanged;
+            }
+
             SetLevel(_levelService.CurrentLevel);
             SetHintCredits(_hintService.RemainingCredits);
+
+            if (_freePaintButton != null) _freePaintButton.onClick.AddListener(HandleFreePaintClicked);
+
+            if (_freePaintService != null)
+            {
+                SetFreePaintCredits(_freePaintService.RemainingCredits);
+                SetFreePaintAvailable(_freePaintService.CanUse);
+                HandleFreePaintActiveChanged(_freePaintService.IsActive);
+            }
+
+            if (_fillColorButton != null) _fillColorButton.onClick.AddListener(HandleFillColorClicked);
+
+            if (_fillColorService != null)
+            {
+                SetFillColorCredits(_fillColorService.RemainingCredits);
+                SetFillColorAvailable(_fillColorService.CanUse);
+                HandleFillingChanged(_fillColorService.IsFilling);
+            }
 
             if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleSettingsClicked);
 
@@ -111,7 +196,25 @@ namespace JewelPainter.UI.Views
                 _hintService.OnCreditsExhausted -= HandleCreditsExhausted;
             }
 
+            if (_freePaintService != null)
+            {
+                _freePaintService.OnAvailabilityChanged -= SetFreePaintAvailable;
+                _freePaintService.OnCreditsChanged -= SetFreePaintCredits;
+                _freePaintService.OnCreditsExhausted -= HandleFreePaintExhausted;
+                _freePaintService.OnActiveChanged -= HandleFreePaintActiveChanged;
+            }
+
+            if (_fillColorService != null)
+            {
+                _fillColorService.OnAvailabilityChanged -= SetFillColorAvailable;
+                _fillColorService.OnCreditsChanged -= SetFillColorCredits;
+                _fillColorService.OnCreditsExhausted -= HandleFillColorExhausted;
+                _fillColorService.OnFillingChanged -= HandleFillingChanged;
+            }
+
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
+            if (_fillColorButton != null) _fillColorButton.onClick.RemoveListener(HandleFillColorClicked);
+            if (_freePaintButton != null) _freePaintButton.onClick.RemoveListener(HandleFreePaintClicked);
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
             if (_settingsButton != null) _settingsButton.onClick.RemoveListener(HandleSettingsClicked);
             if (_resetButton != null) _resetButton.onClick.RemoveListener(HandleResetClicked);
@@ -147,6 +250,117 @@ namespace JewelPainter.UI.Views
 
         private void HandleHintClicked() => _hintService.UseHint();
 
+        private void HandleFreePaintClicked()
+        {
+            if (_freePaintService == null) return;
+
+            _freePaintService.Use();
+        }
+
+        private void HandleFreePaintExhausted() => _popupService.Show(PopupKey.FreePaint);
+
+        /// Bật/tắt phần đồng hồ đếm ngược.
+        ///
+        /// Không đụng tới nút: nút tự xám trong lúc booster chạy, nhưng đường đi của nó
+        /// là CanUse → OnAvailabilityChanged → SetFreePaintAvailable. Tắt tay thêm ở đây
+        /// là dựng ra hai nguồn sự thật cho cùng một cái nút.
+        private void HandleFreePaintActiveChanged(bool active)
+        {
+            if (_freePaintTimerText != null) _freePaintTimerText.gameObject.SetActive(active);
+            if (_freePaintTimerFill != null) _freePaintTimerFill.gameObject.SetActive(active);
+
+            _displayedFreePaintSeconds = -1;
+
+            if (active) TickFreePaintTimer();
+        }
+
+        private void HandleFillColorClicked()
+        {
+            if (_fillColorService == null) return;
+
+            _fillColorService.Use();
+        }
+
+        private void HandleFillColorExhausted() => _popupService.Show(PopupKey.FillColor);
+
+        /// Bật/tắt vòng tiến độ của đợt tô. Không đụng tới nút — nó tự xám qua CanUse,
+        /// cùng đường như nút booster kia.
+        private void HandleFillingChanged(bool filling)
+        {
+            if (_fillColorProgressFill == null) return;
+
+            _fillColorProgressFill.gameObject.SetActive(filling);
+
+            if (filling) _fillColorProgressFill.fillAmount = 0f;
+        }
+
+        /// Chỉ chạy khi có việc: booster đếm ngược đang bật, hoặc đợt tô đang chạy.
+        private void Update()
+        {
+            if (_freePaintService != null && _freePaintService.IsActive) TickFreePaintTimer();
+
+            if (_fillColorProgressFill != null && _fillColorService != null && _fillColorService.IsFilling)
+            {
+                _fillColorProgressFill.fillAmount = Mathf.Clamp01(_fillColorService.FillProgress);
+            }
+        }
+
+        private void TickFreePaintTimer()
+        {
+            var remaining = _freePaintService.RemainingSeconds;
+
+            if (_freePaintTimerFill != null)
+            {
+                _freePaintTimerFill.fillAmount = Mathf.Clamp01(remaining / _freePaintService.DurationSeconds);
+            }
+
+            if (_freePaintTimerText == null) return;
+
+            // Làm tròn LÊN: còn 0.4 giây mà hiện số 0 thì đồng hồ đứng ở 0 gần một giây
+            // trước khi tắt, đọc ra như bị treo.
+            var seconds = Mathf.Max(0, Mathf.CeilToInt(remaining));
+            if (seconds == _displayedFreePaintSeconds) return;
+
+            _displayedFreePaintSeconds = seconds;
+            _freePaintTimerText.SetText("{0}", seconds);
+        }
+
+        private void SetFreePaintCredits(int remaining)
+        {
+            if (_freePaintCreditsBadge != null) _freePaintCreditsBadge.SetActive(remaining > 0);
+
+            if (_freePaintCreditsText == null) return;
+            if (remaining == _displayedFreePaintCredits) return;
+
+            _displayedFreePaintCredits = remaining;
+            _freePaintCreditsText.SetText("{0}", remaining);
+        }
+
+        private void SetFreePaintAvailable(bool available)
+        {
+            if (_freePaintButton == null) return;
+
+            _freePaintButton.interactable = available;
+        }
+
+        private void SetFillColorCredits(int remaining)
+        {
+            if (_fillColorCreditsBadge != null) _fillColorCreditsBadge.SetActive(remaining > 0);
+
+            if (_fillColorCreditsText == null) return;
+            if (remaining == _displayedFillColorCredits) return;
+
+            _displayedFillColorCredits = remaining;
+            _fillColorCreditsText.SetText("{0}", remaining);
+        }
+
+        private void SetFillColorAvailable(bool available)
+        {
+            if (_fillColorButton == null) return;
+
+            _fillColorButton.interactable = available;
+        }
+
         /// Xoá tiến độ tô của màn đang chơi rồi nạp lại. Gameplay lo phần còn lại — HUD
         /// không biết bản lưu nằm ở đâu, cũng không biết bảng được dựng lại thế nào.
         private void HandleResetClicked() => _paintService.ResetCurrentLevel();
@@ -171,8 +385,17 @@ namespace JewelPainter.UI.Views
         /// việc ẩn HUD — HUD không cần biết Home tồn tại.
         private void HandleSettingsClicked() => _popupService.Show(PopupKey.Settings);
 
-        /// Chưa chọn màu, hoặc màu đang chọn đã tô hết, thì nút xám đi — bấm vào không
-        /// có gì xảy ra mà người chơi lại tưởng game đứng.
+        /// Bấm nút mà hết lượt: mở popup mời thêm lượt. Một dòng cho mỗi booster.
+        ///
+        /// Key nằm THẲNG trong code chứ không phải một ô PopupKey ngoài Inspector, và ba
+        /// cái giống hệt nhau là có chủ ý: quan hệ "nút này ↔ popup này" là cố định theo
+        /// thiết kế, không phải một thứ để chỉnh. Đưa ra Inspector thì nó thành ba ô có
+        /// thể để trống hoặc gán chéo nhau, mà cả ba trạng thái sai đó đều chỉ lộ ra đúng
+        /// lúc người chơi hết lượt — tức là lúc hiếm nhất trong quá trình test.
+        ///
+        /// Đổi lại: MỖI key ở đây BẮT BUỘC phải có prefab khai trong PopupConfig. Thiếu thì
+        /// PopupManager.Show bắn LogError chứ không im lặng — đó cũng là điều mong muốn,
+        /// vì một cái nút hết lượt mà không mở gì cả thì người chơi tưởng game đứng.
         private void HandleCreditsExhausted() => _popupService.Show(PopupKey.HintMove);
 
         /// Chỉ SetText khi con số thật sự đổi — cùng lý do đã ghi ở SetLevel.

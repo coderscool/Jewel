@@ -29,9 +29,26 @@ namespace JewelPainter.Gameplay.Managers
         public event Action<int> OnColorSelected;
         public event Action<Vector2Int, int> OnCellPainted;
         public event Action OnColorRequired;
+        public event Action<bool> OnFreePaintChanged;
+
+        public bool FreePaintActive { get; private set; }
+
+        /// Bật/tắt luật tô tự do. KHÔNG nằm trên IPaintService — chỉ FreePaintController
+        /// gọi, và nó cầm thẳng PaintManager. Để UI gọi được thì cái nút sẽ đi tắt qua
+        /// mọi thứ đứng giữa: số lượt, đồng hồ, luật "màn xong rồi thì thôi".
+        public void SetFreePaint(bool active)
+        {
+            if (FreePaintActive == active) return;
+
+            FreePaintActive = active;
+            OnFreePaintChanged?.Invoke(active);
+        }
 
         public void RequireColor()
         {
+            // Đang tô tự do thì không cần màu nào cả — nhắc là nhắc sai.
+            if (FreePaintActive) return;
+
             if (SelectedPaletteIndex >= 0) return;
 
             OnColorRequired?.Invoke();
@@ -56,6 +73,11 @@ namespace JewelPainter.Gameplay.Managers
             _state = null;
             SelectedPaletteIndex = -1;
             _loadedLevel = levelId;
+
+            // Booster không sống qua ranh giới màn. Tắt ở ĐÂY chứ không chỉ ở
+            // FreePaintController: màn được nạp lại bằng nhiều đường (nút Tô lại, Home,
+            // cheat), và đây là chỗ duy nhất mọi đường đó đều đi qua.
+            SetFreePaint(false);
 
             var data = _levelService.CurrentGrid;
             var grid = data != null ? data.ToGrid() : null;
@@ -101,6 +123,9 @@ namespace JewelPainter.Gameplay.Managers
         public bool CanPaint(int x, int y)
         {
             if (_state == null) return false;
+
+            if (FreePaintActive) return _state.CanPaintAny(x, y);
+
             if (SelectedPaletteIndex < 0) return false;
 
             return _state.CanPaint(x, y, SelectedPaletteIndex);
@@ -109,6 +134,20 @@ namespace JewelPainter.Gameplay.Managers
         public bool TryPaint(int x, int y)
         {
             if (_state == null) return false;
+
+            if (FreePaintActive)
+            {
+                // Bắn kèm màu THẬT của ô, không phải màu đang chọn: viên ngọc bay ra từ
+                // đúng ô màu của nó, vòng tiến độ đúng màu nhích lên, và hiệu ứng "xong
+                // một màu" nổ đúng lúc. Cả ba đều chỉ đọc con số trong sự kiện này.
+                if (!_state.TryPaintAny(x, y, out var painted)) return false;
+
+                _progressStore?.MarkDirty();
+
+                OnCellPainted?.Invoke(new Vector2Int(x, y), painted);
+                return true;
+            }
+
             if (SelectedPaletteIndex < 0) return false;
 
             if (!_state.TryPaint(x, y, SelectedPaletteIndex)) return false;
@@ -117,6 +156,42 @@ namespace JewelPainter.Gameplay.Managers
 
             OnCellPainted?.Invoke(new Vector2Int(x, y), SelectedPaletteIndex);
             return true;
+        }
+
+        /// Tô một ô bằng MỘT MÀU CHỈ ĐỊNH, không hỏi màu đang chọn.
+        ///
+        /// KHÔNG nằm trên IPaintService — cùng lý do như SetFreePaint: đây là cửa sau cho
+        /// booster, và để UI với lớp nhận chạm gọi được thì luật "chỉ tô được màu đang
+        /// chọn" mất hết ý nghĩa. FillColorController cầm thẳng PaintManager.
+        ///
+        /// Cố ý không tự đọc SelectedPaletteIndex ở trong: cú tô hàng loạt kéo dài qua
+        /// nhiều frame, mà người chơi thì có thể bấm sang màu khác giữa chừng — chốt màu
+        /// một lần lúc bấm nút rồi truyền xuống thì cú tô luôn hoàn tất đúng cái màu người
+        /// chơi đã trả lượt cho.
+        public bool TryPaintAs(int x, int y, int paletteIndex)
+        {
+            if (_state == null) return false;
+            if (paletteIndex < 0) return false;
+
+            if (!_state.TryPaint(x, y, paletteIndex)) return false;
+
+            _progressStore?.MarkDirty();
+
+            OnCellPainted?.Invoke(new Vector2Int(x, y), paletteIndex);
+            return true;
+        }
+
+        /// Gom mọi ô chưa tô của một màu vào danh sách cho sẵn. Xem PaintState.
+        /// Cũng KHÔNG nằm trên interface: chỉ booster cần tới, và interface thì nên hẹp.
+        public int CollectUnpainted(int paletteIndex, List<Vector2Int> buffer)
+        {
+            if (_state == null)
+            {
+                buffer?.Clear();
+                return 0;
+            }
+
+            return _state.CollectUnpainted(paletteIndex, buffer);
         }
 
         public bool IsPainted(int x, int y)
