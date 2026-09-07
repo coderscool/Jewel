@@ -1,3 +1,4 @@
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.UI.Definitions;
 using JewelPainter.UI.Interfaces;
@@ -18,6 +19,12 @@ namespace JewelPainter.UI.Views
     /// đứng một mình trên bức tranh vừa hoàn thành.
     public class HudView : MonoBehaviour
     {
+        [Tooltip("Số tiền đang có. Để trống thì HUD không hiện tiền.\n\n" +
+                 "PHẢI gán ô này thì con số mới sống: không có nó, cái nhãn trong scene cứ " +
+                 "đứng nguyên ở chuỗi bạn gõ lúc dựng giao diện, và nó trông y hệt một con " +
+                 "số thật — chỉ là không bao giờ đổi.")]
+        [SerializeField] private Text _coinsText;
+
         [Tooltip("Nút gợi ý. Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
         [SerializeField] private Button _hintButton;
 
@@ -89,12 +96,17 @@ namespace JewelPainter.UI.Views
         private IHintService _hintService;
         private IFreePaintService _freePaintService;
         private IFillColorService _fillColorService;
+        private PlayerWallet _wallet;
         private ILevelFlowService _levelFlow;
         private IPopupService _popupService;
         private int _displayedLevel = -1;
         private int _displayedCredits = -1;
         private int _displayedFreePaintCredits = -1;
         private int _displayedFillColorCredits = -1;
+
+        /// Số tiền đang hiện trên màn. Chỉ đổi chữ khi giá trị thật sự khác — cùng lý do
+        /// đã ghi ở HomeScreenView.SetCoins.
+        private int _displayedCoins = -1;
 
         /// Số giây nguyên đã ghi ra lần gần nhất. Đồng hồ chỉ hiện tới giây, nên đổi chữ
         /// mỗi frame là 59 lần SetText thừa cho mỗi giây thật — mà SetText thì sinh rác GC.
@@ -108,6 +120,7 @@ namespace JewelPainter.UI.Views
             IFillColorService fillColorService,
             ILevelFlowService levelFlow,
             IPopupService popupService,
+            PlayerWallet wallet,
             HomeScreenView home)
         {
             _levelService = levelService;
@@ -117,6 +130,7 @@ namespace JewelPainter.UI.Views
             _fillColorService = fillColorService;
             _levelFlow = levelFlow;
             _popupService = popupService;
+            _wallet = wallet;
             _home = home;
 
             _levelService.OnLevelStarted += HandleLevelStarted;
@@ -145,6 +159,14 @@ namespace JewelPainter.UI.Views
                 _fillColorService.OnCreditsChanged += SetFillColorCredits;
                 _fillColorService.OnCreditsExhausted += HandleFillColorExhausted;
                 _fillColorService.OnFillingChanged += HandleFillingChanged;
+            }
+
+            // Nghe ví TRƯỚC rồi đọc giá trị hiện tại, không phải ngược lại: giữa hai lời
+            // gọi đó vẫn có thể có một cú cộng tiền, và cú đó sẽ rơi vào khoảng trống.
+            if (_wallet != null)
+            {
+                _wallet.OnCoinsChanged += SetCoins;
+                SetCoins(_wallet.Coins);
             }
 
             SetLevel(_levelService.CurrentLevel);
@@ -211,6 +233,8 @@ namespace JewelPainter.UI.Views
                 _fillColorService.OnCreditsExhausted -= HandleFillColorExhausted;
                 _fillColorService.OnFillingChanged -= HandleFillingChanged;
             }
+
+            if (_wallet != null) _wallet.OnCoinsChanged -= SetCoins;
 
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
             if (_fillColorButton != null) _fillColorButton.onClick.RemoveListener(HandleFillColorClicked);
@@ -415,6 +439,17 @@ namespace JewelPainter.UI.Views
             if (_hintButton == null) return;
 
             _hintButton.interactable = available;
+        }
+
+        /// Chỉ đổi chữ khi con số thật sự khác — đổi text là dựng lại lưới chữ, mà sự
+        /// kiện tiền có thể nổ nhiều lần liên tiếp lúc coin bay ở popup thắng màn.
+        private void SetCoins(int coins)
+        {
+            if (_coinsText == null) return;
+            if (coins == _displayedCoins) return;
+
+            _displayedCoins = coins;
+            _coinsText.text = coins.ToString();
         }
 
         private void SetLevel(int level)

@@ -177,7 +177,7 @@ namespace JewelPainter.Bootstrap
 
             _hud.Init(
                 _levelService, _paintService, _hintFocus, _freePaint, _fillColor, _levelFlow,
-                _popupService, _home);
+                _popupService, _wallet, _home);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             _paletteBar.Init(_paintService, _levelService, _levelFlow);

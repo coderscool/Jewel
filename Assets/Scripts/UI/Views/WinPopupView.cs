@@ -45,7 +45,7 @@ namespace JewelPainter.UI.Views
         [SerializeField] private TMP_Text _rewardText;
 
         [Tooltip("Tổng tiền hiện ở góc trên. Tăng dần theo từng coin bay tới.")]
-        [SerializeField] private TMP_Text _coinTotalText;
+        [SerializeField] private Text _coinTotalText;
 
         [Header("Tuỳ chọn — để trống cũng chạy")]
         [SerializeField] private TMP_Text _levelText;
@@ -232,7 +232,7 @@ namespace JewelPainter.UI.Views
         {
             if (_coinTotalText == null) return;
 
-            _coinTotalText.SetText("{0}", value);
+            _coinTotalText.text = string.Format("{0}", value);
         }
 
         private int RewardForCurrentLevel()
@@ -274,10 +274,23 @@ namespace JewelPainter.UI.Views
             if (_home == null) return;
 
             // Tiến trình đã nhích từ lúc tô xong, ở đây chỉ còn việc điều hướng.
-            var clearedLevel = _levelFlow != null ? _levelFlow.ClearedLevel : -1;
+            _home.Show();
 
-            if (clearedLevel >= 0) _home.ShowCelebrating(clearedLevel);
-            else _home.Show();
+            // ─── Ăn mừng ở Home: TẠM TẮT ─────────────────────────────────────────────
+            //
+            // Bốn dòng dưới là đường cũ: nó truyền màn vừa thắng sang Home để Home cuộn
+            // tới đúng ô đó rồi chạy hiệu ứng bay vào bộ sưu tập. Bỏ comment là bật lại
+            // nguyên trạng, KHÔNG cần đụng gì thêm ở Home — ShowCelebrating vẫn còn đó,
+            // vẫn được CelebrationCheat gọi tới, nên nó không mục đi trong lúc nằm chờ.
+            //
+            // Bỏ comment thì nhớ XOÁ dòng _home.Show() ở trên: hai đường cùng gọi Show,
+            // chạy cả hai là dựng lại danh sách hai lần và cú cuộn thứ hai giật ngang cú
+            // thứ nhất.
+            //
+            // var clearedLevel = _levelFlow != null ? _levelFlow.ClearedLevel : -1;
+            //
+            // if (clearedLevel >= 0) _home.ShowCelebrating(clearedLevel);
+            // else _home.Show();
         }
     }
 }

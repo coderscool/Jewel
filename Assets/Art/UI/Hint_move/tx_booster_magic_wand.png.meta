@@ -1,0 +1,910 @@
+fileFormatVersion: 2
+guid: 20dccefd221ccc742bcf76f9940d632c
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8016328646979773048
+    second: tx_booster_magic_wand_0
+  - first:
+      213: 2756627362763068486
+    second: tx_booster_magic_wand_1
+  - first:
+      213: -4772521649040528412
+    second: tx_booster_magic_wand_2
+  - first:
+      213: -692931953801457400
+    second: tx_booster_magic_wand_3
+  - first:
+      213: -4612355434475303561
+    second: tx_booster_magic_wand_4
+  - first:
+      213: -7750381090235105118
+    second: tx_booster_magic_wand_5
+  - first:
+      213: 2276530195498325804
+    second: tx_booster_magic_wand_6
+  - first:
+      213: -8600526870714051387
+    second: tx_booster_magic_wand_7
+  - first:
+      213: 2962756626802821993
+    second: tx_booster_magic_wand_8
+  - first:
+      213: 5861061892826559209
+    second: tx_booster_magic_wand_9
+  - first:
+      213: -830495825737636441
+    second: tx_booster_magic_wand_10
+  - first:
+      213: 543497310551508053
+    second: tx_booster_magic_wand_11
+  - first:
+      213: 9004366488087631218
+    second: tx_booster_magic_wand_12
+  - first:
+      213: -5268197095097980003
+    second: tx_booster_magic_wand_13
+  - first:
+      213: -3652877781260992216
+    second: tx_booster_magic_wand_14
+  - first:
+      213: -2559210167970336386
+    second: tx_booster_magic_wand_15
+  - first:
+      213: -3042630558395487435
+    second: tx_booster_magic_wand_16
+  - first:
+      213: -8262508401519454088
+    second: tx_booster_magic_wand_17
+  - first:
+      213: -5948758501633332247
+    second: tx_booster_magic_wand_18
+  - first:
+      213: -4188096484567896773
+    second: tx_booster_magic_wand_19
+  - first:
+      213: -8810117751790733065
+    second: tx_booster_magic_wand_20
+  - first:
+      213: -5404973551506582408
+    second: tx_booster_magic_wand_21
+  - first:
+      213: -769726223208101821
+    second: tx_booster_magic_wand_22
+  - first:
+      213: -8679839949177937252
+    second: tx_booster_magic_wand_23
+  - first:
+      213: -4645672024760088931
+    second: tx_booster_magic_wand_24
+  - first:
+      213: -917822102269639675
+    second: tx_booster_magic_wand_25
+  - first:
+      213: -7839019815451694310
+    second: tx_booster_magic_wand_26
+  - first:
+      213: -463665408205161022
+    second: tx_booster_magic_wand_27
+  - first:
+      213: 4031366491596035008
+    second: tx_booster_magic_wand_28
+  - first:
+      213: -3504665452712005028
+    second: tx_booster_magic_wand_29
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 10
+        width: 27
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88d9bf1619740c090800000000000000
+      internalID: -8016328646979773048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_1
+      rect:
+        serializedVersion: 2
+        x: 115
+        y: 10
+        width: 11
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6445d9f2bf1814620800000000000000
+      internalID: 2756627362763068486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_2
+      rect:
+        serializedVersion: 2
+        x: 149
+        y: 10
+        width: 19
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ebe31a98d894cdb0800000000000000
+      internalID: -4772521649040528412
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_3
+      rect:
+        serializedVersion: 2
+        x: 356
+        y: 10
+        width: 19
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80195203f063266f0800000000000000
+      internalID: -692931953801457400
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_4
+      rect:
+        serializedVersion: 2
+        x: 409
+        y: 10
+        width: 22
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 77dc14e6b2f9dffb0800000000000000
+      internalID: -4612355434475303561
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_5
+      rect:
+        serializedVersion: 2
+        x: 438
+        y: 10
+        width: 19
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a0c1a2367d117490800000000000000
+      internalID: -7750381090235105118
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_6
+      rect:
+        serializedVersion: 2
+        x: 457
+        y: 10
+        width: 24
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c27d027b62cd79f10800000000000000
+      internalID: 2276530195498325804
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_7
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 40
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c413ede06ac4a880800000000000000
+      internalID: -8600526870714051387
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_8
+      rect:
+        serializedVersion: 2
+        x: 574
+        y: 10
+        width: 19
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96b44886473dd1920800000000000000
+      internalID: 2962756626802821993
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_9
+      rect:
+        serializedVersion: 2
+        x: 659
+        y: 22
+        width: 9
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e271800dbca65150800000000000000
+      internalID: 5861061892826559209
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_10
+      rect:
+        serializedVersion: 2
+        x: 26
+        y: 10
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a5a677527c7974f0800000000000000
+      internalID: -830495825737636441
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_11
+      rect:
+        serializedVersion: 2
+        x: 52
+        y: 10
+        width: 35
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5548dc3ace3ea8700800000000000000
+      internalID: 543497310551508053
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_12
+      rect:
+        serializedVersion: 2
+        x: 89
+        y: 0
+        width: 25
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27515ed1d9fe5fc70800000000000000
+      internalID: 9004366488087631218
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_13
+      rect:
+        serializedVersion: 2
+        x: 127
+        y: 10
+        width: 23
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9ba0f377aa93e6b0800000000000000
+      internalID: -5268197095097980003
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_14
+      rect:
+        serializedVersion: 2
+        x: 168
+        y: 10
+        width: 23
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8218500030f5e4dc0800000000000000
+      internalID: -3652877781260992216
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_15
+      rect:
+        serializedVersion: 2
+        x: 202
+        y: 10
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e717f8859ebdb7cd0800000000000000
+      internalID: -2559210167970336386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_16
+      rect:
+        serializedVersion: 2
+        x: 228
+        y: 10
+        width: 24
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53ba610b0a766c5d0800000000000000
+      internalID: -3042630558395487435
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_17
+      rect:
+        serializedVersion: 2
+        x: 252
+        y: 0
+        width: 25
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87890cda26ca55d80800000000000000
+      internalID: -8262508401519454088
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_18
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 0
+        width: 25
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9eb6f8f19a3c17da0800000000000000
+      internalID: -5948758501633332247
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_19
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 10
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3da440df64e0e5c0800000000000000
+      internalID: -4188096484567896773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_20
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 10
+        width: 17
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f8762f259c2cb580800000000000000
+      internalID: -8810117751790733065
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_21
+      rect:
+        serializedVersion: 2
+        x: 385
+        y: 10
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8749112113dadf4b0800000000000000
+      internalID: -5404973551506582408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_22
+      rect:
+        serializedVersion: 2
+        x: 482
+        y: 10
+        width: 23
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 348c06304126155f0800000000000000
+      internalID: -769726223208101821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_23
+      rect:
+        serializedVersion: 2
+        x: 517
+        y: 0
+        width: 25
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c922102dd830b8780800000000000000
+      internalID: -8679839949177937252
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_24
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 10
+        width: 10
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d96843548e1478fb0800000000000000
+      internalID: -4645672024760088931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_25
+      rect:
+        serializedVersion: 2
+        x: 554
+        y: 10
+        width: 21
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 504473b29ad3343f0800000000000000
+      internalID: -917822102269639675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_26
+      rect:
+        serializedVersion: 2
+        x: 593
+        y: 10
+        width: 24
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1be0c0c205363390800000000000000
+      internalID: -7839019815451694310
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_27
+      rect:
+        serializedVersion: 2
+        x: 619
+        y: 10
+        width: 17
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2cd7b4194cab099f0800000000000000
+      internalID: -463665408205161022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_28
+      rect:
+        serializedVersion: 2
+        x: 635
+        y: 10
+        width: 23
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c39efa077a42f730800000000000000
+      internalID: 4031366491596035008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_magic_wand_29
+      rect:
+        serializedVersion: 2
+        x: 659
+        y: 10
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c52748ad65dec5fc0800000000000000
+      internalID: -3504665452712005028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      tx_booster_magic_wand_0: -8016328646979773048
+      tx_booster_magic_wand_1: 2756627362763068486
+      tx_booster_magic_wand_10: -830495825737636441
+      tx_booster_magic_wand_11: 543497310551508053
+      tx_booster_magic_wand_12: 9004366488087631218
+      tx_booster_magic_wand_13: -5268197095097980003
+      tx_booster_magic_wand_14: -3652877781260992216
+      tx_booster_magic_wand_15: -2559210167970336386
+      tx_booster_magic_wand_16: -3042630558395487435
+      tx_booster_magic_wand_17: -8262508401519454088
+      tx_booster_magic_wand_18: -5948758501633332247
+      tx_booster_magic_wand_19: -4188096484567896773
+      tx_booster_magic_wand_2: -4772521649040528412
+      tx_booster_magic_wand_20: -8810117751790733065
+      tx_booster_magic_wand_21: -5404973551506582408
+      tx_booster_magic_wand_22: -769726223208101821
+      tx_booster_magic_wand_23: -8679839949177937252
+      tx_booster_magic_wand_24: -4645672024760088931
+      tx_booster_magic_wand_25: -917822102269639675
+      tx_booster_magic_wand_26: -7839019815451694310
+      tx_booster_magic_wand_27: -463665408205161022
+      tx_booster_magic_wand_28: 4031366491596035008
+      tx_booster_magic_wand_29: -3504665452712005028
+      tx_booster_magic_wand_3: -692931953801457400
+      tx_booster_magic_wand_4: -4612355434475303561
+      tx_booster_magic_wand_5: -7750381090235105118
+      tx_booster_magic_wand_6: 2276530195498325804
+      tx_booster_magic_wand_7: -8600526870714051387
+      tx_booster_magic_wand_8: 2962756626802821993
+      tx_booster_magic_wand_9: 5861061892826559209
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

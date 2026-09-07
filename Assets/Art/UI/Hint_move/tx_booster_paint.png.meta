@@ -1,0 +1,1144 @@
+fileFormatVersion: 2
+guid: a2237ae2c7cc19a4680d09cb509a071b
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 3791535206583940774
+    second: tx_booster_paint_0
+  - first:
+      213: 1406510827595142807
+    second: tx_booster_paint_1
+  - first:
+      213: 5365191990789548165
+    second: tx_booster_paint_2
+  - first:
+      213: 5824403377216227138
+    second: tx_booster_paint_3
+  - first:
+      213: -3481909544148469071
+    second: tx_booster_paint_4
+  - first:
+      213: 5199297107749608347
+    second: tx_booster_paint_5
+  - first:
+      213: -5600486763874876324
+    second: tx_booster_paint_6
+  - first:
+      213: -7003882544923338785
+    second: tx_booster_paint_7
+  - first:
+      213: 3935658738408822739
+    second: tx_booster_paint_8
+  - first:
+      213: 1175480780941490584
+    second: tx_booster_paint_9
+  - first:
+      213: 9065801305481125040
+    second: tx_booster_paint_10
+  - first:
+      213: -3378594518332017386
+    second: tx_booster_paint_11
+  - first:
+      213: -4938658907307930729
+    second: tx_booster_paint_12
+  - first:
+      213: 3389690621611948554
+    second: tx_booster_paint_13
+  - first:
+      213: -423256773420946999
+    second: tx_booster_paint_14
+  - first:
+      213: -284811021170890589
+    second: tx_booster_paint_15
+  - first:
+      213: -5846194701221368259
+    second: tx_booster_paint_16
+  - first:
+      213: -2131691355061904824
+    second: tx_booster_paint_17
+  - first:
+      213: 1494038595037046158
+    second: tx_booster_paint_18
+  - first:
+      213: -8848722774059084550
+    second: tx_booster_paint_19
+  - first:
+      213: -5993690238746355989
+    second: tx_booster_paint_20
+  - first:
+      213: 7607952953456843930
+    second: tx_booster_paint_21
+  - first:
+      213: 1471782161030466063
+    second: tx_booster_paint_22
+  - first:
+      213: 6531805417518994232
+    second: tx_booster_paint_23
+  - first:
+      213: 1635723194414617956
+    second: tx_booster_paint_24
+  - first:
+      213: -8241567532442292472
+    second: tx_booster_paint_25
+  - first:
+      213: 7438543905503952540
+    second: tx_booster_paint_26
+  - first:
+      213: 4459482762142752312
+    second: tx_booster_paint_27
+  - first:
+      213: -8001787779596760460
+    second: tx_booster_paint_28
+  - first:
+      213: -4897208619862241107
+    second: tx_booster_paint_29
+  - first:
+      213: 3567558508849873659
+    second: tx_booster_paint_30
+  - first:
+      213: -7668395407314053711
+    second: tx_booster_paint_31
+  - first:
+      213: -7311327231368906081
+    second: tx_booster_paint_32
+  - first:
+      213: -7076424178125049876
+    second: tx_booster_paint_33
+  - first:
+      213: -5960602568096303435
+    second: tx_booster_paint_34
+  - first:
+      213: -5052364688073228131
+    second: tx_booster_paint_35
+  - first:
+      213: -95651771102481399
+    second: tx_booster_paint_36
+  - first:
+      213: -3753693678285450638
+    second: tx_booster_paint_37
+  - first:
+      213: -5634815750460266275
+    second: tx_booster_paint_38
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: tx_booster_paint_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 62
+        width: 22
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a6b2d59e2d3e9430800000000000000
+      internalID: 3791535206583940774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_1
+      rect:
+        serializedVersion: 2
+        x: 23
+        y: 92
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7969c8b452ee48310800000000000000
+      internalID: 1406510827595142807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_2
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 62
+        width: 11
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58828ca80bdf47a40800000000000000
+      internalID: 5365191990789548165
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_3
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 62
+        width: 11
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2470f87330074d050800000000000000
+      internalID: 5824403377216227138
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_4
+      rect:
+        serializedVersion: 2
+        x: 155
+        y: 62
+        width: 19
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bafcf0b7b5cdafc0800000000000000
+      internalID: -3481909544148469071
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_5
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 92
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9b91252c2d972840800000000000000
+      internalID: 5199297107749608347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_6
+      rect:
+        serializedVersion: 2
+        x: 187
+        y: 62
+        width: 11
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5406fdf5f21742b0800000000000000
+      internalID: -5600486763874876324
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_7
+      rect:
+        serializedVersion: 2
+        x: 268
+        y: 92
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd7194dfee53dce90800000000000000
+      internalID: -7003882544923338785
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_8
+      rect:
+        serializedVersion: 2
+        x: 278
+        y: 62
+        width: 19
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d7150445c44e9630800000000000000
+      internalID: 3935658738408822739
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_9
+      rect:
+        serializedVersion: 2
+        x: 298
+        y: 62
+        width: 24
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 899f054da85205010800000000000000
+      internalID: 1175480780941490584
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_10
+      rect:
+        serializedVersion: 2
+        x: 465
+        y: 62
+        width: 11
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bc9971314230dd70800000000000000
+      internalID: 9065801305481125040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_11
+      rect:
+        serializedVersion: 2
+        x: 527
+        y: 62
+        width: 22
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 615fcb6af22dc11d0800000000000000
+      internalID: -3378594518332017386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_12
+      rect:
+        serializedVersion: 2
+        x: 23
+        y: 62
+        width: 10
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79b8713d3eb567bb0800000000000000
+      internalID: -4938658907307930729
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_13
+      rect:
+        serializedVersion: 2
+        x: 71
+        y: 62
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0a37a739a99a0f20800000000000000
+      internalID: 3389690621611948554
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_14
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 62
+        width: 24
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c96773053a402af0800000000000000
+      internalID: -423256773420946999
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_15
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 51
+        width: 25
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a82efe92e52c0cf0800000000000000
+      internalID: -284811021170890589
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_16
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 62
+        width: 10
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3eede9c4e42edea0800000000000000
+      internalID: -5846194701221368259
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_17
+      rect:
+        serializedVersion: 2
+        x: 199
+        y: 62
+        width: 23
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84a93cab106ba62e0800000000000000
+      internalID: -2131691355061904824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_18
+      rect:
+        serializedVersion: 2
+        x: 233
+        y: 62
+        width: 34
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8528e9bf24ebb410800000000000000
+      internalID: 1494038595037046158
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_19
+      rect:
+        serializedVersion: 2
+        x: 268
+        y: 62
+        width: 10
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af49c400585033580800000000000000
+      internalID: -8848722774059084550
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_20
+      rect:
+        serializedVersion: 2
+        x: 333
+        y: 62
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be61cc9db7222dca0800000000000000
+      internalID: -5993690238746355989
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_21
+      rect:
+        serializedVersion: 2
+        x: 360
+        y: 62
+        width: 24
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9cddaa07e0e49960800000000000000
+      internalID: 7607952953456843930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_22
+      rect:
+        serializedVersion: 2
+        x: 383
+        y: 51
+        width: 25
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0a4afed312dc6410800000000000000
+      internalID: 1471782161030466063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_23
+      rect:
+        serializedVersion: 2
+        x: 419
+        y: 62
+        width: 21
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83311359b62a5aa50800000000000000
+      internalID: 6531805417518994232
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_24
+      rect:
+        serializedVersion: 2
+        x: 439
+        y: 62
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46553f1349143b610800000000000000
+      internalID: 1635723194414617956
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_25
+      rect:
+        serializedVersion: 2
+        x: 476
+        y: 62
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80f6264bef110ad80800000000000000
+      internalID: -8241567532442292472
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_26
+      rect:
+        serializedVersion: 2
+        x: 502
+        y: 62
+        width: 17
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9eb5bd55440b3760800000000000000
+      internalID: 7438543905503952540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_27
+      rect:
+        serializedVersion: 2
+        x: 546
+        y: 62
+        width: 25
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83e1f7fd1f343ed30800000000000000
+      internalID: 4459482762142752312
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_28
+      rect:
+        serializedVersion: 2
+        x: 572
+        y: 62
+        width: 16
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47ac215e860f3f090800000000000000
+      internalID: -8001787779596760460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_29
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 0
+        width: 25
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da0512ee4be990cb0800000000000000
+      internalID: -4897208619862241107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_30
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 0
+        width: 28
+        height: 39
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf24b63ef83828130800000000000000
+      internalID: 3567558508849873659
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_31
+      rect:
+        serializedVersion: 2
+        x: 239
+        y: 0
+        width: 20
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b51fc58103649590800000000000000
+      internalID: -7668395407314053711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_32
+      rect:
+        serializedVersion: 2
+        x: 259
+        y: 0
+        width: 23
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9abd91ce92f88a90800000000000000
+      internalID: -7311327231368906081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_33
+      rect:
+        serializedVersion: 2
+        x: 282
+        y: 0
+        width: 21
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cefeed6d3bd7bcd90800000000000000
+      internalID: -7076424178125049876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_34
+      rect:
+        serializedVersion: 2
+        x: 302
+        y: 0
+        width: 25
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b6b6518b8fa74da0800000000000000
+      internalID: -5960602568096303435
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_35
+      rect:
+        serializedVersion: 2
+        x: 328
+        y: 0
+        width: 24
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d900ba3b51562e9b0800000000000000
+      internalID: -5052364688073228131
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_36
+      rect:
+        serializedVersion: 2
+        x: 353
+        y: 0
+        width: 25
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 904bc41983d2caef0800000000000000
+      internalID: -95651771102481399
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_37
+      rect:
+        serializedVersion: 2
+        x: 379
+        y: 0
+        width: 20
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2729a2ecc7338ebc0800000000000000
+      internalID: -3753693678285450638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: tx_booster_paint_38
+      rect:
+        serializedVersion: 2
+        x: 399
+        y: 0
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd82a03fdec1dc1b0800000000000000
+      internalID: -5634815750460266275
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      tx_booster_paint_0: 3791535206583940774
+      tx_booster_paint_1: 1406510827595142807
+      tx_booster_paint_10: 9065801305481125040
+      tx_booster_paint_11: -3378594518332017386
+      tx_booster_paint_12: -4938658907307930729
+      tx_booster_paint_13: 3389690621611948554
+      tx_booster_paint_14: -423256773420946999
+      tx_booster_paint_15: -284811021170890589
+      tx_booster_paint_16: -5846194701221368259
+      tx_booster_paint_17: -2131691355061904824
+      tx_booster_paint_18: 1494038595037046158
+      tx_booster_paint_19: -8848722774059084550
+      tx_booster_paint_2: 5365191990789548165
+      tx_booster_paint_20: -5993690238746355989
+      tx_booster_paint_21: 7607952953456843930
+      tx_booster_paint_22: 1471782161030466063
+      tx_booster_paint_23: 6531805417518994232
+      tx_booster_paint_24: 1635723194414617956
+      tx_booster_paint_25: -8241567532442292472
+      tx_booster_paint_26: 7438543905503952540
+      tx_booster_paint_27: 4459482762142752312
+      tx_booster_paint_28: -8001787779596760460
+      tx_booster_paint_29: -4897208619862241107
+      tx_booster_paint_3: 5824403377216227138
+      tx_booster_paint_30: 3567558508849873659
+      tx_booster_paint_31: -7668395407314053711
+      tx_booster_paint_32: -7311327231368906081
+      tx_booster_paint_33: -7076424178125049876
+      tx_booster_paint_34: -5960602568096303435
+      tx_booster_paint_35: -5052364688073228131
+      tx_booster_paint_36: -95651771102481399
+      tx_booster_paint_37: -3753693678285450638
+      tx_booster_paint_38: -5634815750460266275
+      tx_booster_paint_4: -3481909544148469071
+      tx_booster_paint_5: 5199297107749608347
+      tx_booster_paint_6: -5600486763874876324
+      tx_booster_paint_7: -7003882544923338785
+      tx_booster_paint_8: 3935658738408822739
+      tx_booster_paint_9: 1175480780941490584
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
