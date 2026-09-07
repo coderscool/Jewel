@@ -1,5 +1,6 @@
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 
@@ -55,6 +56,14 @@ namespace JewelPainter.Gameplay.Board
         /// Số ngón đang chạm ở frame trước. Đổi số ngón là đổi luôn ý nghĩa của điểm
         /// ghim, nên phải ghim lại — xem HandleTouch.
         private int _lastTouchCount;
+
+        /// Cử chỉ đang diễn ra bắt đầu TRÊN UI, nên camera không nhận nó.
+        ///
+        /// Chốt MỘT LẦN lúc bấm xuống rồi giữ tới khi nhả hết tay — cùng khuôn với
+        /// BoardInput.DecideOwner, và vì cùng một lý do: hỏi lại mỗi frame thì kéo bảng
+        /// ngang qua nút gợi ý là camera đứng khựng giữa chừng.
+        private bool _gestureOverUI;
+        private bool _hasGesture;
 
         private bool _isFocusing;
         private bool _focusCancelOnInput;
@@ -173,6 +182,8 @@ namespace JewelPainter.Gameplay.Board
 
             if (_isFocusing && !TryAdvanceFocus()) return;
 
+            UpdateGestureBlock();
+
             if (!HandleTouch()) HandleMouse();
 
             ClampPosition();
@@ -211,6 +222,18 @@ namespace JewelPainter.Gameplay.Board
 
         private bool IsUserTouchingScreen()
         {
+            if (IsUserPressing()) return true;
+
+            var mouse = Mouse.current;
+
+            return mouse != null && Mathf.Abs(mouse.scroll.ReadValue().y) > 0.01f;
+        }
+
+        /// Có ngón tay hoặc nút chuột nào đang được GIỮ không. Không tính lăn chuột:
+        /// lăn không có lúc bấm xuống và lúc nhả ra, nên nó không mở ra một cử chỉ nào
+        /// để mà chốt.
+        private static bool IsUserPressing()
+        {
             var screen = Touchscreen.current;
             if (screen != null)
             {
@@ -223,9 +246,35 @@ namespace JewelPainter.Gameplay.Board
             var mouse = Mouse.current;
             if (mouse == null) return false;
 
-            return mouse.leftButton.isPressed
-                   || mouse.rightButton.isPressed
-                   || Mathf.Abs(mouse.scroll.ReadValue().y) > 0.01f;
+            return mouse.leftButton.isPressed || mouse.rightButton.isPressed;
+        }
+
+        /// Mở và đóng một cử chỉ, và chốt xem nó có bắt đầu trên UI không.
+        private void UpdateGestureBlock()
+        {
+            if (!IsUserPressing())
+            {
+                _hasGesture = false;
+                _gestureOverUI = false;
+                return;
+            }
+
+            if (_hasGesture) return;
+
+            _hasGesture = true;
+            _gestureOverUI = IsPointerOverUI();
+        }
+
+        /// BoardInput đã có phép kiểm này cho nét TÔ, nhưng camera thì chưa — và ba đường
+        /// vào của camera không đi qua BoardInput: lăn chuột, chuột phải, và hai ngón.
+        ///
+        /// Hở ba đường đó nghĩa là cuộn danh sách ở màn hình Home cũng zoom cái bảng nằm
+        /// dưới. Bảng đổi mức zoom thì JewelLayer, HintLayer và BoardNumberLayer đều thấy
+        /// camera đã đổi và dựng lại toàn bộ ô trong tầm nhìn — MỖI FRAME, để phục vụ một
+        /// cái bảng không ai đang nhìn. Đó là cảm giác vướng khi vuốt Home.
+        private static bool IsPointerOverUI()
+        {
+            return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
         }
 
         /// Trả true nếu cảm ứng đang được dùng — khi đó bỏ qua chuột.
@@ -282,6 +331,16 @@ namespace JewelPainter.Gameplay.Board
             }
 
             // HAI ngón: khoảng cách đổi thì zoom, trung điểm dịch thì di chuyển.
+            //
+            // Nhánh này KHÔNG đi qua CanDragStroke, nên phải tự chặn UI. Thiếu chỗ này là
+            // pinch trên một popup hay trên danh sách Home cũng zoom bảng ở dưới.
+            if (_gestureOverUI)
+            {
+                _isDragging = false;
+                _lastPinchDistance = 0f;
+                return true;
+            }
+
             var firstPosition = first.position.ReadValue();
             var secondPosition = second.position.ReadValue();
             var distance = Vector2.Distance(firstPosition, secondPosition);
@@ -302,8 +361,13 @@ namespace JewelPainter.Gameplay.Board
             var mouse = Mouse.current;
             if (mouse == null) return;
 
+            // Lăn chuột hỏi UI ngay tại chỗ chứ không dùng cờ chốt: lăn không có lúc bấm
+            // xuống nên không mở ra cử chỉ nào, mỗi nấc lăn là một sự kiện độc lập.
+            //
+            // Đây chính là đường làm cuộn danh sách Home vướng: cùng một cú lăn vừa cuộn
+            // danh sách vừa zoom bảng ở dưới.
             var scroll = mouse.scroll.ReadValue().y;
-            if (Mathf.Abs(scroll) > 0.01f)
+            if (Mathf.Abs(scroll) > 0.01f && !IsPointerOverUI())
             {
                 ApplyZoom(-scroll * ScrollZoomSpeed * _camera.orthographicSize);
             }
@@ -312,6 +376,12 @@ namespace JewelPainter.Gameplay.Board
             // khi bảng kín ô gợi ý mà vẫn muốn di chuyển.
             if (mouse.rightButton.isPressed)
             {
+                if (_gestureOverUI)
+                {
+                    _isDragging = false;
+                    return;
+                }
+
                 DragTo(mouse.position.ReadValue());
                 return;
             }

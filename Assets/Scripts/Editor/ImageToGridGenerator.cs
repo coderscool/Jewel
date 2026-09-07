@@ -19,11 +19,12 @@ namespace JewelPainter.Editor
             if (maxColors < 1) maxColors = 1;
             if (mergeDistance < 0f) mergeDistance = 0f;
 
-            if (!EnsureReadable(texture))
+            if (!EnsureRawPixels(texture))
             {
                 throw new InvalidOperationException(
-                    $"Không bật được Read/Write cho '{texture.name}'. Ảnh sinh bằng code không cần bật; " +
-                    "ảnh trong project thì mở Import Settings và tick Read/Write Enabled.");
+                    $"Không đọc được pixel gốc của '{texture.name}'. Ảnh sinh bằng code vốn đã đọc được; " +
+                    "ảnh trong project thì mở Import Settings, tick Read/Write Enabled và đặt " +
+                    "Compression = None.");
             }
 
             var gridSize = new Vector2Int(gridWidth, gridHeight);
@@ -59,22 +60,86 @@ namespace JewelPainter.Editor
             return new Vector2Int(width, longestSideCells);
         }
 
-        /// GetPixels32 ném lỗi nếu ảnh chưa bật Read/Write. Bật giúp người dùng
-        /// thay vì bắt họ đi mở Import Settings.
-        /// Ảnh tạo bằng code (không nằm trong AssetDatabase) vốn đã readable.
-        public static bool EnsureReadable(Texture2D texture)
+        /// Ép ảnh về trạng thái đọc được ĐÚNG pixel gốc, rồi mới lấy mẫu.
+        ///
+        /// Read/Write chỉ là một nửa. Nửa còn lại — và là nửa âm thầm phá hoại — là NÉN:
+        ///
+        /// GetPixels32 trả về dữ liệu đã GIẢI NÉN, không phải pixel trong file PNG. Với
+        /// Compression = Compressed (mặc định của Unity), ảnh nằm ở dạng DXT/ETC: mỗi khối
+        /// 4x4 chỉ giữ HAI màu đầu mút, đã hạ về RGB565, rồi mọi pixel trong khối bị ép về
+        /// một trong bốn giá trị — hai đầu mút và hai màu nội suy giữa chúng.
+        ///
+        /// Hệ quả với tranh pixel: nét viền đen sát cạnh mảng xanh bị kéo thành một dãy
+        /// màu pha không hề tồn tại trong file gốc. Ảnh 60x60 tưởng là 16 màu sạch hoá ra
+        /// hơn một nghìn màu, và chính đám màu pha đó làm bộ lượng tử hoá sinh ra bảng màu
+        /// xỉn — nó có bàn đạp để gộp dần đen sang xanh.
+        ///
+        /// npotScale cũng bị ép về None: ảnh cạnh không phải luỹ thừa 2 mà để ToNearest thì
+        /// Unity co giãn nó bằng lọc song tuyến trước khi ta kịp đọc, và mọi cạnh sắc thành
+        /// cạnh nhoè.
+        ///
+        /// Sửa thẳng Import Settings thay vì chỉ báo lỗi — cùng lối đã dùng cho Read/Write:
+        /// đây là tool nội bộ, và bắt người dùng tự đi tick ba ô là ba chỗ để quên.
+        public static bool EnsureRawPixels(Texture2D texture)
         {
-            if (texture.isReadable) return true;
+            var path = AssetDatabase.GetAssetPath(texture);
 
+            // Ảnh tạo bằng code không nằm trong AssetDatabase — nó vốn đã là pixel thật.
+            if (string.IsNullOrEmpty(path)) return texture.isReadable;
+
+            if (AssetImporter.GetAtPath(path) is not TextureImporter importer) return texture.isReadable;
+
+            var changed = false;
+
+            if (!importer.isReadable)
+            {
+                importer.isReadable = true;
+                changed = true;
+            }
+
+            if (importer.textureCompression != TextureImporterCompression.Uncompressed)
+            {
+                importer.textureCompression = TextureImporterCompression.Uncompressed;
+                changed = true;
+            }
+
+            if (importer.crunchedCompression)
+            {
+                importer.crunchedCompression = false;
+                changed = true;
+            }
+
+            if (importer.npotScale != TextureImporterNPOTScale.None)
+            {
+                importer.npotScale = TextureImporterNPOTScale.None;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                Debug.Log($"[ImageToGrid] Đã đặt lại Import Settings của '{texture.name}': " +
+                          "Read/Write bật, Compression None, npotScale None. Không có ba thứ này " +
+                          "thì pixel đọc ra là bản đã qua nén, không phải ảnh gốc.");
+
+                importer.SaveAndReimport();
+            }
+
+            return texture.isReadable;
+        }
+
+        /// Ảnh có bị Max Size cắt nhỏ lúc import không.
+        ///
+        /// Bị cắt thì thứ tool đọc được đã là bản THU NHỎ bằng lọc song tuyến — cạnh nhoè,
+        /// màu pha, y hệt tác hại của nén. Không tự sửa vì nâng Max Size là quyết định về
+        /// bộ nhớ, không phải thứ tool được tự tiện đổi hộ.
+        public static bool IsSizeClamped(Texture2D texture)
+        {
             var path = AssetDatabase.GetAssetPath(texture);
             if (string.IsNullOrEmpty(path)) return false;
 
             if (AssetImporter.GetAtPath(path) is not TextureImporter importer) return false;
 
-            importer.isReadable = true;
-            importer.SaveAndReimport();
-
-            return texture.isReadable;
+            return Mathf.Max(texture.width, texture.height) >= importer.maxTextureSize;
         }
 
         private static List<Color32> CollectOpaqueColors(SampledCell[] cells)

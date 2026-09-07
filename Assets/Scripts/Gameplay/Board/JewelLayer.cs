@@ -94,6 +94,7 @@ namespace JewelPainter.Gameplay.Board
             _flyEffect = flyEffect;
 
             _boardView.OnBoardRebuilt += HandleBoardRebuilt;
+            _boardView.OnCoverChanged += HandleCoverChanged;
 
             // Nghe lúc viên bay ĐÁP XUỐNG, không phải lúc ô được tô — nhờ vậy ngọc chỉ
             // hiện khi hiệu ứng kết thúc. JewelFlyEffect luôn bắn sự kiện này kể cả khi
@@ -103,7 +104,12 @@ namespace JewelPainter.Gameplay.Board
 
         private void OnDestroy()
         {
-            if (_boardView != null) _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
+            if (_boardView != null)
+            {
+                _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
+                _boardView.OnCoverChanged -= HandleCoverChanged;
+            }
+
             if (_flyEffect != null) _flyEffect.OnJewelLanded -= HandleJewelLanded;
         }
 
@@ -115,10 +121,15 @@ namespace JewelPainter.Gameplay.Board
             _lastOrthographicSize = -1f;   // ép tính lại ở LateUpdate kế tiếp
         }
 
+        /// Màn hình che bảng vừa mở hoặc vừa đóng. Ép tính lại ngay, không đợi camera
+        /// nhúc nhích — che thì thu về, bỏ che thì dựng lại.
+        private void HandleCoverChanged() => _needsRefresh = true;
+
         /// Viên bay vừa đáp xuống: hiện ngọc ngay nếu ô đó đang trong tầm nhìn,
         /// không đợi camera động.
         private void HandleJewelLanded(Vector2Int cell, int paletteIndex)
         {
+            if (_boardView.IsCovered) return;
             if (_boardView.Layout == null) return;
             if (CellScreenPixels() < _minCellScreenPixels) return;
             if (!_boardView.Layout.VisibleCells(CameraWorldRect()).Contains(cell)) return;
@@ -161,6 +172,14 @@ namespace JewelPainter.Gameplay.Board
         private bool Refresh()
         {
             using var _ = RefreshMarker.Auto();
+
+            // Bị che thì thu hết về kho. Cùng một luật với ngưỡng pixel ngay dưới: không
+            // ai NHÌN thấy thì không giữ object nào sống.
+            if (_boardView.IsCovered)
+            {
+                ReleaseAll();
+                return true;
+            }
 
             if (CellScreenPixels() < _minCellScreenPixels)
             {

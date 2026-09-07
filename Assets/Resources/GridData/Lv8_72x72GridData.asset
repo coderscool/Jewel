@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 103f10f4f870eda449b06d2cdf92b68e, type: 3}
-  m_Name: Lv6_72x72GridData
+  m_Name: Lv8_72x72GridData
   m_EditorClassIdentifier: 
   _width: 72
   _height: 72

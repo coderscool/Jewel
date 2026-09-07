@@ -161,6 +161,34 @@ namespace JewelPainter.Gameplay.Board
 
         public event Action OnBoardRebuilt;
 
+        /// Bảng đang bị một màn hình khác CHE KÍN — Home, hoặc một popup phủ hết màn.
+        ///
+        /// Ba lớp ô (ngọc, gợi ý, số) đọc cờ này để thu hết object về kho. Chúng vốn chỉ
+        /// tính lại khi camera đổi, nên đứng trước Home chúng không tốn CPU — nhưng hàng
+        /// nghìn SpriteRenderer vẫn được gửi đi VẼ mỗi frame, sau lưng một tấm UI đục.
+        /// Mở Home lúc đang phóng sát là lúc tệ nhất, vì đó đúng là lúc chúng đông nhất.
+        ///
+        /// Đặt ở BoardView vì nó vốn đã là chỗ ba lớp kia hỏi mọi thứ về bảng — thêm một
+        /// service riêng chỉ để mang một chữ bool là dựng cả bộ khung DI cho một cái cờ.
+        public bool IsCovered { get; private set; }
+
+        /// Bắn khi cờ trên ĐỔI. Ba lớp nghe để phản ứng ngay, không phải đợi camera nhúc
+        /// nhích mới biết.
+        public event Action OnCoverChanged;
+
+        /// UI gọi khi mở/đóng một màn hình che kín bảng.
+        ///
+        /// Không tự đoán bằng cách đi tìm Home hay popup: Gameplay không được biết hai thứ
+        /// đó tồn tại. Bên nào che thì bên đó tự khai.
+        public void SetCovered(bool covered)
+        {
+            if (IsCovered == covered) return;
+
+            IsCovered = covered;
+
+            OnCoverChanged?.Invoke();
+        }
+
         /// Bootstrap gọi. Chỉ đăng ký lắng nghe — bảng dựng khi màn chơi được nạp.
         ///
         /// Cần IPaintService để dựng đúng những ô đã tô từ phiên trước. PaintManager

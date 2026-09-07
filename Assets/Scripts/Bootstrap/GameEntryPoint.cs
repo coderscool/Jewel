@@ -174,7 +174,7 @@ namespace JewelPainter.Bootstrap
             _notificationPresenter.Init(_paintService, _popupService);
 
             // Home dựng sẵn nhưng không tự mở — nút Home trong popup Cài đặt mới mở nó.
-            _home.Init(_levelService, _popupService, _paintProgressStore, _wallet);
+            _home.Init(_levelService, _popupService, _paintProgressStore, _wallet, _boardView);
 
             // Màn hình chờ nối vào sự kiện chứ không tự nạp màn. Nhịp nhường frame giờ
             // nằm trong LevelManager.LoadLevel, nên MỌI lời gọi nạp màn — ở đây, nút Play

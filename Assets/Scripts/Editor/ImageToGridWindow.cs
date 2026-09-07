@@ -1,3 +1,4 @@
+using System;
 using JewelPainter.Gameplay.Data;
 using JewelPainter.Gameplay.Domain;
 using UnityEditor;
@@ -27,6 +28,34 @@ namespace JewelPainter.Editor
         private string _message;
         private MessageType _messageType = MessageType.None;
 
+        private Vector2 _scroll;
+
+        /// Bảng màu ngay lúc vừa rút từ ảnh, giữ nguyên không ai đụng vào.
+        /// Chỉ để nút hoàn tác có chỗ mà quay về.
+        private Color32[] _originalPalette;
+
+        /// Chữ đang gõ trong ô hex của từng màu.
+        ///
+        /// Phải nhớ riêng chứ không sinh lại từ màu mỗi frame: gõ tới ký tự thứ ba thì
+        /// chuỗi chưa hợp lệ, mà dựng lại từ màu sẽ xoá luôn thứ người ta đang gõ dở.
+        private string[] _hexBuffers;
+
+        /// Số ô của lưới dùng từng màu. Con số này là thứ quyết định màu nào đáng chỉnh:
+        /// sửa một màu chỉ có 3 ô thì không ai nhận ra.
+        private int[] _paletteCellCounts;
+
+        private bool _paletteFoldout = true;
+
+        /// Bảng màu và mấy mảng đi kèm đã khớp nhau chưa.
+        ///
+        /// Cần kiểm vì EditorWindow sống qua lần biên dịch lại, mà PixelGrid trong _result
+        /// là class thuần C# nên không serialize được — sau reload các mảng có thể lệch.
+        private bool HasPaletteState =>
+            _result.IsValid
+            && _originalPalette != null && _originalPalette.Length == _result.Palette.Length
+            && _hexBuffers != null && _hexBuffers.Length == _result.Palette.Length
+            && _paletteCellCounts != null && _paletteCellCounts.Length == _result.Palette.Length;
+
         [MenuItem("JewelPainter/Ảnh thành lưới ô")]
         public static void Open()
         {
@@ -37,6 +66,16 @@ namespace JewelPainter.Editor
         }
 
         private void OnGUI()
+        {
+            // Bảng màu tối đa 64 dòng, không cuộn thì phần dưới cửa sổ không với tới được.
+            _scroll = EditorGUILayout.BeginScrollView(_scroll);
+
+            DrawBody();
+
+            EditorGUILayout.EndScrollView();
+        }
+
+        private void DrawBody()
         {
             EditorGUILayout.LabelField("Nguồn", EditorStyles.boldLabel);
 
@@ -89,9 +128,164 @@ namespace JewelPainter.Editor
 
             DrawPreview();
             DrawPaletteStrip();
+            DrawPaletteEditor();
 
             EditorGUILayout.Space();
             if (GUILayout.Button("Lưu thành asset", GUILayout.Height(28))) Save();
+        }
+
+        /// Sửa mã màu của từng màu trong bảng, ngay tại chỗ.
+        ///
+        /// Sửa màu KHÔNG tính lại lưới. Chỉ số trong lưới giữ nguyên, chỉ có màu mà chỉ số
+        /// đó trỏ tới là đổi — nên mọi ô đang mang màu số 3 đổi theo cùng một lúc, và hình
+        /// dạng bức tranh không suy chuyển. Đó là điều bạn muốn khi chỉnh tông màu, và cũng
+        /// là lý do không được gọi lại Generate ở đây: sinh lại là bảng màu mới đè lên,
+        /// mất sạch phần vừa chỉnh.
+        private void DrawPaletteEditor()
+        {
+            if (!HasPaletteState) return;
+
+            EditorGUILayout.Space();
+
+            _paletteFoldout = EditorGUILayout.Foldout(
+                _paletteFoldout, $"Sửa mã màu ({_result.Palette.Length} màu)", true);
+
+            if (!_paletteFoldout) return;
+
+            EditorGUILayout.LabelField(
+                "Số bên trái là con số hiện trên ô màu trong game.", EditorStyles.miniLabel);
+
+            for (var i = 0; i < _result.Palette.Length; i++) DrawPaletteRow(i);
+
+            EditorGUILayout.Space(2f);
+
+            using (new EditorGUI.DisabledScope(!HasPaletteEdits()))
+            {
+                if (GUILayout.Button("Hoàn tác về màu rút từ ảnh")) RevertPalette();
+            }
+        }
+
+        private void DrawPaletteRow(int index)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                // index + 1 vì lưới đánh số từ 0 còn ô màu trong game hiện từ 1.
+                EditorGUILayout.LabelField($"{index + 1}", GUILayout.Width(24f));
+
+                EditorGUI.BeginChangeCheck();
+
+                var picked = EditorGUILayout.ColorField(
+                    GUIContent.none, _result.Palette[index],
+                    showEyedropper: true, showAlpha: false, hdr: false,
+                    GUILayout.Width(64f));
+
+                if (EditorGUI.EndChangeCheck()) ApplyColor(index, picked);
+
+                EditorGUILayout.LabelField("#", GUILayout.Width(12f));
+
+                EditorGUI.BeginChangeCheck();
+
+                _hexBuffers[index] = EditorGUILayout.TextField(
+                    _hexBuffers[index], GUILayout.Width(70f));
+
+                if (EditorGUI.EndChangeCheck()) ApplyHex(index);
+
+                EditorGUILayout.LabelField($"{_paletteCellCounts[index]} ô", GUILayout.Width(70f));
+            }
+        }
+
+        private void ApplyColor(int index, Color color)
+        {
+            _result.Palette[index] = ToOpaque(color);
+            _hexBuffers[index] = ColorUtility.ToHtmlStringRGB(color);
+
+            RebuildPreview();
+        }
+
+        /// Gõ dở thì KHÔNG làm gì, không báo lỗi, không tự sửa chuỗi.
+        ///
+        /// Người ta gõ "1A2B3C" từng ký tự một, và bốn ký tự đầu đều là chuỗi không hợp lệ.
+        /// Nhảy vào chỉnh hay cảnh báo ở đó là cướp bàn phím của người dùng.
+        private void ApplyHex(int index)
+        {
+            var text = _hexBuffers[index];
+            if (string.IsNullOrEmpty(text)) return;
+
+            if (text[0] != '#') text = "#" + text;
+
+            if (!ColorUtility.TryParseHtmlString(text, out var parsed)) return;
+
+            _result.Palette[index] = ToOpaque(parsed);
+
+            RebuildPreview();
+        }
+
+        /// Bảng màu luôn đục. Ô trong suốt được ghi bằng PixelGrid.EmptyCell chứ không
+        /// bằng một màu alpha 0, nên một màu bảng có alpha < 255 chỉ là lỗi chờ xảy ra.
+        private static Color32 ToOpaque(Color color)
+        {
+            var value = (Color32)color;
+            value.a = byte.MaxValue;
+
+            return value;
+        }
+
+        private bool HasPaletteEdits()
+        {
+            for (var i = 0; i < _result.Palette.Length; i++)
+            {
+                var a = _result.Palette[i];
+                var b = _originalPalette[i];
+
+                if (a.r != b.r || a.g != b.g || a.b != b.b) return true;
+            }
+
+            return false;
+        }
+
+        private void RevertPalette()
+        {
+            Array.Copy(_originalPalette, _result.Palette, _originalPalette.Length);
+
+            ResetHexBuffers();
+            RebuildPreview();
+
+            SetMessage("Đã trả bảng màu về đúng thứ rút từ ảnh.", MessageType.Info);
+        }
+
+        /// Chụp lại bảng màu gốc và dựng các mảng đi kèm. Gọi ngay sau mỗi lần sinh lưới.
+        private void CapturePaletteState()
+        {
+            var palette = _result.Palette;
+
+            _originalPalette = new Color32[palette.Length];
+            Array.Copy(palette, _originalPalette, palette.Length);
+
+            _hexBuffers = new string[palette.Length];
+            ResetHexBuffers();
+
+            _paletteCellCounts = new int[palette.Length];
+
+            var grid = _result.Grid;
+
+            for (var y = 0; y < grid.Height; y++)
+            {
+                for (var x = 0; x < grid.Width; x++)
+                {
+                    var index = grid.GetCell(x, y);
+                    if (index < 0 || index >= _paletteCellCounts.Length) continue;
+
+                    _paletteCellCounts[index]++;
+                }
+            }
+        }
+
+        private void ResetHexBuffers()
+        {
+            for (var i = 0; i < _result.Palette.Length; i++)
+            {
+                _hexBuffers[i] = ColorUtility.ToHtmlStringRGB(_result.Palette[i]);
+            }
         }
 
         /// Ghi đè hai ô nhập bằng kích thước giữ đúng tỉ lệ ảnh, lấy cạnh dài hiện tại
@@ -136,6 +330,19 @@ namespace JewelPainter.Editor
                     "nên nhiều ô cạnh nhau sẽ trùng màu.",
                     MessageType.Warning);
             }
+
+            // Read/Write, Compression và npotScale thì tool tự sửa được. Max Size thì không:
+            // nâng nó lên là quyết định về bộ nhớ của cả project, không phải thứ một tool
+            // sinh lưới được tự tiện đổi hộ.
+            if (ImageToGridGenerator.IsSizeClamped(_sourceTexture))
+            {
+                EditorGUILayout.HelpBox(
+                    $"Ảnh đang là {_sourceTexture.width} x {_sourceTexture.height}, đúng bằng " +
+                    "Max Size trong Import Settings — nhiều khả năng nó đã bị THU NHỎ lúc import. " +
+                    "Bản thu nhỏ có mép nhoè và màu pha, và lưới sinh ra từ đó sẽ xỉn màu. " +
+                    "Nâng Max Size lên cho vừa ảnh gốc rồi sinh lại.",
+                    MessageType.Warning);
+            }
         }
 
         private void Generate()
@@ -152,6 +359,7 @@ namespace JewelPainter.Editor
                     return;
                 }
 
+                CapturePaletteState();
                 RebuildPreview();
                 SetMessage(
                     $"Đã sinh lưới {_result.Grid.Width} x {_result.Grid.Height} với {_result.Palette.Length} màu.",
@@ -178,6 +386,10 @@ namespace JewelPainter.Editor
                 hideFlags = HideFlags.HideAndDontSave,
             };
 
+            // Dựng cả mảng rồi đẩy một lần, không SetPixel từng ô: hàm này chạy lại sau
+            // MỖI ký tự gõ vào ô hex, mà lưới 256x256 là 65 nghìn lời gọi.
+            var pixels = new Color32[grid.Width * grid.Height];
+
             for (var y = 0; y < grid.Height; y++)
             {
                 for (var x = 0; x < grid.Width; x++)
@@ -188,10 +400,11 @@ namespace JewelPainter.Editor
                         : palette[index];
 
                     // Texture2D có y = 0 ở dưới cùng, PixelGrid có y = 0 ở trên cùng
-                    _previewTexture.SetPixel(x, grid.Height - 1 - y, color);
+                    pixels[(grid.Height - 1 - y) * grid.Width + x] = color;
                 }
             }
 
+            _previewTexture.SetPixels32(pixels);
             _previewTexture.Apply();
         }
 

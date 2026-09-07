@@ -2079,7 +2079,7 @@ MonoBehaviour:
   _camera: {fileID: 519420031}
   _numberPrefab: {fileID: 443988931334658834, guid: 9f8bbbdfe33ca9a44bfbf756b309f6a2, type: 3}
   _root: {fileID: 907141401}
-  _showAtZoomProgress: 0.6
+  _showAtZoomProgress: 0.2
   _minCellScreenPixels: 32
   _numberColor: {r: 0, g: 0, b: 0, a: 1}
   _maxSpawnPerFrame: 400
@@ -2183,6 +2183,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 333e6864b0f815747a02577a62c24a47, type: 2}
   - {fileID: 11400000, guid: f4d2153d91852f348ba166c402bce905, type: 2}
   - {fileID: 11400000, guid: 545409c5f67ecd94ea7862ad97bf6cf2, type: 2}
+  - {fileID: 11400000, guid: 170a1acf34c14f244ab907fe4f47c07b, type: 2}
+  - {fileID: 11400000, guid: 031778bbaa9f13d4ba3f1908c525f9ca, type: 2}
+  - {fileID: 11400000, guid: 477c63442969a614bbaaf644b48e5767, type: 2}
   _jewelTint: {fileID: 0}
 --- !u!4 &986912015
 Transform:
@@ -2308,7 +2311,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -417}
+  m_AnchoredPosition: {x: 0, y: -404}
   m_SizeDelta: {x: 809, y: 57}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1136148718
@@ -2331,7 +2334,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: -3080895726289148056, guid: b165a54ee61dc0f428d21fed3c322916, type: 3}
+  m_Sprite: {fileID: 8745441869775727460, guid: 1e980a8712b28b14986720e8c99f47a3, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

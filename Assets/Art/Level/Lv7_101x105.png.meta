@@ -1,10 +1,13 @@
 fileFormatVersion: 2
-guid: 8c849902bf272c346bc7519547213373
+guid: 4f8305adc5949c84c93e7eab1e9d519f
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 880175040040258205
-    second: "h\xECnh \u1EA3nh (2)_0"
+      213: -4915787828424886605
+    second: Lv7_101x105_0
+  - first:
+      213: 2623349494817837785
+    second: Lv7_101x105_1
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -75,7 +78,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -113,13 +116,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: "h\xECnh \u1EA3nh (2)_0"
+      name: Lv7_101x105_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 560
-        height: 567
+        width: 101
+        height: 103
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +131,30 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d9ac3c91982073c00800000000000000
-      internalID: 880175040040258205
+      spriteID: 3b6bb87d30d97cbb0800000000000000
+      internalID: -4915787828424886605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Lv7_101x105_1
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 86
+        width: 19
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d251586772086420800000000000000
+      internalID: 2623349494817837785
       vertices: []
       indices: 
       edges: []
@@ -148,7 +173,8 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      "h\xECnh \u1EA3nh (2)_0": 880175040040258205
+      Lv7_101x105_0: -4915787828424886605
+      Lv7_101x105_1: 2623349494817837785
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using JewelPainter.Gameplay.Board;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
@@ -127,6 +128,9 @@ namespace JewelPainter.UI.Views
         private IPopupService _popupService;
         private PaintProgressStore _progressStore;
         private PlayerWallet _wallet;
+
+        /// Chỉ dùng để khai "Home đang che bảng". Home không đọc gì khác của bảng.
+        private BoardView _boardView;
         private RectTransform _currentItemRect;
 
         /// Số tiền đang hiện trên màn. Chỉ đổi chữ khi giá trị thật sự khác.
@@ -148,12 +152,14 @@ namespace JewelPainter.UI.Views
             ILevelService levelService,
             IPopupService popupService,
             PaintProgressStore progressStore,
-            PlayerWallet wallet)
+            PlayerWallet wallet,
+            BoardView boardView)
         {
             _levelService = levelService;
             _popupService = popupService;
             _progressStore = progressStore;
             _wallet = wallet;
+            _boardView = boardView;
 
             // Nghe sự kiện chứ không đọc lại mỗi lần mở Home: tiền cộng vào lúc thắng màn,
             // mà popup thắng màn nằm đè lên Home — người chơi thấy con số nhảy ngay tại chỗ
@@ -215,6 +221,17 @@ namespace JewelPainter.UI.Views
             var target = _content != null ? _content : gameObject;
 
             if (target.activeSelf != visible) target.SetActive(visible);
+
+            // Khai với bảng rằng nó đang bị che kín. Ba lớp ô sẽ thu hết object về kho:
+            // đứng trước Home chúng không tốn CPU, nhưng hàng nghìn SpriteRenderer vẫn
+            // được gửi đi vẽ sau lưng một tấm UI đục.
+            //
+            // Khai chứ không để bảng tự đoán: Gameplay không được biết Home tồn tại.
+            //
+            // Đặt NGOÀI phép so activeSelf ở trên. Hai trạng thái đó không phải lúc nào
+            // cũng khớp — object có thể đã tắt sẵn từ trước — và SetCovered vốn đã tự bỏ
+            // qua khi giá trị không đổi.
+            if (_boardView != null) _boardView.SetCovered(visible);
         }
 
         private void Rebuild()

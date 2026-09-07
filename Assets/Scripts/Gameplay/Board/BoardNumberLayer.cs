@@ -22,7 +22,7 @@ namespace JewelPainter.Gameplay.Board
                  "0.6 là đi được 60% quãng đường giữa hai mốc. HẠ xuống thì số hiện sớm hơn. " +
                  "Chỉ có tác dụng khi LevelConfig có điền Fade Switch Size.")]
         [Range(0f, 1f)]
-        [SerializeField] private float _showAtZoomProgress = 0.6f;
+        [SerializeField] private float _showAtZoomProgress = 0.2f;
 
         [Tooltip("Đường lui khi LevelConfig để trống Fade Switch Size: ô chiếu lên màn hình " +
                  "nhỏ hơn ngần này pixel thì không hiện số.")]
@@ -165,12 +165,19 @@ namespace JewelPainter.Gameplay.Board
         {
             _boardView = boardView;
             _boardView.OnBoardRebuilt += HandleBoardRebuilt;
+            _boardView.OnCoverChanged += HandleCoverChanged;
         }
 
         private void OnDestroy()
         {
-            if (_boardView != null) _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
+            if (_boardView == null) return;
+
+            _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
+            _boardView.OnCoverChanged -= HandleCoverChanged;
         }
+
+        /// Xem chú thích cùng tên ở JewelLayer.
+        private void HandleCoverChanged() => _needsRefresh = true;
 
         /// Chặn prefab sai NGAY tại cửa, một lần cho cả màn.
         ///
@@ -391,6 +398,13 @@ namespace JewelPainter.Gameplay.Board
         private bool Refresh()
         {
             using var _ = RefreshMarker.Auto();
+
+            // Bị che thì thu hết về kho — xem chú thích cùng chỗ ở JewelLayer.
+            if (_boardView.IsCovered)
+            {
+                ReleaseAll();
+                return true;
+            }
 
             if (!ShouldShowNumbers())
             {

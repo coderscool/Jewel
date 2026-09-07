@@ -19,4 +19,4 @@ MonoBehaviour:
   _rewardCoins: 50
   _cameraMinSize: 9
   _cameraMaxSize: 80
-  _fadeSwitchSize: 68
+  _fadeSwitchSize: 56

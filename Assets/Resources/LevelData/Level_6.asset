@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Level_6
   m_EditorClassIdentifier: 
   _levelId: 6
-  _targetImage: {fileID: 21300000, guid: 0c9bd7c20f54ad0438dfec77e59bf419, type: 3}
-  _gridData: {fileID: 11400000, guid: 9b160963ec805c8449cad7f4db556f25, type: 2}
+  _targetImage: {fileID: 21300000, guid: 821c2ebb84753d043b62560504dfcf52, type: 3}
+  _gridData: {fileID: 11400000, guid: 3f67c66a27039bb49a271ce86dd91018, type: 2}
   _timeLimitSeconds: 0
   _rewardCoins: 50
   _cameraMinSize: 9
-  _cameraMaxSize: 68
+  _cameraMaxSize: 84
   _fadeSwitchSize: 56

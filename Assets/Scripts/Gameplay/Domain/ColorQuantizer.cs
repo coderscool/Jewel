@@ -73,15 +73,34 @@ namespace JewelPainter.Gameplay.Domain
             return palette;
         }
 
-        /// Gộp lặp lại cặp hộp gần nhau nhất cho tới khi không còn cặp nào dưới ngưỡng.
+        /// Gộp lặp lại cặp hộp gần nhau nhất cho tới khi không còn cặp nào hợp lệ.
         ///
         /// Gộp trên HỘP chứ không trên màu trung bình: hai hộp nhập vào nhau rồi mới
         /// tính trung bình, nên hộp nhiều pixel kéo màu chung về phía nó — đúng hơn là
         /// lấy trung bình của hai màu đại diện.
+        ///
+        /// HAI phép kiểm, không phải một, và phép thứ hai mới là phần quan trọng:
+        ///
+        ///   1. hai tâm hộp phải cách nhau dưới mergeDistance — đây là phép cũ;
+        ///   2. hộp SAU KHI GỘP vẫn phải nằm gọn trong bán kính mergeDistance.
+        ///
+        /// Thiếu phép thứ hai thì đây là gộp cụm theo liên kết đơn, và nó DÂY CHUYỀN: A
+        /// nuốt B (cách 20), tâm trôi; hộp mới nuốt C (lại cách 20), tâm trôi tiếp. Sau
+        /// tám bước hộp trải rộng 160 trong không gian màu, trong khi MỌI bước đều lọt qua
+        /// ngưỡng 20.
+        ///
+        /// Đó là cách nét viền đen bị nuốt vào mảng xanh dù hai màu cách nhau 171 — xa hơn
+        /// cả giá trị lớn nhất của thanh trượt. Kết quả là bảng màu xỉn và mất hẳn màu đen,
+        /// còn người dùng thì không hiểu vì sao đặt ngưỡng 24 lại gộp hai màu cách nhau 171.
         private static void MergeSimilar(List<List<Color32>> boxes, float mergeDistance)
         {
             var averages = new List<Color32>(boxes.Count);
             for (var i = 0; i < boxes.Count; i++) averages.Add(Average(boxes[i]));
+
+            // Cặp đã bị từ chối vì gộp vào sẽ phình quá rộng. Nhớ lại để vòng sau không
+            // chọn đúng nó rồi từ chối mãi. Xoá sạch sau MỖI lần gộp thành công: nội dung
+            // hộp đã đổi nên mọi phán quyết cũ hết giá trị.
+            var rejected = new HashSet<(List<Color32>, List<Color32>)>();
 
             while (boxes.Count > 1)
             {
@@ -93,8 +112,10 @@ namespace JewelPainter.Gameplay.Domain
                 {
                     for (var j = i + 1; j < boxes.Count; j++)
                     {
+                        if (rejected.Contains((boxes[i], boxes[j]))) continue;
+
                         var distance = PaletteMatcher.Distance(averages[i], averages[j]);
-                        if (distance >= bestDistance) continue;
+                        if (distance > mergeDistance || distance >= bestDistance) continue;
 
                         bestDistance = distance;
                         bestA = i;
@@ -102,14 +123,59 @@ namespace JewelPainter.Gameplay.Domain
                     }
                 }
 
-                if (bestA < 0 || bestDistance > mergeDistance) return;
+                if (bestA < 0) return;
+
+                // Chỉ đo bán kính cho cặp ĐANG THẮNG, không đo cho mọi cặp: phép này duyệt
+                // hết pixel của cả hai hộp, mà số cặp dưới ngưỡng thì đông.
+                if (SpreadAfterMerge(boxes[bestA], boxes[bestB]) > mergeDistance)
+                {
+                    rejected.Add((boxes[bestA], boxes[bestB]));
+                    rejected.Add((boxes[bestB], boxes[bestA]));
+                    continue;
+                }
 
                 boxes[bestA].AddRange(boxes[bestB]);
                 averages[bestA] = Average(boxes[bestA]);
 
                 boxes.RemoveAt(bestB);
                 averages.RemoveAt(bestB);
+
+                rejected.Clear();
             }
+        }
+
+        /// Bán kính của hộp SAU KHI gộp: khoảng cách từ màu trung bình mới tới thành viên
+        /// xa nhất. Đây là thứ nói được "hộp này còn là MỘT màu hay đã thành một vệt".
+        private static double SpreadAfterMerge(List<Color32> a, List<Color32> b)
+        {
+            long sumRed = 0, sumGreen = 0, sumBlue = 0;
+            var count = a.Count + b.Count;
+
+            if (count == 0) return 0.0;
+
+            for (var i = 0; i < a.Count; i++)
+            {
+                sumRed += a[i].r;
+                sumGreen += a[i].g;
+                sumBlue += a[i].b;
+            }
+
+            for (var i = 0; i < b.Count; i++)
+            {
+                sumRed += b[i].r;
+                sumGreen += b[i].g;
+                sumBlue += b[i].b;
+            }
+
+            var center = new Color32(
+                (byte)(sumRed / count), (byte)(sumGreen / count), (byte)(sumBlue / count), byte.MaxValue);
+
+            var farthest = 0.0;
+
+            for (var i = 0; i < a.Count; i++) farthest = Math.Max(farthest, PaletteMatcher.Distance(a[i], center));
+            for (var i = 0; i < b.Count; i++) farthest = Math.Max(farthest, PaletteMatcher.Distance(b[i], center));
+
+            return farthest;
         }
 
         private static List<Color32> CollectDistinct(IReadOnlyList<Color32> colors)
@@ -128,20 +194,32 @@ namespace JewelPainter.Gameplay.Domain
             return distinct;
         }
 
-        /// -1 khi không hộp nào còn cắt được (mọi hộp chỉ còn một màu duy nhất).
+        /// Hộp đáng cắt nhất. -1 khi không hộp nào còn cắt được (mọi hộp chỉ còn một màu).
+        ///
+        /// Chấm điểm bằng ĐỘ TRẢI NHÂN SỐ PIXEL, không chỉ độ trải.
+        ///
+        /// Chỉ xét độ trải thì một hộp chứa dăm pixel màu pha vương vãi ở mép hình — vốn
+        /// trải rất rộng vì nó nối hai vùng màu khác nhau — sẽ liên tục giành nhát cắt khỏi
+        /// những hộp thật sự chiếm diện tích tranh. Ảnh càng nhiễu, nó càng ăn nhiều nhát,
+        /// và bảng màu càng tiêu tốn ô cho những màu không ai nhìn thấy.
+        ///
+        /// Nhân thêm số pixel là cách median cut chuẩn cân hai thứ đó.
         private static int FindWidestBox(List<List<Color32>> boxes)
         {
             var bestIndex = -1;
-            var bestRange = 0;
+            var bestScore = 0L;
 
             for (var i = 0; i < boxes.Count; i++)
             {
                 if (boxes[i].Count < 2) continue;
 
                 var range = LongestAxisLength(boxes[i]);
-                if (range <= 0 || range <= bestRange) continue;
+                if (range <= 0) continue;
 
-                bestRange = range;
+                var score = (long)range * boxes[i].Count;
+                if (score <= bestScore) continue;
+
+                bestScore = score;
                 bestIndex = i;
             }
 
@@ -182,11 +260,13 @@ namespace JewelPainter.Gameplay.Domain
         {
             GetRanges(box, out var rangeRed, out var rangeGreen, out var rangeBlue);
 
-            if (rangeRed >= rangeGreen && rangeRed >= rangeBlue) box.Sort(CompareRed);
-            else if (rangeGreen >= rangeBlue) box.Sort(CompareGreen);
-            else box.Sort(CompareBlue);
+            int axis;
 
-            var middle = box.Count / 2;
+            if (rangeRed >= rangeGreen && rangeRed >= rangeBlue) { box.Sort(CompareRed); axis = 0; }
+            else if (rangeGreen >= rangeBlue) { box.Sort(CompareGreen); axis = 1; }
+            else { box.Sort(CompareBlue); axis = 2; }
+
+            var middle = SplitIndex(box, axis, box.Count / 2);
 
             var left = new List<Color32>(middle);
             var right = new List<Color32>(box.Count - middle);
@@ -195,6 +275,47 @@ namespace JewelPainter.Gameplay.Domain
             for (var i = middle; i < box.Count; i++) right.Add(box[i]);
 
             return (left, right);
+        }
+
+        /// Dời điểm cắt tới RANH GIỚI GIÁ TRỊ gần giữa nhất.
+        ///
+        /// Cắt thẳng ở chỉ số giữa thì những màu TRÙNG NHAU nằm vắt qua điểm cắt bị chia
+        /// sang hai hộp, và hai hộp đó cho ra cùng một màu trung bình — tức hai ô bảng màu
+        /// trùng nhau. Người dùng xin 32 màu nhưng chỉ nhận về chừng 28 màu dùng được, mà
+        /// không có gì báo.
+        ///
+        /// Ranh giới luôn tồn tại vì bên gọi đã bỏ qua hộp có độ trải bằng 0 — nghĩa là
+        /// trên trục này chắc chắn có ít nhất hai giá trị khác nhau.
+        private static int SplitIndex(List<Color32> box, int axis, int middle)
+        {
+            for (var offset = 0; offset < box.Count; offset++)
+            {
+                var forward = middle + offset;
+                if (forward > 0 && forward < box.Count &&
+                    AxisValue(box[forward - 1], axis) != AxisValue(box[forward], axis))
+                {
+                    return forward;
+                }
+
+                var backward = middle - offset;
+                if (backward > 0 && backward < box.Count &&
+                    AxisValue(box[backward - 1], axis) != AxisValue(box[backward], axis))
+                {
+                    return backward;
+                }
+            }
+
+            return middle;
+        }
+
+        private static byte AxisValue(Color32 color, int axis)
+        {
+            return axis switch
+            {
+                0 => color.r,
+                1 => color.g,
+                _ => color.b,
+            };
         }
 
         private static int CompareRed(Color32 a, Color32 b) => a.r.CompareTo(b.r);

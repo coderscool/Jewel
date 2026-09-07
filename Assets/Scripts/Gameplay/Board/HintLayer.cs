@@ -106,6 +106,7 @@ namespace JewelPainter.Gameplay.Board
             _flyEffect = flyEffect;
 
             _boardView.OnBoardRebuilt += HandleBoardRebuilt;
+            _boardView.OnCoverChanged += HandleCoverChanged;
             _paintService.OnColorSelected += HandleColorSelected;
 
             // Gỡ marker lúc viên ngọc ĐÁP XUỐNG, không phải lúc bấm tô — gỡ sớm thì
@@ -115,7 +116,12 @@ namespace JewelPainter.Gameplay.Board
 
         private void OnDestroy()
         {
-            if (_boardView != null) _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
+            if (_boardView != null)
+            {
+                _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
+                _boardView.OnCoverChanged -= HandleCoverChanged;
+            }
+
             if (_flyEffect != null) _flyEffect.OnJewelLanded -= HandleJewelLanded;
 
             if (_paintService == null) return;
@@ -137,6 +143,9 @@ namespace JewelPainter.Gameplay.Board
             ReleaseAll();
             _needsRefresh = true;
         }
+
+        /// Xem chú thích cùng tên ở JewelLayer.
+        private void HandleCoverChanged() => _needsRefresh = true;
 
         private void HandleJewelLanded(Vector2Int cell, int paletteIndex) => Release(cell);
 
@@ -175,6 +184,13 @@ namespace JewelPainter.Gameplay.Board
         private bool Refresh()
         {
             using var _ = RefreshMarker.Auto();
+
+            // Bị che thì thu hết về kho — xem chú thích cùng chỗ ở JewelLayer.
+            if (_boardView.IsCovered)
+            {
+                ReleaseAll();
+                return true;
+            }
 
             var selected = _paintService.SelectedPaletteIndex;
             if (selected < 0)
