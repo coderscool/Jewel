@@ -20,9 +20,6 @@ namespace JewelPainter.Gameplay.Board
         /// Zoom gần nhất khi LevelConfig không đặt, tính bằng orthographicSize.
         private const float DefaultMinSize = 9f;
 
-        /// Zoom xa nhất khi LevelConfig không đặt: trọn bảng cộng thêm lề.
-        private const float AutoFitMargin = 1.1f;
-
         private const float ScrollZoomSpeed = 0.001f;
         private const float PinchZoomSpeed = 0.005f;
 
@@ -42,6 +39,65 @@ namespace JewelPainter.Gameplay.Board
                  "gợi ý cũng là một cú chạm — không có khoảng chờ thì chính cú chạm đó " +
                  "huỷ luôn chuyến bay nó vừa gọi.")]
         [SerializeField] private float _focusInputGrace = 0.2f;
+
+        [Header("Khung hình lúc chơi")]
+        [Tooltip("Chừa bao nhiêu PHẦN CHIỀU CAO màn hình ở TRÊN cho HUD.\n\n" +
+                 "HUD thật chỉ với xuống ~0.08 (hàng Coin / Booster / HomeButton, 167 trên " +
+                 "canvas cao 2160). Để 0.24 là cố ý chừa DƯ, cho bằng lề của khung hình " +
+                 "thắng màn — xem ô Play Board Width Fraction.\n\n" +
+                 "Cái giá: bức tranh nào bị chiều DỌC chặn sẽ nhỏ hơn mức cần thiết lúc " +
+                 "chơi. Trong 15 màn hiện tại chỉ Level 1 (39x52, cao và hẹp) dính, và chỉ " +
+                 "trên màn vuông. Màn đó muốn to hơn thì điền Camera Max Size riêng cho nó — " +
+                 "ô ghi đè vẫn còn nguyên tác dụng.\n\n" +
+                 "CHỈ có tác dụng với những màn để Camera Max Size = 0. Màn nào điền số " +
+                 "cứng thì số đó vẫn thắng.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] private float _playMarginTop = 0.24f;
+
+        [Tooltip("Chừa bao nhiêu PHẦN CHIỀU CAO màn hình ở DƯỚI cho thanh màu.\n\n" +
+                 "Thanh màu đo được là 430 trên canvas cao 2160, tức đúng 0.20. Để 0.24 là " +
+                 "cộng thêm một khoảng thở, vì tranh chạm sát thanh màu nhìn rất bí.\n\n" +
+                 "Đây là ô quyết định trên MÁY RỘNG. Màn hình càng rộng thì vế bề ngang " +
+                 "càng cho cỡ zoom nhỏ, tranh càng cao trên màn, và nó tiến sát thanh màu — " +
+                 "trên điện thoại dựng đứng thì không thấy vì tranh nhỏ hơn nhiều.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] private float _playMarginBottom = 0.24f;
+
+        [Tooltip("Tương tự theo chiều ngang.\n\n" +
+                 "Trên điện thoại dựng đứng thì ĐÂY mới là ô quyết định: bảng gần vuông mà " +
+                 "màn hình thì cao, nên bề ngang luôn chật trước. Muốn chỉnh mức zoom lúc " +
+                 "vào màn thì chỉnh ô này, không phải ô trên.\n\n" +
+                 "Càng THẤP thì camera càng được kéo ra xa, tranh càng nhỏ trên màn.\n\n" +
+                 "ĐANG ĐẶT BẰNG bộ số của khung hình thắng màn, và đó là chủ ý: chỉ khi cả " +
+                 "hai bộ giống hệt nhau thì tranh mới giữ nguyên cỡ lúc chuyển từ chơi sang " +
+                 "thắng, TRÊN MỌI TỈ LỆ MÀN. Chỉnh lệch một ô là hai bên lại tách nhau ra ở " +
+                 "một tỉ lệ màn nào đó — vì vế quyết định (dọc hay ngang) đổi theo tỉ lệ.")]
+        [Range(0.2f, 1f)]
+        [SerializeField] private float _playBoardWidthFraction = 0.9f;
+
+        [Header("Khung hình lúc thắng màn")]
+        [Tooltip("Chừa bao nhiêu PHẦN CHIỀU CAO màn hình ở TRÊN cho băng chúc mừng.\n\n" +
+                 "Khai theo BỐ CỤC POPUP, không theo bảng. Sửa popup thì phải sửa lại đây — " +
+                 "Gameplay không được phép nhìn thấy UI nên camera không tự đo được.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] private float _winMarginTop = 0.24f;
+
+        [Tooltip("Chừa bao nhiêu PHẦN CHIỀU CAO màn hình ở DƯỚI cho cụm phần thưởng và nút " +
+                 "Continue.\n\n" +
+                 "Cụm phần thưởng bắt đầu ở khoảng 0.22 tính từ dưới; để 0.24 cho chắc.")]
+        [Range(0f, 0.6f)]
+        [SerializeField] private float _winMarginBottom = 0.24f;
+
+        [Tooltip("Tương tự theo chiều ngang. Popup thường phủ hết bề rộng nên ô này chủ yếu " +
+                 "để chừa lề hai bên cho đẹp, không phải để tránh đè.")]
+        [Range(0.2f, 1f)]
+        [SerializeField] private float _winBoardWidthFraction = 0.9f;
+
+        [Tooltip("Khoá kéo và zoom trong lúc khung hình thắng màn đang giữ.\n\n" +
+                 "Bỏ tick thì người chơi kéo được bảng lúc popup đang mở — và cú kéo đầu " +
+                 "tiên sẽ phá luôn khung hình vừa canh, vì phép kẹp zoom đưa camera về " +
+                 "Camera Max Size. Lúc đó cũng chẳng còn gì để tô.")]
+        [SerializeField] private bool _freezeAfterWin = true;
 
         private ILevelService _levelService;
         private BoardInput _boardInput;
@@ -64,6 +120,18 @@ namespace JewelPainter.Gameplay.Board
         /// ngang qua nút gợi ý là camera đứng khựng giữa chừng.
         private bool _gestureOverUI;
         private bool _hasGesture;
+
+        /// Tâm của dải màn hình đang dùng, theo toạ độ chuẩn hoá 0..1 (0 đáy, 1 đỉnh).
+        /// 0.5 là giữa màn.
+        ///
+        /// Giữ dạng CHUẨN HOÁ chứ không giữ khoảng lệch tính bằng world, và đó là điểm
+        /// mấu chốt: khoảng lệch world tỉ lệ với mức zoom. Chốt cứng một con số world thì
+        /// lúc người chơi phóng sát, cái lệch ấy vẫn còn nguyên và nó ăn mất một dải bảng
+        /// ở rìa mà người chơi không tài nào kéo tới được.
+        private float _viewBandCenter = 0.5f;
+
+        /// Đang giữ khung hình thắng màn.
+        private bool _winFraming;
 
         private bool _isFocusing;
         private bool _focusCancelOnInput;
@@ -97,12 +165,21 @@ namespace JewelPainter.Gameplay.Board
 
             // Vào màn là ở mức xa nhất.
             _camera.orthographicSize = _maxSize;
-            transform.position = new Vector3(0f, 0f, transform.position.z);
 
             _isDragging = false;
             _lastPinchDistance = 0f;
             _lastTouchCount = 0;
             _isFocusing = false;
+
+            _winFraming = false;
+
+            // Tính theo _maxSize THẬT, không theo mức auto: màn nào còn điền Camera Max
+            // Size cứng thì phần đẩy lên cũng phải bám theo con số đó.
+            _viewBandCenter = ResolveBandCenter(
+                _playMarginTop, _playMarginBottom, BoardScreenFraction(layout, _maxSize));
+
+            // Đặt camera vào chỗ ngay từ frame đầu, không đợi ClampPosition kéo.
+            transform.position = new Vector3(0f, ViewCenterY(_maxSize), transform.position.z);
         }
 
         /// Đưa camera tới một ô và phóng sát nhất. Nút gợi ý gọi hàm này.
@@ -126,7 +203,23 @@ namespace JewelPainter.Gameplay.Board
         /// chỉ làm hỏng nhịp của màn ăn mừng, mà lúc này cũng chẳng còn gì để tô.
         public void FrameWholeBoard(float duration)
         {
-            BeginMove(Vector2.zero, _maxSize, duration, false);
+            var layout = _boardView != null ? _boardView.Layout : null;
+            if (layout == null) return;
+
+            // Cỡ zoom tính TỪ CHỖ TRỐNG popup chừa lại, không lấy _maxSize.
+            //
+            // _maxSize là con số ngắm cho lúc CHƠI, khi màn hình chỉ có HUD ở trên và
+            // thanh màu ở dưới. Dùng lại nó ở đây là bắt một con số phục vụ hai bố cục
+            // khác hẳn nhau, và bảng nào cao so với bề ngang sẽ thò xuống dưới cụm thưởng.
+            var size = FitSize(
+                layout, BandHeight(_winMarginTop, _winMarginBottom), _winBoardWidthFraction);
+
+            _viewBandCenter = ResolveBandCenter(
+                _winMarginTop, _winMarginBottom, BoardScreenFraction(layout, size));
+
+            _winFraming = true;
+
+            BeginMove(new Vector2(0f, ViewCenterY(size)), size, duration, false);
         }
 
         /// Đích có thể nằm ngoài vùng kéo cho phép (ô ở sát mép bảng), nhưng không cần
@@ -150,14 +243,80 @@ namespace JewelPainter.Gameplay.Board
             _lastPinchDistance = 0f;
         }
 
+        /// Dải màn hình còn lại sau khi trừ hai lề, theo phần chiều cao màn.
+        /// Kẹp sàn 0.2 để hai lề khai quá tay không cho ra một dải rỗng.
+        private static float BandHeight(float marginTop, float marginBottom)
+        {
+            return Mathf.Max(0.2f, 1f - Mathf.Clamp01(marginTop) - Mathf.Clamp01(marginBottom));
+        }
+
+        /// Tâm khung nhìn cho một bức tranh cao `boardFraction` phần chiều cao màn,
+        /// theo toạ độ chuẩn hoá 0..1.
+        ///
+        /// Mặc định là GIỮA MÀN, và chỉ đẩy đi đúng bằng phần cần thiết để không lấn vào
+        /// lề. Đây là điểm khác với việc canh vào giữa dải: canh giữa dải thì đẩy cả
+        /// những màn hình vốn đã dư chỗ — điện thoại dựng đứng có tranh chỉ cao chừng 40%
+        /// màn, hở rộng cả hai đầu, mà vẫn bị nhấc lên và trông chông chênh.
+        ///
+        /// Nói cách khác: hai cái lề là RÀNG BUỘC, không phải là bố cục. Máy nào đủ rộng
+        /// để không chạm ràng buộc thì tranh cứ nằm giữa màn.
+        private static float ResolveBandCenter(float marginTop, float marginBottom, float boardFraction)
+        {
+            var half = Mathf.Max(0f, boardFraction) * 0.5f;
+
+            var lowest = Mathf.Clamp01(marginBottom) + half;
+            var highest = 1f - Mathf.Clamp01(marginTop) - half;
+
+            // Tranh cao hơn cả dải — thường vì màn đó điền Camera Max Size cứng và số đó
+            // nhỏ hơn mức auto. Không có chỗ đứng nào không lấn, nên chia đều cho hai đầu.
+            if (lowest > highest) return (lowest + highest) * 0.5f;
+
+            return Mathf.Clamp(0.5f, lowest, highest);
+        }
+
+        /// Bức tranh chiếm bao nhiêu phần chiều cao màn hình ở mức zoom đã cho.
+        private static float BoardScreenFraction(BoardLayout layout, float size)
+        {
+            return size > 0f ? layout.Height / (2f * size) : 1f;
+        }
+
+        /// Camera phải đứng ở toạ độ y nào để tâm bảng rơi đúng vào tâm dải.
+        ///
+        /// Khung nhìn cao đúng 2 * size, nên lệch 1 đơn vị chuẩn hoá là lệch 2 * size
+        /// world. Dấu âm vì đẩy CAMERA xuống thì TRANH đi lên.
+        ///
+        /// Nhận size làm tham số chứ không đọc camera: nó được hỏi cả cho mức zoom ĐÍCH
+        /// của một chuyến bay chưa bắt đầu, lẫn cho mức zoom HIỆN TẠI lúc kẹp vị trí.
+        private float ViewCenterY(float size)
+        {
+            return -(_viewBandCenter - 0.5f) * 2f * size;
+        }
+
+        /// orthographicSize nhỏ nhất mà bảng vẫn nằm gọn trong phần màn hình cho phép.
+        ///
+        /// Nhận TỈ LỆ MÀN HÌNH chứ không nhận lề tuyệt đối, và đó là toàn bộ điểm của nó:
+        /// một con số orthographicSize chỉ đúng với đúng một tỉ lệ màn; một tỉ lệ thì đúng
+        /// với mọi máy, vì nó tự nhân lại với aspect ở đây.
+        ///
+        /// Trên điện thoại dựng đứng, vế BỀ NGANG gần như luôn là vế thắng: bảng gần vuông
+        /// mà khung nhìn thì cao gấp rưỡi bề ngang.
+        private float FitSize(BoardLayout layout, float heightFraction, float widthFraction)
+        {
+            var aspect = Mathf.Max(0.0001f, _camera.aspect);
+
+            return Mathf.Max(
+                layout.Height / (2f * Mathf.Clamp(heightFraction, 0.2f, 1f)),
+                layout.Width / (2f * Mathf.Clamp(widthFraction, 0.2f, 1f) * aspect));
+        }
+
         /// LevelConfig đặt được giới hạn zoom cho từng màn. Để 0 hoặc âm thì tự tính
         /// theo kích thước bảng như trước.
         private void ResolveZoomRange(BoardLayout layout)
         {
-            var fitByHeight = layout.Height / 2f;
-            var fitByWidth = layout.Width / 2f / Mathf.Max(0.0001f, _camera.aspect);
-
-            var autoMax = Mathf.Max(fitByHeight, fitByWidth) * AutoFitMargin;
+            // Cùng phép tính với khung hình thắng màn, khác mỗi cặp tỉ lệ. Một con số
+            // cứng mỗi màn thì chết với đúng một tỉ lệ màn hình; tỉ lệ thì tự co.
+            var autoMax = FitSize(
+                layout, BandHeight(_playMarginTop, _playMarginBottom), _playBoardWidthFraction);
             var autoMin = Mathf.Min(DefaultMinSize, autoMax);
 
             var config = _levelService != null ? _levelService.CurrentConfig : null;
@@ -181,6 +340,13 @@ namespace JewelPainter.Gameplay.Board
             if (_boardView == null || _boardView.Layout == null) return;
 
             if (_isFocusing && !TryAdvanceFocus()) return;
+
+            // Khung hình thắng màn đã canh xong thì khoá lại — xem tooltip Freeze After Win.
+            if (_winFraming && _freezeAfterWin)
+            {
+                ClampPosition();
+                return;
+            }
 
             UpdateGestureBlock();
 
@@ -458,9 +624,14 @@ namespace JewelPainter.Gameplay.Board
 
             var position = transform.position;
 
+            // Tâm dải quy ra world THEO MỨC ZOOM HIỆN TẠI, không phải mức lúc vào màn:
+            // phóng sát thì khoảng lệch co lại theo, nên người chơi vẫn kéo tới được mọi
+            // rìa bảng.
+            var centerY = ViewCenterY(halfHeight);
+
             transform.position = new Vector3(
                 Mathf.Clamp(position.x, -maxX, maxX),
-                Mathf.Clamp(position.y, -maxY, maxY),
+                Mathf.Clamp(position.y, centerY - maxY, centerY + maxY),
                 position.z);
         }
     }

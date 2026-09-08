@@ -2067,6 +2067,13 @@ MonoBehaviour:
   _panMarginScreenFraction: 0.5
   _focusDuration: 0.4
   _focusInputGrace: 0.2
+  _playMarginTop: 0.24
+  _playMarginBottom: 0.24
+  _playBoardWidthFraction: 0.9
+  _winMarginTop: 0.24
+  _winMarginBottom: 0.24
+  _winBoardWidthFraction: 0.9
+  _freezeAfterWin: 1
 --- !u!222 &519420034
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -3196,7 +3203,7 @@ MonoBehaviour:
   _camera: {fileID: 519420031}
   _numberPrefab: {fileID: 443988931334658834, guid: 9f8bbbdfe33ca9a44bfbf756b309f6a2, type: 3}
   _root: {fileID: 907141401}
-  _showAtZoomProgress: 0.2
+  _showAtZoomProgress: 0.1
   _minCellScreenPixels: 32
   _numberColor: {r: 0, g: 0, b: 0, a: 1}
   _maxSpawnPerFrame: 400
