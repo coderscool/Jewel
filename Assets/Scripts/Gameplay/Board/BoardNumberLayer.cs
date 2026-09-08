@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using JewelPainter.Gameplay.Domain;
+using JewelPainter.Gameplay.Interfaces;
 using TMPro;
 using Unity.Profiling;
 using UnityEngine;
@@ -11,7 +12,12 @@ namespace JewelPainter.Gameplay.Board
     ///
     /// Chỉ sinh TextMeshPro cho ô đang lọt tầm nhìn camera, và chỉ tính lại khi
     /// camera đổi — không phải mỗi frame. Ô nhỏ hơn ngưỡng đọc được thì ẩn hết số.
-    public class BoardNumberLayer : MonoBehaviour
+    ///
+    /// Ô ĐÃ TÔ không còn số: viên ngọc đã đè kín lên nó, con số bên dưới vô hình nhưng
+    /// vẫn ăn đủ phần cull, sắp xếp và draw của một renderer. Đây là lớp đông object nhất
+    /// trong ba lớp, nên nó cũng là chỗ khoản tiết kiệm đó lớn nhất — và nó lớn dần theo
+    /// đúng chiều người chơi đi: càng tô thì càng nhẹ.
+    public class BoardNumberLayer : MonoBehaviour, IBoardNumbers
     {
         [SerializeField] private Camera _camera;
         [SerializeField] private TextMeshPro _numberPrefab;
@@ -140,6 +146,8 @@ namespace JewelPainter.Gameplay.Board
         private Coroutine _prewarmRoutine;
 
         private BoardView _boardView;
+        private IPaintService _paintService;
+        private JewelFlyEffect _flyEffect;
         private Vector3 _lastCameraPosition;
         private float _lastOrthographicSize = -1f;
 
@@ -161,19 +169,43 @@ namespace JewelPainter.Gameplay.Board
         /// nới ngưỡng theo đúng chiều.
         private bool _numbersShown;
 
-        public void Init(BoardView boardView)
+        public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect)
         {
             _boardView = boardView;
+            _paintService = paintService;
+            _flyEffect = flyEffect;
+
             _boardView.OnBoardRebuilt += HandleBoardRebuilt;
             _boardView.OnCoverChanged += HandleCoverChanged;
+
+            // Nghe lúc ngọc ĐÁP XUỐNG, không nghe OnCellPainted — cùng lý do đã ghi ở
+            // HintLayer: gỡ lúc bấm tô thì ô trống trơn suốt quãng viên đang bay.
+            if (_flyEffect != null) _flyEffect.OnJewelLanded += HandleJewelLanded;
         }
 
         private void OnDestroy()
         {
+            if (_flyEffect != null) _flyEffect.OnJewelLanded -= HandleJewelLanded;
+
             if (_boardView == null) return;
 
             _boardView.OnBoardRebuilt -= HandleBoardRebuilt;
             _boardView.OnCoverChanged -= HandleCoverChanged;
+        }
+
+        /// Trả chữ về kho ngay, KHÔNG bật _needsRefresh: vòng Refresh chỉ biết THÊM ô,
+        /// nên không có gì để nó làm lại — mà bật lên thì mỗi ô tô là một lượt quét cả
+        /// vùng nhìn, đúng lúc tay đang kéo tô liên tục.
+        private void HandleJewelLanded(Vector2Int cell, int paletteIndex) => Release(cell);
+
+        /// Ô đã tô và viên ngọc đã đáp. Ô đang có viên bay tới vẫn coi là CHƯA xong —
+        /// giữ số lại tới lúc viên đáp, không thì kéo camera giữa lúc bay là số biến mất
+        /// sớm và ô trơ ra một khoảng trắng.
+        private bool IsDone(Vector2Int cell)
+        {
+            if (_paintService == null || !_paintService.IsPainted(cell.x, cell.y)) return false;
+
+            return _flyEffect == null || !_flyEffect.IsInFlight(cell);
         }
 
         /// Xem chú thích cùng tên ở JewelLayer.
@@ -434,6 +466,7 @@ namespace JewelPainter.Gameplay.Board
                     var index = grid.GetCell(x, y);
                     if (index == PixelGrid.EmptyCell) continue;
                     if (index < 0 || index >= colors.Count) continue;
+                    if (IsDone(cell)) continue;
 
                     var number = index + 1;
                     var label = Rent(number);

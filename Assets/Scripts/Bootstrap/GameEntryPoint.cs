@@ -29,7 +29,7 @@ namespace JewelPainter.Bootstrap
         private readonly IPaintService _paintService;
         private readonly HudView _hud;
         private readonly BoardView _boardView;
-        private readonly BoardNumberLayer _numberLayer;
+        private readonly IBoardNumbers _numberLayer;
         private readonly BoardCamera _boardCamera;
         private readonly BoardInput _boardInput;
         private readonly IBoardGridLines _gridLines;
@@ -68,7 +68,7 @@ namespace JewelPainter.Bootstrap
             IPaintService paintService,
             HudView hud,
             BoardView boardView,
-            BoardNumberLayer numberLayer,
+            IBoardNumbers numberLayer,
             BoardCamera boardCamera,
             BoardInput boardInput,
             IBoardGridLines gridLines,
@@ -150,7 +150,6 @@ namespace JewelPainter.Bootstrap
             _paintManager.Init(_levelService, _paintProgressStore);
 
             _boardView.Init(_levelService, _paintService);
-            _numberLayer.Init(_boardView);
             _gridLines.Init(_boardView);
 
             // BoardInput quyết định mỗi nét kéo là tô hay di chuyển; camera đọc lại
@@ -190,6 +189,11 @@ namespace JewelPainter.Bootstrap
             // gỡ marker gợi ý và cho hiện ngọc. Hai lớp dưới đều chờ tín hiệu của nó.
             _jewelFlyEffect.Init(_boardView, _paintService, _paletteBar);
             _hintLayer.Init(_boardView, _paintService, _jewelFlyEffect);
+
+            // Lớp số Init CÙNG CHỖ với hai lớp ô kia, không còn ở trên cùng: nó cũng nghe
+            // OnJewelLanded để gỡ số ở ô đã tô, nên nó thuộc về nhóm này chứ không thuộc
+            // nhóm dựng bảng.
+            _numberLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLandSparkle.Init(_boardView, _jewelFlyEffect);
             _colorCompleteSparkle.Init(_boardView, _paintService, _jewelFlyEffect);

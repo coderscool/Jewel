@@ -101,7 +101,13 @@ namespace JewelPainter.Bootstrap
 
             // Board — mặt sân chơi trong world
             builder.RegisterComponentInHierarchy<BoardView>();
-            builder.RegisterComponentInHierarchy<BoardNumberLayer>();
+            // Đổi bản hiện số ngay tại dòng này — GameEntryPoint đi qua IBoardNumbers
+            // nên không phải sửa gì thêm:
+            //   BoardNumberLayer một TextMeshPro mỗi ô trong tầm nhìn (bản cũ)
+            //   BoardNumberMesh  cả bảng gộp vào MỘT mesh, một draw call
+            // Component tương ứng phải nằm sẵn trên object trong scene.
+            builder.RegisterComponentInHierarchy<BoardNumberMesh>()
+                   .AsImplementedInterfaces().AsSelf();
             builder.RegisterComponentInHierarchy<BoardCamera>();
             builder.RegisterComponentInHierarchy<BoardInput>();
             // Đổi bản kẻ viền ô ngay tại dòng này — GameEntryPoint đi qua
