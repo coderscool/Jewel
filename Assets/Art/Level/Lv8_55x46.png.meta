@@ -1,34 +1,22 @@
 fileFormatVersion: 2
-guid: 0c9bd7c20f54ad0438dfec77e59bf419
+guid: 18d8ef1e5510a934c95940902e89ddef
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 927889872172396640
-    second: bead-pattern (8)_0
+      213: 6536645130954131640
+    second: Lv8_55x46_0
   - first:
-      213: -3749138196366870254
-    second: bead-pattern (8)_1
+      213: 4818591206980868578
+    second: Lv8_55x46_1
   - first:
-      213: 5837727447747641669
-    second: bead-pattern (8)_2
+      213: -7745740633973378481
+    second: Lv8_55x46_2
   - first:
-      213: 309672944475055500
-    second: bead-pattern (8)_3
+      213: 8277101997772876624
+    second: Lv8_55x46_3
   - first:
-      213: 5635380164780057240
-    second: bead-pattern (8)_4
-  - first:
-      213: -4988163804065594527
-    second: bead-pattern (8)_5
-  - first:
-      213: -8336036062324487254
-    second: bead-pattern (8)_6
-  - first:
-      213: 6751093769966505688
-    second: bead-pattern (8)_7
-  - first:
-      213: -3016319756623499841
-    second: bead-pattern (8)_8
+      213: -2958497011324600828
+    second: Lv8_55x46_4
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -137,144 +125,12 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: bead-pattern (8)_0
+      name: Lv8_55x46_0
       rect:
         serializedVersion: 2
-        x: 199
-        y: 279
-        width: 1022
-        height: 842
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 060b48d2ce680ec00800000000000000
-      internalID: 927889872172396640
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: bead-pattern (8)_1
-      rect:
-        serializedVersion: 2
-        x: 499
-        y: 1039
-        width: 142
-        height: 142
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 21934b79ca268fbc0800000000000000
-      internalID: -3749138196366870254
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: bead-pattern (8)_2
-      rect:
-        serializedVersion: 2
-        x: 919
-        y: 1059
-        width: 142
-        height: 142
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 541cb822f26c30150800000000000000
-      internalID: 5837727447747641669
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: bead-pattern (8)_3
-      rect:
-        serializedVersion: 2
-        x: 179
-        y: 839
-        width: 222
-        height: 182
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: c852cfbf6ed2c4400800000000000000
-      internalID: 309672944475055500
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: bead-pattern (8)_4
-      rect:
-        serializedVersion: 2
-        x: 159
-        y: 639
-        width: 142
-        height: 142
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 8926ffff664e43e40800000000000000
-      internalID: 5635380164780057240
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: bead-pattern (8)_5
-      rect:
-        serializedVersion: 2
-        x: 1199
-        y: 739
-        width: 62
-        height: 62
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 1638539d27b76cab0800000000000000
-      internalID: -4988163804065594527
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: bead-pattern (8)_6
-      rect:
-        serializedVersion: 2
-        x: 1320
-        y: 3
-        width: 32
+        x: 0
+        y: 27
+        width: 13
         height: 11
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -284,20 +140,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: aab8d461e53705c80800000000000000
-      internalID: -8336036062324487254
+      spriteID: 8b8ce4d2d14d6ba50800000000000000
+      internalID: 6536645130954131640
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: bead-pattern (8)_7
+      name: Lv8_55x46_1
       rect:
         serializedVersion: 2
-        x: 1352
-        y: 3
-        width: 24
-        height: 11
+        x: 1
+        y: 0
+        width: 54
+        height: 43
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -306,20 +162,20 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 8dec434d304b0bd50800000000000000
-      internalID: 6751093769966505688
+      spriteID: 2e95ae93c231fd240800000000000000
+      internalID: 4818591206980868578
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: bead-pattern (8)_8
+      name: Lv8_55x46_2
       rect:
         serializedVersion: 2
-        x: 1378
-        y: 3
-        width: 59
-        height: 11
+        x: 16
+        y: 37
+        width: 9
+        height: 9
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -328,8 +184,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: fbda6799921e326d0800000000000000
-      internalID: -3016319756623499841
+      spriteID: f4235bd9ee9918490800000000000000
+      internalID: -7745740633973378481
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Lv8_55x46_3
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 38
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05badeab96c2ed270800000000000000
+      internalID: 8277101997772876624
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Lv8_55x46_4
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 17
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40e31fa94ae41f6d0800000000000000
+      internalID: -2958497011324600828
       vertices: []
       indices: 
       edges: []
@@ -348,15 +248,11 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      bead-pattern (8)_0: 927889872172396640
-      bead-pattern (8)_1: -3749138196366870254
-      bead-pattern (8)_2: 5837727447747641669
-      bead-pattern (8)_3: 309672944475055500
-      bead-pattern (8)_4: 5635380164780057240
-      bead-pattern (8)_5: -4988163804065594527
-      bead-pattern (8)_6: -8336036062324487254
-      bead-pattern (8)_7: 6751093769966505688
-      bead-pattern (8)_8: -3016319756623499841
+      Lv8_55x46_0: 6536645130954131640
+      Lv8_55x46_1: 4818591206980868578
+      Lv8_55x46_2: -7745740633973378481
+      Lv8_55x46_3: 8277101997772876624
+      Lv8_55x46_4: -2958497011324600828
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

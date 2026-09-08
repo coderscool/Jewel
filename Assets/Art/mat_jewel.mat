@@ -52,11 +52,12 @@ Material:
     - PixelSnap: 0
     - _Brightness: 0.012
     - _Contrast: 0
-    - _Depth: 0
+    - _DarkLift: 0.35
+    - _Depth: 0.06
     - _EnableExternalAlpha: 0
-    - _FacetStrength: 0.6
+    - _FacetStrength: 0.8
     - _HighlightWhite: 1
-    - _Saturation: 0
+    - _Saturation: -0.2
     - _ZWrite: 0
     m_Colors:
     - _Color: {r: 1, g: 1, b: 1, a: 1}

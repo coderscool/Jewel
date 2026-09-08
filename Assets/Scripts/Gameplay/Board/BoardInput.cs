@@ -205,13 +205,6 @@ namespace JewelPainter.Gameplay.Board
             _paintService.SelectColor(grid.GetCell(_holdCell.x, _holdCell.y));
         }
 
-        /// Ô này sẽ tô được nếu người chơi đã chọn đúng màu của nó. Khác CanPaint ở chỗ
-        /// KHÔNG xét màu đang chọn — đây đúng là câu hỏi cần đặt khi chưa chọn màu nào.
-        private bool IsPaintableWhenColorChosen(Vector2Int cell)
-        {
-            return _paintService.SelectedPaletteIndex < 0 && HasColorToPick(cell);
-        }
-
         /// Ô rỗng không có màu, ô đã tô thì màu của nó đã nằm sẵn trên bảng rồi.
         private bool HasColorToPick(Vector2Int cell)
         {
@@ -248,12 +241,17 @@ namespace JewelPainter.Gameplay.Board
                 return StrokeOwner.Paint;
             }
 
-            if (!TryGetCell(screenPosition, out var cell)) return StrokeOwner.Camera;
-
-            // Chạm trúng một ô ĐÁNG LẼ tô được mà chưa chọn màu nào: ghi nhận để nhắc,
-            // nhưng chờ tới lúc nhấc tay. Im lặng hẳn thì người chơi mới vào màn cứ quẹt
-            // mãi mà không hiểu vì sao không có gì xảy ra.
-            if (IsPaintableWhenColorChosen(cell))
+            // Chưa chọn màu nào thì MỌI cú chạm ngoài UI đều đáng nhắc — kể cả chạm ra
+            // ngoài bức tranh, vào ô rỗng, hay vào ô đã tô.
+            //
+            // Bản trước chỉ nhắc khi chạm trúng một ô ĐÁNG LẼ tô được. Nghe chặt chẽ,
+            // nhưng nó sai ở đúng người cần nhắc nhất: người mới vào màn chưa biết phải
+            // chọn màu thường chạm vu vơ giữa màn hình chứ không chạm trúng ô nào, rồi
+            // kết luận là game đứng.
+            //
+            // Ghi nhận chứ chưa nhắc: lời nhắc chờ tới lúc NHẤC TAY, và bị huỷ nếu tay
+            // kéo đi — kéo bảng đi xem tranh cũng bắt đầu bằng một cú chạm.
+            if (_paintService.SelectedPaletteIndex < 0)
             {
                 _hasPendingNotify = true;
                 _pendingNotifyScreen = screenPosition;

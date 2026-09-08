@@ -51,6 +51,13 @@ namespace JewelPainter.Gameplay.Managers
 
             if (SelectedPaletteIndex >= 0) return;
 
+            // Bảng đã tô kín thì không còn màu nào để mà chọn.
+            //
+            // Cần chốt này từ khi lời nhắc bắt mọi cú chạm ngoài UI: popup thắng màn
+            // KHÔNG làm tối nền, nên chạm ra ngoài popup là chạm thẳng xuống bảng, và
+            // người chơi vừa hoàn thành bức tranh lại bị bảo đi chọn màu.
+            if (_state == null || _state.IsComplete) return;
+
             OnColorRequired?.Invoke();
         }
 
