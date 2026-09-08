@@ -107,6 +107,10 @@ namespace JewelPainter.UI.Views
         [Header("Nút")]
         [SerializeField] private Button _playButton;
         [SerializeField] private Text _playLevelText;
+
+        [Tooltip("Phần trăm đã tô của màn ĐANG CHỌN. Để trống thì không hiện.\n\n" +
+                 "Đọc từ bản lưu ô đã tô, nên nó là tiến độ THẬT chứ không phải ước lượng.")]
+        [SerializeField] private Text _percentText;
         [SerializeField] private Button _collectionButton;
         [SerializeField] private Button _settingsButton;
 
@@ -616,6 +620,61 @@ namespace JewelPainter.UI.Views
             }
 
             if (_playLevelText != null) _playLevelText.text = $"Level {levelId}";
+
+            SetPercent(levelId);
+        }
+
+        /// Phần trăm đã tô của một màn.
+        ///
+        /// Làm tròn XUỐNG, và chặn không cho ra 100 khi màn chưa thật sự xong: 99.6% mà
+        /// hiện 100% thì người chơi bấm vào rồi ngồi tìm ô cuối cùng, không hiểu vì sao
+        /// tranh đã "xong" mà vẫn còn chỗ trắng.
+        private void SetPercent(int levelId)
+        {
+            if (_percentText == null) return;
+
+            var fraction = ResolveProgress(levelId);
+
+            var percent = fraction >= 1f
+                ? 100
+                : Mathf.Clamp(Mathf.FloorToInt(fraction * 100f), 0, 99);
+
+            _percentText.text = $"{percent}%";
+        }
+
+        /// Tỉ lệ đã tô của một màn, thang 0..1.
+        ///
+        /// Màn ĐÃ XONG trả 1 mà không đụng tới bản lưu, và đó là điểm mấu chốt: bản lưu
+        /// của màn đã xong bị xoá đi vì nó là dữ liệu thừa. Đọc bản lưu trước thì mọi
+        /// bức tranh đã hoàn thành đều hiện 0%.
+        ///
+        /// Cùng một luật mà BuildThumbnail đang dùng để quyết định tô kín ảnh nhỏ hay không.
+        private float ResolveProgress(int levelId)
+        {
+            if (_levelService == null) return 0f;
+            if (_levelService.IsCompleted(levelId)) return 1f;
+            if (!_levelService.IsUnlocked(levelId)) return 0f;
+
+            var gridData = FindGridData(levelId);
+            if (gridData == null) return 0f;
+
+            var bits = _progressStore != null ? _progressStore.LoadBits(levelId) : null;
+            if (bits == null) return 0f;
+
+            return Gameplay.Domain.PaintState.FractionPainted(gridData.ToGrid(), bits);
+        }
+
+        /// Quét danh sách chứ không tra bảng: mười lăm màn, và hàm này chỉ chạy lúc người
+        /// chơi bấm sang một ô khác. Dựng thêm một dictionary ở đây là thêm một thứ phải
+        /// nhớ dựng lại mỗi khi danh sách màn đổi.
+        private Gameplay.Data.LevelGridData FindGridData(int levelId)
+        {
+            foreach (var config in _levelService.Levels)
+            {
+                if (config != null && config.LevelId == levelId) return config.GridData;
+            }
+
+            return null;
         }
 
         /// Chỉ đổi chữ khi con số thật sự khác — đổi text là dựng lại lưới chữ, mà sự

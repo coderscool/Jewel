@@ -183,6 +183,46 @@ namespace JewelPainter.Gameplay.Domain
             return false;
         }
 
+        /// Tỉ lệ ô đã tô của một lưới, thang 0..1, tính THẲNG từ bản lưu.
+        ///
+        /// static và không dựng PaintState, vì bên gọi là màn hình Home: nó hỏi cho từng
+        /// màn trong danh sách, mà dựng PaintState là cấp phát một mảng bool cỡ cả lưới
+        /// cho mỗi lần hỏi — bảng 101x105 là hơn mười nghìn phần tử, nhân lên mười lăm màn.
+        ///
+        /// Trả 0 khi bản lưu KHÔNG khớp cỡ lưới, cùng luật với RestorePaintedBits: lưới
+        /// được sinh lại là bản lưu cũ đắp lên sai chỗ hàng loạt, và một con số phần trăm
+        /// bịa ra còn tệ hơn con số 0.
+        ///
+        /// Lưới không có ô màu nào trả về 1: không có gì để tô thì không thể dở dang.
+        public static float FractionPainted(PixelGrid grid, byte[] paintedBits)
+        {
+            if (grid == null) return 0f;
+
+            var cellCount = grid.Width * grid.Height;
+            if (paintedBits == null || paintedBits.Length != (cellCount + 7) / 8) return 0f;
+
+            var colored = 0;
+            var painted = 0;
+
+            for (var y = 0; y < grid.Height; y++)
+            {
+                for (var x = 0; x < grid.Width; x++)
+                {
+                    if (grid.GetCell(x, y) == PixelGrid.EmptyCell) continue;
+
+                    colored++;
+
+                    // Cùng cách đánh chỉ số với Index(x, y) và ToPaintedBits — lệch một
+                    // nhịp ở đây là phần trăm sai mà không có gì báo.
+                    var index = y * grid.Width + x;
+
+                    if ((paintedBits[index >> 3] & (1 << (index & 7))) != 0) painted++;
+                }
+            }
+
+            return colored > 0 ? painted / (float)colored : 1f;
+        }
+
         /// Gom MỌI ô chưa tô của một màu vào danh sách cho sẵn, quét trái→phải,
         /// trên→dưới. Trả về số ô đã thêm. Danh sách được Clear trước.
         ///
