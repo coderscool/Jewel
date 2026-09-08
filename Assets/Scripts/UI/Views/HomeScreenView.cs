@@ -100,6 +100,14 @@ namespace JewelPainter.UI.Views
                  "đang đi tiếp trong danh sách.")]
         [SerializeField] private float _celebrateScrollSeconds = 0.6f;
 
+        [Tooltip("Bức tranh vừa xong bay RA TỪ ĐÂU. Thường gán nút Play.\n\n" +
+                 "Để TRỐNG thì nó bay ra từ ô của màn đó trong danh sách — nhưng cách ấy " +
+                 "chỉ đúng khi danh sách đang HIỆN. Danh sách bị tắt thì ô vẫn được dựng, " +
+                 "chỉ là nằm trong một cây đã tắt, và toạ độ đọc ra là toạ độ của lần bố " +
+                 "cục nào đó không ai đoán được — tranh sẽ bay ra từ một chỗ vô nghĩa.\n\n" +
+                 "Gán ô này thì nó thắng, kể cả khi danh sách đang hiện.")]
+        [SerializeField] private RectTransform _celebrateFromRect;
+
         [Header("Tiền")]
         [Tooltip("Số tiền người chơi đang có. Để trống thì không hiện.")]
         [SerializeField] private Text _coinsText;
@@ -303,12 +311,13 @@ namespace JewelPainter.UI.Views
         private void BeginOpeningFlow()
         {
             var celebrateItem = _celebrateItem;
+            var celebrateLevel = _pendingCelebrationLevel;
             _pendingCelebrationLevel = -1;
 
             if (!isActiveAndEnabled) return;
 
             StopAllCoroutines();
-            StartCoroutine(OpeningRoutine(celebrateItem));
+            StartCoroutine(OpeningRoutine(celebrateItem, celebrateLevel));
         }
 
         /// Một cửa duy nhất cho mọi việc cần bố cục đã tính xong: dựng dây nối, rồi chọn
@@ -316,7 +325,7 @@ namespace JewelPainter.UI.Views
         ///
         /// Gom vào một chỗ vì cả ba việc đều phải đợi CÙNG một mốc, và vì StopAllCoroutines
         /// nằm rải rác ở nhiều đường thì việc này giết việc kia.
-        private IEnumerator OpeningRoutine(HomeLevelItemView celebrateItem)
+        private IEnumerator OpeningRoutine(HomeLevelItemView celebrateItem, int celebrateLevel)
         {
             // Đợi HẾT MỘT FRAME. Layout Group và Content Size Fitter tính lại kích thước ở
             // cuối frame, nên mọi phép đo trước mốc đó đều đọc bố cục của lần dựng TRƯỚC.
@@ -326,19 +335,18 @@ namespace JewelPainter.UI.Views
 
             RebuildLines();
 
-            if (_scrollRect == null) yield break;
-
-            var canCelebrate = celebrateItem != null
-                               && _collectionFly != null
-                               && _collectionButton != null
-                               && celebrateItem.ThumbnailRect != null
-                               && celebrateItem.ThumbnailSprite != null;
-
-            if (canCelebrate)
+            // Phép kiểm ăn mừng đặt TRƯỚC chốt _scrollRect, không phải sau.
+            //
+            // Từ khi tranh bay ra từ nút Play, đoạn ăn mừng không còn cần tới danh sách
+            // cuộn nữa. Để chốt cũ ở trên thì tắt danh sách đi là tắt luôn cả ăn mừng, mà
+            // hai thứ đó không còn liên quan gì tới nhau.
+            if (TryResolveCelebration(celebrateItem, celebrateLevel, out var fromRect, out var sprite))
             {
-                yield return CelebrateRoutine(celebrateItem);
+                yield return CelebrateRoutine(fromRect, sprite, celebrateItem);
                 yield break;
             }
+
+            if (_scrollRect == null) yield break;
 
             if (_currentItemRect != null && TryGetScrollPosition(_currentItemRect, out var position))
             {
@@ -346,32 +354,84 @@ namespace JewelPainter.UI.Views
             }
         }
 
-        /// Ba nhịp: đưa ô vừa xong vào khung nhìn, cho tranh bay đi, rồi cuộn sang màn mới.
-        private IEnumerator CelebrateRoutine(HomeLevelItemView item)
+        /// Chốt hai thứ mà đoạn ăn mừng cần: bay ra TỪ ĐÂU, và bay cái GÌ.
+        ///
+        /// Ô Celebrate From Rect thắng ô trong danh sách, vì nó là lựa chọn có chủ ý còn
+        /// ô trong danh sách chỉ là mặc định lịch sử.
+        ///
+        /// Ảnh cũng vậy: có ô thì mượn ảnh nó đã dựng, không có thì tự dựng lấy. Màn vừa
+        /// xong nên bản lưu đã bị xoá, và BuildThumbnail hiểu điều đó — nó tô kín ảnh dựa
+        /// vào "màn này đã hoàn thành" chứ không dựa vào bản lưu.
+        private bool TryResolveCelebration(
+            HomeLevelItemView item, int levelId, out RectTransform fromRect, out Sprite sprite)
         {
-            var itemRect = (RectTransform)item.transform;
-            if (TryGetScrollPosition(itemRect, out var startPosition))
+            fromRect = null;
+            sprite = null;
+
+            if (levelId < 0) return false;
+            if (_collectionFly == null || _collectionButton == null) return false;
+
+            fromRect = _celebrateFromRect != null
+                ? _celebrateFromRect
+                : item != null ? item.ThumbnailRect : null;
+
+            if (fromRect == null) return false;
+
+            sprite = item != null ? item.ThumbnailSprite : null;
+
+            if (sprite == null)
             {
-                _scrollRect.verticalNormalizedPosition = startPosition;
+                var gridData = FindGridData(levelId);
+                sprite = BuildThumbnail(gridData, levelId, isUnlocked: true, isCompleted: true);
             }
 
-            // Đợi thêm một frame để vị trí cuộn vừa đặt được áp vào toạ độ thật. Không có
-            // nhịp này thì hiệu ứng đo chỗ ô ở lần cuộn TRƯỚC, và tranh bay ra từ chỗ khác.
-            yield return null;
+            return sprite != null;
+        }
 
-            Canvas.ForceUpdateCanvases();
+        /// Cho tranh bay từ fromRect sang nút bộ sưu tập.
+        ///
+        /// Hai nhịp cuộn danh sách ở đầu và cuối chỉ chạy khi tranh thật sự bay ra từ ô
+        /// trong danh sách VÀ danh sách đang hiện. Bay ra từ nút Play thì cuộn một thứ
+        /// không ai nhìn thấy chỉ tổ chèn thêm nửa giây chết vào giữa đoạn chuyển cảnh.
+        private IEnumerator CelebrateRoutine(RectTransform fromRect, Sprite sprite, HomeLevelItemView item)
+        {
+            var scrollsWithList = _celebrateFromRect == null && item != null && IsScrollUsable();
+
+            if (scrollsWithList)
+            {
+                if (TryGetScrollPosition((RectTransform)item.transform, out var startPosition))
+                {
+                    _scrollRect.verticalNormalizedPosition = startPosition;
+                }
+
+                // Đợi thêm một frame để vị trí cuộn vừa đặt được áp vào toạ độ thật. Không
+                // có nhịp này thì hiệu ứng đo chỗ ô ở lần cuộn TRƯỚC, và tranh bay ra từ
+                // chỗ khác.
+                yield return null;
+
+                Canvas.ForceUpdateCanvases();
+            }
 
             var finished = false;
 
             _collectionFly.Play(
-                item.ThumbnailRect,
-                item.ThumbnailSprite,
+                fromRect,
+                sprite,
                 (RectTransform)_collectionButton.transform,
                 () => finished = true);
 
             while (!finished) yield return null;
 
-            yield return ScrollToCurrentRoutine(_celebrateScrollSeconds);
+            if (IsScrollUsable()) yield return ScrollToCurrentRoutine(_celebrateScrollSeconds);
+        }
+
+        /// Danh sách cuộn có đang thật sự hiện không.
+        ///
+        /// Hỏi activeInHierarchy chứ không chỉ hỏi null: tắt object đi thì tham chiếu vẫn
+        /// còn nguyên, mọi phép đo vẫn chạy và vẫn trả về số — chỉ là số vô nghĩa.
+        private bool IsScrollUsable()
+        {
+            return _scrollRect != null && _scrollRect.gameObject.activeInHierarchy;
         }
 
         /// Hỏi BẢN LƯU trước, chỉ khi không có mới suy từ "màn này đã xong".

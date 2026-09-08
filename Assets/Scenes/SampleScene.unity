@@ -1419,6 +1419,7 @@ MonoBehaviour:
   _lineInset: 0
   _collectionFly: {fileID: 1221650119}
   _celebrateScrollSeconds: 0.6
+  _celebrateFromRect: {fileID: 1819305914}
   _coinsText: {fileID: 88326308}
   _playButton: {fileID: 1819305915}
   _playLevelText: {fileID: 1401101222}
