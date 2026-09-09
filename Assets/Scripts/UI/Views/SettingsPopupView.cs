@@ -1,4 +1,5 @@
 using JewelPainter.Core.Services;
+using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -35,13 +36,16 @@ namespace JewelPainter.UI.Views
         private ISoundService _sound;
         private HomeScreenView _home;
         private HudView _hud;
+        private IFreePaintService _freePaint;
 
         [Inject]
-        public void Construct(ISoundService sound, HomeScreenView home, HudView hud)
+        public void Construct(ISoundService sound, HomeScreenView home, HudView hud,
+            IFreePaintService freePaint)
         {
             _sound = sound;
             _home = home;
             _hud = hud;
+            _freePaint = freePaint;
         }
 
         private void Awake()
@@ -66,7 +70,28 @@ namespace JewelPainter.UI.Views
         {
             base.Show();
 
+            // Giữ đồng hồ của booster tô tự do lại. Bảng cài đặt che kín bàn chơi, nên
+            // mỗi giây trôi qua sau lưng nó là một giây người chơi đã trả tiền mà không
+            // tô được ô nào.
+            //
+            // Giữ chứ không huỷ: họ mở bảng này để tắt nhạc rồi chơi tiếp, không phải để
+            // vứt lượt booster đi.
+            if (_freePaint != null) _freePaint.SetPaused(true);
+
             RefreshIcons();
+        }
+
+        /// Thả đồng hồ ở ĐÂY chứ không ở nút đóng.
+        ///
+        /// Popup này có ba đường ra — nút đóng, nút Home, và HideAll gọi từ chỗ khác —
+        /// và cả ba đều đi qua Hide. Móc vào riêng nút đóng thì hai đường kia để đồng hồ
+        /// đứng nguyên, và người chơi quay lại thấy booster treo ở một con số không bao
+        /// giờ nhúc nhích.
+        public override void Hide()
+        {
+            if (_freePaint != null) _freePaint.SetPaused(false);
+
+            base.Hide();
         }
 
         private void ToggleMusic()
@@ -103,6 +128,11 @@ namespace JewelPainter.UI.Views
         private void HandleHomeClicked()
         {
             Hide();
+
+            // Hide vừa thả đồng hồ ra — giữ lại. Về Home là rời hẳn bàn chơi: booster sẽ
+            // bị huỷ ở lần nạp màn kế tiếp, nên để nó đếm tiếp sau lưng màn hình Home chỉ
+            // tổ đốt nốt mấy giây cuối vào chỗ không ai nhìn.
+            if (_freePaint != null) _freePaint.SetPaused(true);
 
             if (_hud != null) _hud.SetVisible(false);
             if (_home != null) _home.Show();

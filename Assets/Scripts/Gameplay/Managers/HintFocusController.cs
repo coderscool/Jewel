@@ -43,6 +43,16 @@ namespace JewelPainter.Gameplay.Managers
                 //
                 // Chưa chọn màu vẫn cho BẤM: bấm vào sẽ hiện lời nhắc chọn màu. Nút xám
                 // ngắt không nói được gì, mà đó lại đúng lúc người chơi cần biết nhất.
+                //
+                // Trừ lúc một booster khác đang chạy dở.
+                //
+                // Tô tự do: dấu gợi ý lúc đó đã phủ KHẮP bảng, bấm thêm gợi ý vào giữa là
+                // tiêu một lượt nữa để làm đúng cái việc đang được làm sẵn.
+                //
+                // Đợt tô hết màu: gợi ý có thể phải ĐỔI màu khi màu đang chọn hết ô — mà
+                // đợt tô chính là thứ đang làm cho nó hết ô, và lúc ấy màu đang bị khoá.
+                if (_paintService.ColorLocked) return false;
+
                 return !_paintService.IsComplete;
             }
         }
@@ -65,6 +75,7 @@ namespace JewelPainter.Gameplay.Managers
             _paintService.OnBoardReady += RefreshAvailability;
             _paintService.OnColorSelected += HandleColorSelected;
             _paintService.OnCellPainted += HandleCellPainted;
+            _paintService.OnColorLockChanged += HandleColorLockChanged;
 
             _lastAvailability = CanUseHint;
         }
@@ -78,6 +89,7 @@ namespace JewelPainter.Gameplay.Managers
             _paintService.OnBoardReady -= RefreshAvailability;
             _paintService.OnColorSelected -= HandleColorSelected;
             _paintService.OnCellPainted -= HandleCellPainted;
+            _paintService.OnColorLockChanged -= HandleColorLockChanged;
         }
 
         public bool UseHint()
@@ -161,6 +173,8 @@ namespace JewelPainter.Gameplay.Managers
         private void HandleColorSelected(int paletteIndex) => RefreshAvailability();
 
         private void HandleCellPainted(Vector2Int cell, int paletteIndex) => RefreshAvailability();
+
+        private void HandleColorLockChanged(bool locked) => RefreshAvailability();
 
         private void RefreshAvailability()
         {

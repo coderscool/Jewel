@@ -27,6 +27,19 @@ namespace JewelPainter.Gameplay.Interfaces
         /// Số giây còn lại. 0 khi không chạy.
         float RemainingSeconds { get; }
 
+        /// Đồng hồ đang bị giữ lại. Booster vẫn bật, luật tô tự do vẫn còn hiệu lực,
+        /// chỉ là số giây không vơi đi.
+        bool IsPaused { get; }
+
+        /// Giữ hoặc thả đồng hồ. Chỗ mở popup gọi cái này.
+        ///
+        /// KHÔNG đếm số lần gọi. Đếm thì mỗi cú Show phải có đúng một cú Hide khớp với
+        /// nó, mà popup thì có cả đường thoát tắt thẳng GameObject — lệch một cặp là
+        /// đồng hồ đứng vĩnh viễn ở mọi lượt dùng sau, một kiểu hỏng gần như không lần
+        /// ra được. Cờ đơn thì cú thả cuối cùng luôn thắng, và nó tự về false ở mỗi lần
+        /// booster bật lại.
+        void SetPaused(bool paused);
+
         /// Một lượt dùng kéo dài bao nhiêu giây. Cho chỗ hiển thị vẽ vòng đếm ngược mà
         /// không phải tự biết con số cấu hình trong Inspector.
         float DurationSeconds { get; }

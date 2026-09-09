@@ -49,9 +49,16 @@ namespace JewelPainter.UI.Views
                  "nút gợi ý.")]
         [SerializeField] private GameObject _freePaintCreditsBadge;
 
-        [Tooltip("Đồng hồ đếm ngược, chỉ hiện trong lúc booster chạy. Ghi số GIÂY nguyên. " +
-                 "Để trống thì không hiện.")]
-        [SerializeField] private TMP_Text _freePaintTimerText;
+        [Tooltip("Object bọc CẢ khung đồng hồ — kéo fr_time vào đây. Chỉ mình nó được " +
+                 "bật/tắt theo booster.\n\n" +
+                 "Để trống thì bật/tắt riêng phần chữ và phần vòng chạy như bản cũ. Cách " +
+                 "đó vẫn chạy, chỉ là mọi thứ khác trong khung — nền, viền, icon — ở lại " +
+                 "trên màn hình sau khi booster đã tắt.")]
+        [SerializeField] private GameObject _freePaintTimerRoot;
+
+        [Tooltip("Đồng hồ đếm ngược, chỉ hiện trong lúc booster chạy. Ghi dạng 00:SS, " +
+                 "thêm số 0 đằng trước khi còn dưới 10 giây. Để trống thì không hiện.")]
+        [SerializeField] private Text _freePaintTimerText;
 
         [Tooltip("Vòng/thanh chạy vơi dần theo thời gian còn lại, thang 0..1. Image phải " +
                  "để Image Type = Filled. Để trống thì bỏ qua.")]
@@ -290,8 +297,15 @@ namespace JewelPainter.UI.Views
         /// là dựng ra hai nguồn sự thật cho cùng một cái nút.
         private void HandleFreePaintActiveChanged(bool active)
         {
-            if (_freePaintTimerText != null) _freePaintTimerText.gameObject.SetActive(active);
-            if (_freePaintTimerFill != null) _freePaintTimerFill.gameObject.SetActive(active);
+            if (_freePaintTimerRoot != null)
+            {
+                _freePaintTimerRoot.SetActive(active);
+            }
+            else
+            {
+                if (_freePaintTimerText != null) _freePaintTimerText.gameObject.SetActive(active);
+                if (_freePaintTimerFill != null) _freePaintTimerFill.gameObject.SetActive(active);
+            }
 
             _displayedFreePaintSeconds = -1;
 
@@ -346,7 +360,14 @@ namespace JewelPainter.UI.Views
             if (seconds == _displayedFreePaintSeconds) return;
 
             _displayedFreePaintSeconds = seconds;
-            _freePaintTimerText.SetText("{0}", seconds);
+
+            // Đệm số 0 cho phần giây một chữ số: "00:5" đọc ra là một con số bị hụt, còn
+            // "00:05" mới ra dáng đồng hồ. Ghép thêm một ký tự chứ không gọi ToString("00")
+            // — cùng một string sinh ra, nhưng cách này không phải nuôi một chuỗi định
+            // dạng mà người đọc sau phải dịch ngược.
+            _freePaintTimerText.text = seconds < 10
+                ? "00:0" + seconds
+                : "00:" + seconds;
         }
 
         private void SetFreePaintCredits(int remaining)

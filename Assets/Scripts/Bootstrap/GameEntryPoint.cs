@@ -172,7 +172,9 @@ namespace JewelPainter.Bootstrap
 
             // Cũng nhận PaintManager: nó tô bằng TryPaintAs, cửa sau cố ý không nằm trên
             // IPaintService — xem chú thích ở chính hàm đó.
-            _fillColor.Init(_paintManager, _fillColorCredits);
+            // Cũng nhận JewelFlyEffect: trong lúc đợt tô chạy, booster nới hạn mức viên
+            // bay cùng lúc để mọi ô đều có ngọc bay ra từ thanh màu như lúc tô tay.
+            _fillColor.Init(_paintManager, _fillColorCredits, _jewelFlyEffect);
 
             _hud.Init(
                 _levelService, _paintService, _hintFocus, _freePaint, _fillColor, _levelFlow,

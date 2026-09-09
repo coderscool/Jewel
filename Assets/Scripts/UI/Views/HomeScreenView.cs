@@ -100,6 +100,24 @@ namespace JewelPainter.UI.Views
                  "đang đi tiếp trong danh sách.")]
         [SerializeField] private float _celebrateScrollSeconds = 0.6f;
 
+        [Header("Vào màn hình")]
+        [Tooltip("CanvasGroup dùng để mờ dần khi Home hiện ra. Gán CanvasGroup trên chính " +
+                 "object HomeRoot.\n\n" +
+                 "Để TRỐNG thì Home bật lên tức khắc như bản cũ — mọi thứ dưới đây tắt theo.")]
+        [SerializeField] private CanvasGroup _fadeGroup;
+
+        [Tooltip("Chờ ngần này giây rồi mới bắt đầu mờ dần vào.\n\n" +
+                 "Đây là KHOẢNG LẶNG của đoạn chuyển cảnh, và nó là phần quan trọng nhất. " +
+                 "Popup thắng màn mất 0.15 giây để tan; chờ thêm tới 0.25 thì có đúng 0.1 " +
+                 "giây chỉ còn lại bức tranh vừa hoàn thành trên màn. Nhịp đó là thứ biến " +
+                 "một cú cắt thành một cú chuyển.\n\n" +
+                 "Bảng vẫn hiện trong quãng này vì SetCovered chỉ thu các LỚP Ô về kho — " +
+                 "texture bảng thì vẫn nằm đó.")]
+        [SerializeField] private float _enterDelay = 0.25f;
+
+        [Tooltip("Thời gian mờ dần vào.")]
+        [SerializeField] private float _enterDuration = 0.25f;
+
         [Tooltip("Bức tranh vừa xong bay RA TỪ ĐÂU. Thường gán nút Play.\n\n" +
                  "Để TRỐNG thì nó bay ra từ ô của màn đó trong danh sách — nhưng cách ấy " +
                  "chỉ đúng khi danh sách đang HIỆN. Danh sách bị tắt thì ô vẫn được dựng, " +
@@ -152,6 +170,26 @@ namespace JewelPainter.UI.Views
         ///
         /// Phải nhớ riêng chứ không suy ra từ CurrentLevel: tiến trình đã nhích ngay lúc
         /// tô xong, nên "màn hiện tại" là màn KẾ TIẾP chứ không phải màn vừa xong.
+        /// Lượt mờ dần vào đang chạy, và cờ cho biết nó chưa xong.
+        ///
+        /// Đoạn ăn mừng phải ĐỢI cờ này tắt: ảnh bay của CollectionFlyEffect nằm trong
+        /// chính cây mà _fadeGroup đang làm mờ, nên cho nó bay lúc alpha còn 0 là cho nó
+        /// bay vô hình. Mà tranh lại bay ra từ nút Play — nút đó phải hiện đã.
+        private Tween _enterTween;
+        private bool _isEntering;
+
+        /// Home đang trong lượt mờ dần vào, chưa phủ kín màn hình.
+        public bool IsEntering => _isEntering;
+
+        /// Bao nhiêu giây nữa Home mới BẮT ĐẦU hiện ra, tính từ lúc gọi Show.
+        ///
+        /// Công khai để popup thắng màn biết nó có đúng bấy nhiêu thời gian để tan đi.
+        /// Tan xong đúng lúc Home bắt đầu hiện thì không bao giờ có cảnh hai màn hình
+        /// chồng lên nhau — mà đó là cảnh xấu nhất, vì nền Home không phủ kín tuyệt đối.
+        ///
+        /// 0 khi Home không có lượt mờ nào: popup tắt ngay, đúng bằng hành vi cũ.
+        public float EnterDelaySeconds => _fadeGroup != null ? Mathf.Max(0f, _enterDelay) : 0f;
+
         private int _pendingCelebrationLevel = -1;
 
         private HomeLevelItemView _celebrateItem;
@@ -244,6 +282,60 @@ namespace JewelPainter.UI.Views
             // cũng khớp — object có thể đã tắt sẵn từ trước — và SetCovered vốn đã tự bỏ
             // qua khi giá trị không đổi.
             if (_boardView != null) _boardView.SetCovered(visible);
+
+            if (visible) BeginEnter();
+            else KillEnter();
+        }
+
+        /// Mở đầu bằng alpha 0, chờ hết Enter Delay rồi mờ dần lên 1.
+        private void BeginEnter()
+        {
+            KillEnter();
+
+            if (_fadeGroup == null) return;
+
+            var delay = Mathf.Max(0f, _enterDelay);
+            var duration = Mathf.Max(0f, _enterDuration);
+
+            if (delay <= 0f && duration <= 0f) return;
+
+            _isEntering = true;
+
+            _fadeGroup.alpha = 0f;
+
+            // Khoá chạm suốt lúc chuyển. Không khoá thì nút Play đang mờ vẫn bấm được, và
+            // một cú chạm sớm sẽ nạp màn ngay khi màn hình còn chưa hiện xong.
+            _fadeGroup.blocksRaycasts = false;
+
+            _enterTween = DOVirtual.Float(0f, 1f, duration, value =>
+                {
+                    if (_fadeGroup != null) _fadeGroup.alpha = value;
+                })
+                .SetDelay(delay)
+                .SetEase(Ease.OutQuad)
+                .SetUpdate(true)
+                .OnComplete(EndEnter);
+        }
+
+        /// Trả CanvasGroup về trạng thái hiện đủ. Gọi cả lúc xong bình thường lẫn lúc bị
+        /// cắt ngang — Home đóng giữa chừng mà để alpha nằm ở 0.4 thì lần mở sau nó vẫn
+        /// là 0.4, và không có gì báo vì sao màn hình mờ mờ.
+        private void EndEnter()
+        {
+            _enterTween = null;
+            _isEntering = false;
+
+            if (_fadeGroup == null) return;
+
+            _fadeGroup.alpha = 1f;
+            _fadeGroup.blocksRaycasts = true;
+        }
+
+        private void KillEnter()
+        {
+            if (_enterTween != null && _enterTween.IsActive()) _enterTween.Kill();
+
+            EndEnter();
         }
 
         private void Rebuild()
@@ -342,6 +434,9 @@ namespace JewelPainter.UI.Views
             // hai thứ đó không còn liên quan gì tới nhau.
             if (TryResolveCelebration(celebrateItem, celebrateLevel, out var fromRect, out var sprite))
             {
+                // Đợi Home hiện xong rồi mới thả tranh bay — xem chú thích ở _isEntering.
+                while (_isEntering) yield return null;
+
                 yield return CelebrateRoutine(fromRect, sprite, celebrateItem);
                 yield break;
             }

@@ -105,6 +105,16 @@ namespace JewelPainter.Gameplay.Board
 
         [SerializeField] private int _prewarmCount = 24;
 
+        [Tooltip("Hạn mức viên bay cùng lúc trong ĐỢT TÔ của booster tô hết màu. Phải " +
+                 "cao hơn hẳn Max Concurrent thường.\n\n" +
+                 "Booster tô hàng chục ô mỗi frame, nên số viên trên trời ở trạng thái ổn " +
+                 "định xấp xỉ (số ô tô mỗi frame) × (thời gian bay × 60) — với thời gian " +
+                 "bay chừng nửa giây thì đó là hàng trăm viên. Để nguyên hạn mức 24 thì " +
+                 "chỉ vài ô đầu tiên có ngọc bay, phần còn lại hiện ngay tại chỗ, và cả " +
+                 "đợt tô không đọc ra thành một chuyển động nào cả.\n\n" +
+                 "420 khớp với Burst Cells Per Frame = 12 của FillColorController.")]
+        [SerializeField] private int _burstMaxConcurrent = 420;
+
         [Tooltip("Order in Layer của viên NGỌC ĐANG BAY, để nó nổi trên mọi lớp của bảng. " +
                  "Đáp xuống thì trả về giá trị gốc của prefab.")]
         [SerializeField] private int _flyingSortingOrder = 15;
@@ -143,6 +153,9 @@ namespace JewelPainter.Gameplay.Board
         private IPaintService _paintService;
         private IPaintOriginProvider _originProvider;
 
+        /// Đợt tô của booster đang chạy — chỉ để nới hạn mức viên bay cùng lúc.
+        private bool _burstActive;
+
         /// Order in Layer gốc của prefab, đọc một lần để trả về đúng giá trị đó.
         private int _baseSortingOrder;
         private bool _hasBaseSortingOrder;
@@ -168,6 +181,15 @@ namespace JewelPainter.Gameplay.Board
             AbortAllFlights();
         }
 
+        /// Bật/tắt ĐỢT TÔ của booster. Không đổi một li nào cách viên ngọc bay — vẫn
+        /// xuất phát từ ô màu trên thanh chọn, vẫn đúng nhịp và cỡ của cú tô tay. Việc
+        /// duy nhất nó làm là nới hạn mức viên bay cùng lúc, để mọi ô trong đợt đều có
+        /// ngọc bay chứ không phải chỉ hai chục ô đầu.
+        public void SetBurstMode(bool active)
+        {
+            _burstActive = active;
+        }
+
         /// Ô đang có viên bay tới thì JewelLayer chưa được hiện ngọc ở đó.
         public bool IsInFlight(Vector2Int cell) => _inFlight.Contains(cell);
 
@@ -183,6 +205,8 @@ namespace JewelPainter.Gameplay.Board
 
         private void HandleBoardRebuilt()
         {
+            _burstActive = false;
+
             AbortAllFlights();
             Prewarm();
         }
@@ -199,9 +223,15 @@ namespace JewelPainter.Gameplay.Board
 
             if (layout == null || colors == null) return false;
             if (paletteIndex < 0 || paletteIndex >= colors.Count) return false;
-            if (_flights.Count >= _maxConcurrent) return false;
 
-            if (_originProvider == null || !_originProvider.TryGetOriginWorldPosition(paletteIndex, out var origin))
+            // Đợt tô lấy giá trị LỚN HƠN trong hai hạn mức: đặt nhầm Burst Max Concurrent
+            // thấp hơn hạn mức thường thì cũng không làm hiệu ứng tệ đi so với lúc thường.
+            var limit = _burstActive ? Mathf.Max(_maxConcurrent, _burstMaxConcurrent) : _maxConcurrent;
+
+            if (_flights.Count >= limit) return false;
+
+            if (_originProvider == null ||
+                !_originProvider.TryGetOriginWorldPosition(paletteIndex, out var origin))
             {
                 // Không có điểm xuất phát thì ngọc hiện ngay, không bay. Im lặng ở đây
                 // là kiểu hỏng khó chịu nhất: game vẫn chạy, chỉ mất hiệu ứng mà không

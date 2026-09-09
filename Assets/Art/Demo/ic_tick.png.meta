@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: e2b1385157f828a448da6f8125d283b9
+guid: 6a023f804b1a5874481bbe4cab5fd63e
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3462942828541348978
-    second: tx_coin_50_0
+      213: 8813386805532214452
+    second: ic_tick_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 1
+  spriteMode: 2
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: tx_coin_50_0
+      name: ic_tick_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 78
-        height: 62
+        width: 91
+        height: 71
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 27c81b4b728de0030800000000000000
-      internalID: 3462942828541348978
+      spriteID: 4b4ccd3ba907f4a70800000000000000
+      internalID: 8813386805532214452
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 5e97eb03825dee720800000000000000
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      tx_coin_50_0: 3462942828541348978
+      ic_tick_0: 8813386805532214452
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

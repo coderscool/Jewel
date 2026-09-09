@@ -1,3 +1,4 @@
+using System.Collections;
 using DG.Tweening;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
@@ -265,13 +266,28 @@ namespace JewelPainter.UI.Views
             _showSequence = null;
         }
 
-        /// Ẩn TRƯỚC khi động vào tiến trình: mở Home kéo theo cả loạt việc dựng lại danh
-        /// sách, để popup còn đứng đó thì nó nằm chình ình trên màn hình Home.
+        /// Popup TAN DẦN trong đúng khoảng lặng trước khi Home hiện ra.
+        ///
+        /// Ba cách đều đã thử, và đây là cách duy nhất không có tì vết:
+        ///
+        ///   ẩn ngay rồi mới mở Home — ba trạng thái nối đuôi: có popup, KHÔNG CÓ GÌ, có
+        ///     Home. Cái ở giữa là một khoảng trống mà mắt đọc thành cú giật.
+        ///   để nguyên cho Home phủ lên — nền Home không đục tuyệt đối nên popup lấp ló
+        ///     xuyên qua, rồi biến mất phựt một cái khi Home vào xong. Tệ hơn cả cách đầu.
+        ///   tan dần đúng bằng Enter Delay — popup về 0 ĐÚNG LÚC Home bắt đầu hiện. Không
+        ///     có khoảng trống, không có lúc nào hai màn hình cùng trên màn.
         private void HandleContinueClicked()
         {
-            Hide();
+            if (_home == null)
+            {
+                Hide();
+                return;
+            }
 
-            if (_home == null) return;
+            // Khoá chạm NGAY mà không ẩn. Popup vẫn còn trên màn suốt lúc Home đi vào,
+            // nên không khoá thì bấm Continue lần nữa sẽ chạy lại cả đoạn này.
+            CanvasGroup.interactable = false;
+            CanvasGroup.blocksRaycasts = false;
 
             // Tiến trình đã nhích từ lúc tô xong, ở đây chỉ còn việc điều hướng.
             //
@@ -285,6 +301,39 @@ namespace JewelPainter.UI.Views
 
             if (clearedLevel >= 0) _home.ShowCelebrating(clearedLevel);
             else _home.Show();
+
+            StartCoroutine(FadeOutBeforeHomeEnters());
+        }
+
+        /// Tan dần về 0 trong đúng khoảng lặng của Home, rồi mới tắt hẳn.
+        ///
+        /// Home để trống Fade Group thì EnterDelaySeconds bằng 0 và hàm này tắt popup
+        /// ngay — đúng bằng hành vi cũ, không cần cấu hình gì thêm.
+        private IEnumerator FadeOutBeforeHomeEnters()
+        {
+            var duration = _home != null ? _home.EnterDelaySeconds : 0f;
+
+            if (duration > 0f)
+            {
+                var from = CanvasGroup.alpha;
+                var elapsed = 0f;
+
+                // Thời gian KHÔNG phụ thuộc timeScale, giống mọi hiệu ứng khác của popup
+                // này — game có thể đang dừng lúc popup mở.
+                while (elapsed < duration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+
+                    CanvasGroup.alpha = Mathf.Lerp(from, 0f, Mathf.Clamp01(elapsed / duration));
+                    yield return null;
+                }
+
+                CanvasGroup.alpha = 0f;
+            }
+
+            // Hide vẫn chạy lượt mờ của riêng nó, nhưng alpha đã là 0 nên không ai thấy.
+            // Việc còn lại của nó mới là thứ cần: tắt object, dọn tween, trả băng về chỗ.
+            Hide();
         }
     }
 }

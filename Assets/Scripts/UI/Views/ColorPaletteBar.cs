@@ -38,7 +38,22 @@ namespace JewelPainter.UI.Views
                  "Để trống thì ẩn chính object này — vẫn chạy, chỉ là xấu.")]
         [SerializeField] private GameObject _content;
 
+        [Header("Cuộn tới ô màu vừa chọn")]
+        [Tooltip("Thời gian cuộn thanh màu tới ô màu vừa được chọn. Để 0 là nhảy tới " +
+                 "ngay không có chuyển động.")]
+        [SerializeField] private float _focusScrollDuration = 0.22f;
+
+
         private readonly List<ColorSwatchView> _swatches = new();
+
+        /// Giữ tay nắm của TỪNG coroutine thay vì gọi StopAllCoroutines.
+        ///
+        /// StopAllCoroutines cắt cả những coroutine mà nó không có ý cắt, và ở đây có
+        /// đúng hai cái chạy trên cùng một Scroll Rect: sắp lại thanh, và cuộn tới ô màu.
+        /// Gọi chung một nhát thì thêm coroutine thứ ba vào lớp này là lặng lẽ hỏng một
+        /// tính năng khác, không có lấy một dòng lỗi.
+        private Coroutine _relayout;
+        private Coroutine _focusScroll;
 
         private IPaintService _paintService;
         private ILevelService _levelService;
@@ -53,6 +68,8 @@ namespace JewelPainter.UI.Views
             _paintService.OnBoardReady += HandleBoardReady;
             _paintService.OnCellPainted += HandleCellPainted;
             _paintService.OnColorSelected += HandleColorSelected;
+            _paintService.OnColorFocusRequested += HandleColorFocusRequested;
+            _paintService.OnFreePaintChanged += HandleFreePaintChanged;
 
             if (_levelFlow != null) _levelFlow.OnLevelCleared += HandleLevelCleared;
         }
@@ -66,6 +83,8 @@ namespace JewelPainter.UI.Views
             _paintService.OnBoardReady -= HandleBoardReady;
             _paintService.OnCellPainted -= HandleCellPainted;
             _paintService.OnColorSelected -= HandleColorSelected;
+            _paintService.OnColorFocusRequested -= HandleColorFocusRequested;
+            _paintService.OnFreePaintChanged -= HandleFreePaintChanged;
         }
 
         private void HandleLevelCleared() => SetVisible(false);
@@ -138,7 +157,28 @@ namespace JewelPainter.UI.Views
                 swatch.gameObject.SetActive(true);
             }
 
+            // Đặt lại tư thế nhô/hạ theo booster. Gần như luôn là false ở đây vì màn mới
+            // nạp thì booster đã tắt, nhưng đọc trạng thái thật vẫn hơn là tin vào điều đó.
+            SetAllRaised(_paintService.FreePaintActive);
+
             RelayoutBar();
+        }
+
+        /// Booster tô tự do bật nghĩa là MỌI màu đều tô được, nên mọi viên ngọc cùng được
+        /// nhấc lên — vẫn đúng ngôn ngữ hình mà ô đang chọn vẫn dùng, chỉ khác là lần này
+        /// nó nói "tất cả" thay vì "cái này".
+        private void HandleFreePaintChanged(bool active) => SetAllRaised(active);
+
+        /// Gọi lên CẢ những ô đang ẩn. Chúng không hiện nên không tốn gì, mà bỏ qua thì
+        /// một ô được bật lại sau đó sẽ nằm sai tư thế.
+        private void SetAllRaised(bool raised)
+        {
+            foreach (var swatch in _swatches)
+            {
+                if (swatch == null) continue;
+
+                swatch.SetRaised(raised);
+            }
         }
 
         /// Sắp lại thanh: còn nhiều màu thì cuộn về ô đầu, còn ít màu thì căn giữa.
@@ -150,8 +190,12 @@ namespace JewelPainter.UI.Views
         {
             if (_scrollRect == null || !isActiveAndEnabled) return;
 
-            StopAllCoroutines();
-            StartCoroutine(RelayoutBarRoutine());
+            // Cắt luôn cú cuộn tới ô màu nếu có: thanh sắp đổi bố cục nên cái đích mà
+            // nó đang nhắm tới sắp không còn đúng nữa.
+            if (_focusScroll != null) StopCoroutine(_focusScroll);
+            if (_relayout != null) StopCoroutine(_relayout);
+
+            _relayout = StartCoroutine(RelayoutBarRoutine());
         }
 
         private IEnumerator RelayoutBarRoutine()
@@ -234,6 +278,100 @@ namespace JewelPainter.UI.Views
         }
 
         private void HandleSwatchClicked(int paletteIndex) => _paintService.SelectColor(paletteIndex);
+
+        private void HandleColorFocusRequested(int paletteIndex) => ScrollToSwatch(paletteIndex);
+
+        /// Cuộn thanh sao cho ô màu nằm CHÍNH GIỮA khung nhìn, trong chừng mực cuộn được.
+        ///
+        /// "Trong chừng mực" là phần quan trọng: mấy ô đầu và mấy ô cuối thanh không bao
+        /// giờ ra được giữa, vì đưa chúng vào giữa nghĩa là kéo content ra khỏi biên và
+        /// để lộ một khoảng trống. Phép kẹp 0..1 ở dưới lo đúng chuyện đó — ô đầu thanh
+        /// dừng ở mép trái, ô cuối dừng ở mép phải, còn lại thì vào giữa.
+        private void ScrollToSwatch(int paletteIndex)
+        {
+            if (_scrollRect == null || !isActiveAndEnabled) return;
+
+            var swatch = FindSwatch(paletteIndex);
+            if (swatch == null || !swatch.gameObject.activeInHierarchy) return;
+
+            if (_focusScroll != null) StopCoroutine(_focusScroll);
+
+            _focusScroll = StartCoroutine(ScrollToSwatchRoutine((RectTransform)swatch.transform));
+        }
+
+        private IEnumerator ScrollToSwatchRoutine(RectTransform swatch)
+        {
+            // Đợi hết một frame vì đúng lý do đã ghi ở RelayoutBarRoutine: bố cục của
+            // thanh có thể đang chờ tính lại, và đo trước lúc đó là đo trên số cũ.
+            yield return null;
+
+            if (_scrollRect == null || swatch == null) yield break;
+
+            var content = _scrollRect.content;
+            if (content == null) yield break;
+
+            var viewport = _scrollRect.viewport != null
+                ? _scrollRect.viewport
+                : (RectTransform)_scrollRect.transform;
+
+            // Thanh đã vừa khung nhìn thì không có gì để cuộn — mà lúc đó RelayoutBar
+            // còn đang giữ nó ở giữa, cuộn vào là phá luôn phép căn giữa đó.
+            var scrollable = content.rect.width - viewport.rect.width;
+            if (scrollable <= 1f) yield break;
+
+            // Đo hai mép của ô màu trong hệ toạ độ của CONTENT rồi quy về khoảng cách
+            // tính từ mép trái content — đó đúng là đơn vị mà horizontalNormalizedPosition
+            // dùng, nên không phải đoán Anchor hay Pivot của ai cả.
+            var rect = swatch.rect;
+            var left = content.InverseTransformPoint(
+                swatch.TransformPoint(new Vector3(rect.xMin, 0f, 0f))).x - content.rect.xMin;
+            var right = content.InverseTransformPoint(
+                swatch.TransformPoint(new Vector3(rect.xMax, 0f, 0f))).x - content.rect.xMin;
+
+            if (right < left)
+            {
+                var swap = left;
+                left = right;
+                right = swap;
+            }
+
+            var window = viewport.rect.width;
+            var from = Mathf.Clamp01(_scrollRect.horizontalNormalizedPosition);
+
+            // Mép trái của khung nhìn phải nằm ở đâu để tâm ô trùng tâm khung.
+            var windowLeft = (left + right) * 0.5f - window * 0.5f;
+
+            var to = Mathf.Clamp01(windowLeft / scrollable);
+            if (Mathf.Abs(to - from) < 0.001f) yield break;
+
+            var duration = Mathf.Max(0f, _focusScrollDuration);
+
+            if (duration <= 0f)
+            {
+                _scrollRect.velocity = Vector2.zero;
+                _scrollRect.horizontalNormalizedPosition = to;
+                yield break;
+            }
+
+            var elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+
+                // Dập đà MỖI FRAME chứ không chỉ một lần lúc bắt đầu: cú kéo tay dở dang
+                // vẫn còn trớn, và Scroll Rect cộng trớn đó vào SAU khi ta đặt vị trí.
+                _scrollRect.velocity = Vector2.zero;
+                _scrollRect.horizontalNormalizedPosition =
+                    Mathf.SmoothStep(from, to, Mathf.Clamp01(elapsed / duration));
+
+                yield return null;
+            }
+
+            _scrollRect.velocity = Vector2.zero;
+            _scrollRect.horizontalNormalizedPosition = to;
+            _focusScroll = null;
+        }
 
         /// Ô màu ĐẦU TIÊN đang hiện trên thanh, hoặc null khi thanh còn trống.
         ///

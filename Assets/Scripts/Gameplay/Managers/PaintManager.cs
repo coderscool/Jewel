@@ -27,9 +27,18 @@ namespace JewelPainter.Gameplay.Managers
 
         public event Action OnBoardReady;
         public event Action<int> OnColorSelected;
+        public event Action<int> OnColorFocusRequested;
         public event Action<Vector2Int, int> OnCellPainted;
         public event Action OnColorRequired;
         public event Action<bool> OnFreePaintChanged;
+        public event Action<bool> OnColorLockChanged;
+
+        /// Đợt tô của booster tô hết màu đang chạy. Nguồn khoá thứ hai bên cạnh
+        /// FreePaintActive — xem SetFillLock.
+        private bool _fillLock;
+
+        /// Giá trị ColorLocked đã báo ra lần gần nhất, để chỉ bắn sự kiện khi thật sự đổi.
+        private bool _lastColorLock;
 
         public bool FreePaintActive { get; private set; }
 
@@ -42,6 +51,37 @@ namespace JewelPainter.Gameplay.Managers
 
             FreePaintActive = active;
             OnFreePaintChanged?.Invoke(active);
+
+            RefreshColorLock();
+        }
+
+        public bool ColorLocked => FreePaintActive || _fillLock;
+
+        /// Booster tô hết màu giữ khoá trong lúc đợt tô chạy.
+        ///
+        /// KHÔNG nằm trên IPaintService — cùng lý do như SetFreePaint và TryPaintAs: đây
+        /// là cửa sau cho booster. Mở nó cho UI thì bất cứ chỗ nào cũng khoá được việc
+        /// chọn màu của người chơi, và cái khoá đó sẽ có ngày không ai mở.
+        ///
+        /// Hai nguồn khoá là hai cờ RIÊNG chứ không phải một bộ đếm. Đếm thì mỗi cú khoá
+        /// phải có đúng một cú mở khớp với nó, mà lệch một cặp là người chơi không chọn
+        /// được màu nữa cho tới hết phiên — kiểu hỏng gần như không lần ra được.
+        public void SetFillLock(bool locked)
+        {
+            if (_fillLock == locked) return;
+
+            _fillLock = locked;
+
+            RefreshColorLock();
+        }
+
+        private void RefreshColorLock()
+        {
+            var locked = ColorLocked;
+            if (locked == _lastColorLock) return;
+
+            _lastColorLock = locked;
+            OnColorLockChanged?.Invoke(locked);
         }
 
         public void RequireColor()
@@ -86,6 +126,11 @@ namespace JewelPainter.Gameplay.Managers
             // cheat), và đây là chỗ duy nhất mọi đường đó đều đi qua.
             SetFreePaint(false);
 
+            // Mở khoá luôn. Đợt tô của màn cũ đã bị FillColorController cắt theo
+            // OnBoardReady, nhưng cái khoá thì không tự biết chuyện đó — và một cái khoá
+            // sót lại là màn mới mở ra với thanh màu bấm không ăn.
+            SetFillLock(false);
+
             var data = _levelService.CurrentGrid;
             var grid = data != null ? data.ToGrid() : null;
 
@@ -120,8 +165,23 @@ namespace JewelPainter.Gameplay.Managers
         public void SelectColor(int paletteIndex)
         {
             if (_state == null) return;
-            if (paletteIndex == SelectedPaletteIndex) return;
+
+            // Booster đang chạy dở thì màu đứng yên. Xem IPaintService.ColorLocked.
+            //
+            // Chặn ở ĐÂY chứ không ở từng chỗ bấm: cú chạm vào ô màu và cú giữ tay trên
+            // tranh là hai đường vào khác nhau, mà sau này còn thêm nữa. Đặt ở mỗi cửa
+            // một cái chốt thì cửa nào quên là lọt.
+            if (ColorLocked) return;
             if (!_state.IsUsed(paletteIndex)) return;
+
+            // Bắn lời "đưa màu này vào tầm mắt" TRƯỚC phép so sánh bên dưới, nên nó bắn
+            // cả khi màu không hề đổi. Xem chú thích ở IPaintService.OnColorFocusRequested.
+            //
+            // Phép kiểm IsUsed phải đứng trên nó: màu không có trên thanh thì chẳng có ô
+            // nào để mà đưa vào tầm mắt.
+            OnColorFocusRequested?.Invoke(paletteIndex);
+
+            if (paletteIndex == SelectedPaletteIndex) return;
 
             SelectedPaletteIndex = paletteIndex;
             OnColorSelected?.Invoke(paletteIndex);

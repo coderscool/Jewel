@@ -31,6 +31,9 @@ namespace JewelPainter.Gameplay.Managers
 
         private float _remainingSeconds;
 
+        /// Đồng hồ đang bị giữ lại — xem IFreePaintService.SetPaused.
+        private bool _paused;
+
         /// Giá trị đã báo ra lần gần nhất — chỉ bắn sự kiện khi thật sự đổi. Cùng lý do
         /// đã ghi ở HintFocusController.
         private bool _lastAvailability;
@@ -44,6 +47,10 @@ namespace JewelPainter.Gameplay.Managers
 
         public float RemainingSeconds => IsActive ? _remainingSeconds : 0f;
 
+        public bool IsPaused => _paused;
+
+        public void SetPaused(bool paused) => _paused = paused;
+
         public float DurationSeconds => Mathf.Max(0.01f, _durationSeconds);
 
         public int RemainingCredits => _credits?.Remaining ?? 0;
@@ -54,6 +61,9 @@ namespace JewelPainter.Gameplay.Managers
             {
                 if (_paintService == null) return false;
                 if (IsActive) return false;
+
+                // Đợt tô của booster kia đang chạy thì khoá — đối xứng với luật bên đó.
+                if (_paintService.ColorLocked) return false;
 
                 // Hỏi CẢ BẢNG: còn ô nào chưa tô thì booster còn việc để làm. Không hỏi
                 // riêng màu đang chọn, và cũng không đòi phải chọn màu — cả điểm của
@@ -78,6 +88,7 @@ namespace JewelPainter.Gameplay.Managers
             // không nhìn thấy — không nghe thì đồng hồ vẫn chạy tiếp trong màn mới rồi
             // bật lại luật ở một frame nào đó.
             _paintService.OnFreePaintChanged += HandleFreePaintChanged;
+            _paintService.OnColorLockChanged += HandleColorLockChanged;
 
             _lastAvailability = CanUse;
         }
@@ -91,6 +102,7 @@ namespace JewelPainter.Gameplay.Managers
             _paintService.OnBoardReady -= RefreshAvailability;
             _paintService.OnCellPainted -= HandleCellPainted;
             _paintService.OnFreePaintChanged -= HandleFreePaintChanged;
+            _paintService.OnColorLockChanged -= HandleColorLockChanged;
         }
 
         public bool Use()
@@ -106,6 +118,10 @@ namespace JewelPainter.Gameplay.Managers
             }
 
             _remainingSeconds = DurationSeconds;
+
+            // Thả đồng hồ ở mỗi lượt dùng mới, không tin rằng lượt trước đã thả đúng.
+            _paused = false;
+
             _paintManager.SetFreePaint(true);
 
             return true;
@@ -121,6 +137,10 @@ namespace JewelPainter.Gameplay.Managers
         {
             if (!IsActive) return;
 
+            // Giữ nguyên số giây chứ không trừ đi rồi bù lại: người chơi mở bảng cài đặt
+            // giữa lượt thì lượt đó phải còn nguyên đúng ngần ấy giây khi đóng lại.
+            if (_paused) return;
+
             _remainingSeconds -= _useScaledTime ? Time.deltaTime : Time.unscaledDeltaTime;
 
             if (_remainingSeconds > 0f) return;
@@ -131,11 +151,17 @@ namespace JewelPainter.Gameplay.Managers
         private void HandleFreePaintChanged(bool active)
         {
             // Dọn đồng hồ ở đây, không ở Cancel: cờ có thể bị tắt từ chỗ khác.
-            if (!active) _remainingSeconds = 0f;
+            if (!active)
+            {
+                _remainingSeconds = 0f;
+                _paused = false;
+            }
 
             OnActiveChanged?.Invoke(active);
             RefreshAvailability();
         }
+
+        private void HandleColorLockChanged(bool locked) => RefreshAvailability();
 
         private void HandleCreditsChanged(int remaining) => OnCreditsChanged?.Invoke(remaining);
 

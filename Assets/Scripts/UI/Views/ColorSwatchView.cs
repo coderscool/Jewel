@@ -22,8 +22,11 @@ namespace JewelPainter.UI.Views
         [Tooltip("Viền báo màu đang được chọn. Để trống thì không có dấu hiệu chọn.")]
         [SerializeField] private GameObject _selectedHighlight;
 
-        [Tooltip("Dấu hiệu thứ hai khi ô được chọn — thường là một mũi tên hoặc nhãn đặt " +
-                 "TRÊN ĐẦU viên ngọc.\n\n" +
+        [Tooltip("Dấu hiệu thứ hai khi ô được NHẤC LÊN — thường là một mũi tên hoặc nhãn " +
+                 "đặt TRÊN ĐẦU viên ngọc.\n\n" +
+                 "Đi theo động tác NHẤC LÊN, không theo việc được chọn: booster tô tự do " +
+                 "nhấc mọi ô lên thì mọi ô cũng hiện cái này. Chỉ riêng Selected Highlight " +
+                 "là vẫn nằm trên đúng một ô.\n\n" +
                  "Tách khỏi Selected Highlight vì hai thứ nằm ở hai chỗ khác nhau và " +
                  "thường muốn dựng riêng: viền bọc quanh ô, còn cái này nhô lên trên. " +
                  "Chỉ cần một dấu hiệu thì bỏ trống ô nào không dùng.\n\n" +
@@ -85,6 +88,13 @@ namespace JewelPainter.UI.Views
         private Vector3 _shadowBaseScale;
         private bool _hasShadowBase;
 
+        /// Hai lý do ĐỘC LẬP để viên ngọc nhô lên, giữ riêng ra chứ không gộp thành một
+        /// cờ: "ô này đang được chọn" và "booster đang cho tô mọi màu". Gộp lại thì lúc
+        /// booster tắt, ô đang chọn cũng bị hạ xuống theo — trong khi nó vẫn đang được
+        /// chọn và vẫn phải nhô.
+        private bool _selected;
+        private bool _raised;
+
         public int PaletteIndex { get; private set; } = -1;
 
         /// Tâm ô màu trong world. Đã gồm cả phần nhô lên khi ô được chọn, vì ColorImage
@@ -110,6 +120,8 @@ namespace JewelPainter.UI.Views
             _onClicked = onClicked;
             _displayedRemaining = -1;
             _displayedProgress = -1f;
+            _selected = false;
+            _raised = false;
 
             _colorImage.color = color;
 
@@ -158,15 +170,46 @@ namespace JewelPainter.UI.Views
 
         public void SetSelected(bool selected)
         {
+            _selected = selected;
+
             if (_selectedHighlight != null) _selectedHighlight.SetActive(selected);
-            if (_selectedIcon != null) _selectedIcon.SetActive(selected);
 
-            // Màu nền chỉ hiện ở ô đang chọn. Tắt component thay vì SetActive để không
-            // kích hoạt lại cả cây con mỗi lần đổi màu.
-            if (_progressRing != null) _progressRing.enabled = selected;
+            RefreshRaisedLook();
+        }
 
-            ApplyRise(selected);
-            ApplyShadow(selected);
+        /// Nhấc viên ngọc lên mà KHÔNG đánh dấu ô là đang được chọn.
+        ///
+        /// Dùng cho booster tô tự do: lúc đó mọi màu đều tô được, nên mọi viên cùng nhô
+        /// lên. VIỀN thì vẫn chỉ nằm trên đúng một ô — "màu đang chọn" vẫn còn nghĩa, vì
+        /// booster tắt là quay lại tô bằng đúng màu đó.
+        public void SetRaised(bool raised)
+        {
+            _raised = raised;
+
+            RefreshRaisedLook();
+        }
+
+        /// Mọi thứ đi theo tư thế NHÔ LÊN, dù nhô vì được chọn hay vì booster.
+        ///
+        /// Selected Icon nằm ở đây chứ không nằm cùng Selected Highlight: nó được dựng
+        /// để đặt trên đầu viên ngọc, nên nó thuộc về động tác nhấc lên chứ không phải
+        /// về việc đánh dấu màu nào đang chọn.
+        private void RefreshRaisedLook()
+        {
+            var up = _selected || _raised;
+
+            if (_selectedIcon != null) _selectedIcon.SetActive(up);
+
+            // Vòng tiến độ cũng theo tư thế nhô, không theo việc được chọn: booster tô
+            // tự do cho tô MỌI màu, nên người chơi cần thấy từng màu còn bao nhiêu để
+            // biết nên nhắm vào đâu trong ngần ấy giây.
+            //
+            // Tắt component thay vì SetActive để không kích hoạt lại cả cây con mỗi lần
+            // đổi màu.
+            if (_progressRing != null) _progressRing.enabled = up;
+
+            ApplyRise(up);
+            ApplyShadow(up);
         }
 
         /// Bóng loang rộng ra và nhạt đi khi viên đá được nhấc lên.

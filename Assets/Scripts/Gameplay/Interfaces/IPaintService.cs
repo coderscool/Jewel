@@ -49,6 +49,17 @@ namespace JewelPainter.Gameplay.Interfaces
 
         event Action<int> OnColorSelected;
 
+        /// Có ai đó vừa CHỈ ĐỊNH một màu — kể cả khi đó đúng là màu đang chọn sẵn.
+        ///
+        /// Tách khỏi OnColorSelected vì hai câu hỏi khác nhau. OnColorSelected là "màu
+        /// đang chọn đã ĐỔI", nên nó im lặng khi người chơi chỉ định lại đúng màu cũ —
+        /// đúng cho mọi thứ đang nghe nó, vì chẳng có lớp nào phải dựng lại.
+        ///
+        /// Cái này là "hãy đưa màu này vào tầm mắt", và câu đó vẫn còn việc để làm khi
+        /// màu không đổi: giữ tay vào một ô để bắt màu trong lúc thanh màu đang cuộn ở
+        /// tận đầu kia thì ô màu ấy vẫn nằm ngoài màn hình.
+        event Action<int> OnColorFocusRequested;
+
         event Action<Vector2Int, int> OnCellPainted;
 
         /// Người chơi vừa làm một việc cần có màu đang chọn, mà chưa chọn màu nào.
@@ -74,6 +85,21 @@ namespace JewelPainter.Gameplay.Interfaces
 
         /// Bắn khi booster bật hoặc tắt. Lớp gợi ý nghe cái này để dựng lại dấu hiệu.
         event Action<bool> OnFreePaintChanged;
+
+        /// Đang có một booster chạy dở mà màu KHÔNG được đổi giữa chừng.
+        ///
+        /// Gộp hai nguồn vào một câu hỏi vì mọi chỗ hỏi đều hỏi đúng câu đó: tô tự do
+        /// đang đếm ngược (đổi màu lúc ấy vô nghĩa — mọi ô đều tô được), và đợt tô của
+        /// booster tô hết màu đang chạy (màu đã chốt từ lúc bấm nút, đổi giữa chừng chỉ
+        /// làm người chơi tưởng đợt tô sẽ đổi theo).
+        ///
+        /// Ba cái nút booster cũng đọc chính cờ này thay vì tự kể ra từng trường hợp —
+        /// thêm một booster nữa sau này thì chỉ phải thêm một nguồn, không phải đi sửa
+        /// ba chỗ điều kiện.
+        bool ColorLocked { get; }
+
+        /// Bắn khi ColorLocked đổi. Chỉ bắn lúc ĐỔI.
+        event Action<bool> OnColorLockChanged;
 
         /// Đã tô được ít nhất một ô ở màn đang chơi — cũng chính là điều kiện để nút
         /// Tô lại có việc để làm. false khi chưa nạp lưới.
