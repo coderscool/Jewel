@@ -33,6 +33,19 @@ namespace JewelPainter.UI.Views
         [Tooltip("Nút Continue phóng từ 0 lên 1. Chỉ hiện SAU khi tiền bay xong.")]
         [SerializeField] private float _buttonDuration = 0.35f;
 
+        [Tooltip("Pháo hoa ăn mừng NẰM TRONG chính prefab popup — kéo victory_1 vào đây. " +
+                 "Để trống thì bỏ qua.\n\n" +
+                 "Nhớ TẮT Play On Awake trên hệ hạt đó. Bật thì nó bắn đúng một lần vào " +
+                 "lúc popup được tạo — tức là lần đầu popup mở, còn những lần sau im lặng. " +
+                 "Popup sống suốt phiên chơi chứ không sinh lại mỗi màn.\n\n" +
+                 "Nếu hệ hạt dùng Renderer kiểu Sprite/Mesh thường (không phải UI) thì nó " +
+                 "vẽ trong world chứ không theo Canvas — lúc đó Sorting Layer và Order phải " +
+                 "cao hơn mọi thứ, hoặc đặt Canvas của popup sang Screen Space - Camera.")]
+        [SerializeField] private ParticleSystem _victoryEffect;
+
+        [Tooltip("Chờ ngần này giây sau khi popup hiện rồi mới bắn pháo hoa.")]
+        [SerializeField] private float _victoryDelay;
+
         [Header("Tiền thưởng")]
         [SerializeField] private CoinFlyVFX _coinFly;
 
@@ -123,11 +136,72 @@ namespace JewelPainter.UI.Views
 
             if (_wallet != null) _wallet.Add(reward);
 
+            PlayVictoryEffect();
+
             PlayShowSequence(reward);
+        }
+
+        /// Bắn pháo hoa nằm sẵn trong popup.
+        ///
+        /// Gọi ở Show chứ không nhờ WinCelebration bên Gameplay: hệ hạt nằm TRONG prefab
+        /// popup, mà popup thì đang tắt suốt cho tới đúng lúc này. Lớp bên kia có giữ
+        /// tham chiếu tới nó cũng không gọi Play() được — Play() trên một object đang tắt
+        /// thì không có gì xảy ra.
+        ///
+        /// Đứng ở đây nhịp cũng đúng: popup mở sau khi ô cuối đáp xuống một quãng
+        /// (LevelFlowController → Popup Delay Seconds), mà quãng đó vốn đã dài hơn cả dải
+        /// quét lấp lánh. Loé xong rồi mới tới pháo hoa.
+        private void PlayVictoryEffect()
+        {
+            if (_victoryEffect == null) return;
+
+            if (_victoryDelay > 0f)
+            {
+                StartCoroutine(VictoryRoutine());
+                return;
+            }
+
+            FireVictory();
+        }
+
+        private IEnumerator VictoryRoutine()
+        {
+            // Thời gian KHÔNG phụ thuộc timeScale, giống mọi hiệu ứng khác của popup này.
+            var elapsed = 0f;
+
+            while (elapsed < _victoryDelay)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            FireVictory();
+        }
+
+        private void FireVictory()
+        {
+            if (_victoryEffect == null) return;
+
+            // Bật lại object phòng khi nó được để TẮT sẵn trong prefab — cách dựng rất
+            // thường gặp, và Play() trên object đang tắt thì im lặng không làm gì.
+            if (!_victoryEffect.gameObject.activeSelf) _victoryEffect.gameObject.SetActive(true);
+
+            // withChildren = true ở cả Clear lẫn Play: pháo hoa gần như luôn là một chùm
+            // hệ hạt con, mà hệ gốc thường lại rỗng, chỉ dùng để gom nhóm. Gọi không kèm
+            // children là chạy đúng cái hệ rỗng đó.
+            _victoryEffect.Clear(true);
+            _victoryEffect.Play(true);
         }
 
         public override void Hide()
         {
+            // Dập pháo hoa trước khi popup tan: hạt còn lơ lửng trên một popup đã ẩn sẽ
+            // hiện lại nguyên si ở lần mở sau, vì popup này không bị huỷ giữa các màn.
+            if (_victoryEffect != null)
+            {
+                _victoryEffect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            }
+
             KillSequence();
 
             if (_coinFly != null) _coinFly.StopAll();

@@ -1903,7 +1903,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1767678490}
   m_Direction: 2
   m_Value: 1
-  m_Size: 0.91759115
+  m_Size: 0.9413629
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -9400,6 +9400,8 @@ MonoBehaviour:
   _sweepStartDelay: 0.15
   _cellStep: 1
   _maxSpawnPerFrame: 32
+  _victoryEffect: {fileID: 906077616447957839, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
+  _victoryDelay: 0.1
 --- !u!114 &1491911201
 MonoBehaviour:
   m_ObjectHideFlags: 0

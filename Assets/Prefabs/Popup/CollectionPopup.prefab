@@ -707,7 +707,7 @@ GameObject:
   - component: {fileID: 5629927913226907049}
   - component: {fileID: 5472401304570822259}
   m_Layer: 5
-  m_Name: btn_Next (1)
+  m_Name: btn_Prev
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -720,13 +720,13 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7263927671796545183}
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 2679790450683472773}
-  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: -350, y: 719}
@@ -957,11 +957,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _canvasGroup: {fileID: 2197198553699077092}
+  _fadeInDuration: 0.15
+  _fadeOutDuration: 0.15
   _itemPrefab: {fileID: 5750218201218521080, guid: c3535f050f69342408b7b3c3902ccd32, type: 3}
   _itemRoot: {fileID: 8331289885569713806}
   _closeButton: {fileID: 1150471627767382503}
   _progressText: {fileID: 7980321834566603433}
   _progressFill: {fileID: 7662792833290846590}
+  _itemsPerPage: 15
+  _prevButton: {fileID: 5472401304570822259}
+  _nextButton: {fileID: 8102717144301717542}
+  _pageText: {fileID: 0}
+  _hideNavAtEnds: 0
+  _logPaging: 1
 --- !u!1 &8101888270504373542
 GameObject:
   m_ObjectHideFlags: 0

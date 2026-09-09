@@ -37,11 +37,13 @@ namespace JewelPainter.Gameplay.Board
                  "đoạn giữa bảng, nơi mỗi đường chéo dài nhất.")]
         [SerializeField] private int _maxSpawnPerFrame = 12;
 
+
         private BoardView _boardView;
         private BoardCamera _boardCamera;
 
         private bool _isSweeping;
         private float _elapsed;
+
 
         /// Đường chéo kế tiếp cần xử lý. Giữ lại giữa các frame để dải sáng không quay
         /// đầu và không loé lại chỗ đã đi qua.
@@ -99,6 +101,7 @@ namespace JewelPainter.Gameplay.Board
 
             AdvanceSweep();
         }
+
 
         private void AdvanceSweep()
         {
