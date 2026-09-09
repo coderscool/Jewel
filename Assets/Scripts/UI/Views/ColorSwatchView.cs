@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using DG.Tweening;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -76,6 +78,69 @@ namespace JewelPainter.UI.Views
         [Range(0f, 1f)]
         [SerializeField] private float _selectedShadowAlpha = 0.22f;
 
+        [Header("Tô xong màu — để trống cả hai thì ẩn ngay như cũ")]
+        [Tooltip("Object THU NHỎ dần rồi biến mất khi màu này vừa được tô xong. Để trống " +
+                 "thì thu chính ô màu này.\n\n" +
+                 "ĐỪNG kéo Rise Target vào đây: Rise Target đang bị phần nhấc lên điều " +
+                 "khiển localScale, hai bên sẽ giành nhau và ô màu kẹt ở một cỡ nào đó " +
+                 "sau lần tái dùng đầu tiên.")]
+        [SerializeField] private RectTransform _completeShrinkTarget;
+
+        [Tooltip("Viên ngọc NÂNG LÊN rồi mờ dần tan đi, thay vì đứng đợi tới lúc cả ô bị " +
+                 "tắt. Thường là chính object đã gán ở ô Color Image. Để trống thì bỏ qua " +
+                 "phần này.\n\n" +
+                 "ĐỪNG gán trùng với Shrink Target hay Rise Target: cả ba đều điều khiển " +
+                 "cùng một Transform và sẽ giành nhau.")]
+        [SerializeField] private Graphic _completeJewel;
+
+        [Tooltip("Viên ngọc nâng lên bao nhiêu pixel trước khi tan hẳn.")]
+        [SerializeField] private float _jewelRise = 60f;
+
+        [Tooltip("Cú bay lên và mờ dần của viên ngọc chiếm bao nhiêu PHẦN của cả màn diễn, " +
+                 "thang 0..1. Đặt xấp xỉ Shrink Portion thì viên ngọc và cái nền cùng rời " +
+                 "sân khấu một lúc.")]
+        [Range(0.05f, 1f)]
+        [SerializeField] private float _jewelPortion = 0.5f;
+
+        [Tooltip("Dấu tick hiện lên đúng lúc đó: to dần ra rồi mờ đi. Để trống thì bỏ qua " +
+                 "phần này.\n\n" +
+                 "Đặt nó NGOÀI Shrink Target, không thì nó vừa to ra vừa bị thu nhỏ theo và " +
+                 "gần như đứng yên. Để sẵn ở trạng thái TẮT trong prefab.")]
+        [SerializeField] private Graphic _completeTick;
+
+        [Tooltip("Cả màn diễn kéo dài bao nhiêu giây.\n\n" +
+                 "Đây là thứ duy nhất chỉnh tốc độ — cú thu nhỏ và dấu tick chia nhau đúng " +
+                 "khoảng thời gian này theo tỉ lệ, nên kéo dài ra là cả hai cùng chậm lại " +
+                 "và vẫn khớp nhau.")]
+        [SerializeField] private float _completeDuration = 0.85f;
+
+        [Tooltip("Cú thu nhỏ chiếm bao nhiêu PHẦN của cả màn diễn, thang 0..1. 0.4 nghĩa " +
+                 "là ô co lại và biến mất trong 40% đầu, phần còn lại là sân khấu của " +
+                 "riêng dấu tick.\n\n" +
+                 "Để 1 là hai thứ chạy song song suốt màn diễn như bản trước.")]
+        [Range(0.05f, 1f)]
+        [SerializeField] private float _shrinkPortion = 0.4f;
+
+        [Tooltip("Dấu tick chờ bao nhiêu PHẦN của màn diễn rồi mới hiện ra, thang 0..1.\n\n" +
+                 "Đặt xấp xỉ Shrink Portion thì tick xuất hiện đúng lúc ô vừa biến mất. " +
+                 "Đặt thấp hơn một chút (0.3 so với 0.4) thì hai động tác gối lên nhau một " +
+                 "nhịp ngắn — mắt đọc ra là ô BIẾN THÀNH dấu tick, chứ không phải hai " +
+                 "chuyện rời rạc nối đuôi.")]
+        [Range(0f, 0.9f)]
+        [SerializeField] private float _tickDelay = 0.3f;
+
+        [Tooltip("Cỡ dấu tick lúc bắt đầu và lúc kết thúc, so với cỡ dựng trong prefab.")]
+        [SerializeField] private float _tickStartScale = 0.4f;
+
+        [SerializeField] private float _tickEndScale = 1.6f;
+
+        [Tooltip("Dấu tick bắt đầu mờ đi từ mốc nào của ĐỜI NÓ, thang 0..1 — tính từ lúc " +
+                 "nó hiện ra chứ không phải từ đầu màn diễn. 0.35 nghĩa là một phần ba đầu " +
+                 "nó hiện rõ rồi mới tan dần.\n\n" +
+                 "Để 0 là vừa hiện ra đã bắt đầu mờ, và mắt không kịp đọc ra đó là dấu tick.")]
+        [Range(0f, 0.9f)]
+        [SerializeField] private float _tickFadeStart = 0.35f;
+
         private Action<int> _onClicked;
         private int _displayedRemaining = -1;
         private float _displayedProgress = -1f;
@@ -83,6 +148,24 @@ namespace JewelPainter.UI.Views
         private Vector2 _riseBasePosition;
         private Vector3 _riseBaseScale;
         private bool _hasRiseBase;
+
+        private Coroutine _complete;
+
+        /// Cỡ gốc của object bị thu nhỏ, ghi lại ở lần diễn ĐẦU TIÊN.
+        ///
+        /// Nhớ cỡ gốc chứ không trả về 1: người dựng có quyền để object đó ở một cỡ khác,
+        /// và ép về 1 là mọi ô màu đổi cỡ vĩnh viễn ngay sau màn diễn đầu tiên. Cùng lý
+        /// do đã ghi ở ApplyRise.
+        private Vector3 _completeBaseScale = Vector3.one;
+        private bool _hasCompleteBase;
+
+        /// Chỗ đứng gốc của viên ngọc, cũng ghi lại ở lần diễn đầu tiên.
+        private Vector2 _jewelBasePosition;
+        private bool _hasJewelBase;
+
+        /// Bề rộng gốc của chính ô này. Cùng khuôn nhớ-một-lần như hai cái trên.
+        private float _layoutBaseWidth;
+        private bool _hasLayoutBase;
 
         private RectTransform _shadowRect;
         private Vector3 _shadowBaseScale;
@@ -116,6 +199,12 @@ namespace JewelPainter.UI.Views
 
         public void Bind(int paletteIndex, Color32 color, Action<int> onClicked)
         {
+            // Dọn trước mọi thứ: ô này có thể vừa diễn xong màn tô hết màu ở màn trước và
+            // đang nằm ở cỡ 0. Coroutine chết giữa chừng khi object bị tắt, nên không thể
+            // trông vào việc nó tự trả cỡ về.
+            StopComplete();
+            ResetCompleteVisuals();
+
             PaletteIndex = paletteIndex;
             _onClicked = onClicked;
             _displayedRemaining = -1;
@@ -210,6 +299,214 @@ namespace JewelPainter.UI.Views
 
             ApplyRise(up);
             ApplyShadow(up);
+        }
+
+        /// Màn diễn khi màu này vừa được tô xong: ô thu nhỏ dần rồi biến mất, cùng lúc
+        /// một dấu tick to dần ra rồi mờ đi.
+        ///
+        /// Bên gọi tự quyết định làm gì lúc xong — lớp này không tự ẩn mình. Ô màu thuộc
+        /// về thanh chọn màu, mà thanh còn phải sắp lại các ô sau khi mất một cái; để ô
+        /// tự tắt thì thanh không biết lúc nào mà sắp.
+        ///
+        /// Object đang tắt thì gọi thẳng onFinished: coroutine không chạy trên object tắt,
+        /// và nuốt mất lời gọi lại ở đây nghĩa là thanh màu đứng đợi một tín hiệu không
+        /// bao giờ tới.
+        public void PlayComplete(Action onFinished)
+        {
+            if (!isActiveAndEnabled)
+            {
+                onFinished?.Invoke();
+                return;
+            }
+
+            StopComplete();
+
+            _complete = StartCoroutine(CompleteRoutine(onFinished));
+        }
+
+        /// Bề rộng mà Horizontal Layout Group đọc để chừa chỗ cho ô này.
+        ///
+        /// Thanh màu dùng nó để KHÉP dần khe hở khi một màu tô xong, thay vì để layout
+        /// group đóng phựt một cái lúc ô bị tắt. Lớp này chỉ giữ hộ con số gốc — quyết
+        /// định khép nhanh chậm ra sao là chuyện của thanh.
+        public float LayoutBaseWidth
+        {
+            get
+            {
+                CacheLayoutBase();
+
+                return _layoutBaseWidth;
+            }
+        }
+
+        public void SetLayoutWidth(float width)
+        {
+            CacheLayoutBase();
+
+            var rect = (RectTransform)transform;
+            rect.sizeDelta = new Vector2(width, rect.sizeDelta.y);
+        }
+
+        private void CacheLayoutBase()
+        {
+            if (_hasLayoutBase) return;
+
+            _layoutBaseWidth = ((RectTransform)transform).sizeDelta.x;
+            _hasLayoutBase = true;
+        }
+
+        /// Để trống ô Shrink Target thì thu chính ô màu này.
+        private Transform ShrinkTarget => _completeShrinkTarget != null ? _completeShrinkTarget : transform;
+
+        private void StopComplete()
+        {
+            if (_complete == null) return;
+
+            StopCoroutine(_complete);
+            _complete = null;
+        }
+
+        private IEnumerator CompleteRoutine(Action onFinished)
+        {
+            var target = ShrinkTarget;
+
+            if (!_hasCompleteBase)
+            {
+                _completeBaseScale = target.localScale;
+                _hasCompleteBase = true;
+            }
+
+            var baseScale = _completeBaseScale;
+
+            var jewelRect = _completeJewel != null ? (RectTransform)_completeJewel.transform : null;
+            var jewelColor = _completeJewel != null ? _completeJewel.color : default;
+
+            if (jewelRect != null && !_hasJewelBase)
+            {
+                _jewelBasePosition = jewelRect.anchoredPosition;
+                _hasJewelBase = true;
+            }
+
+            var tickTransform = _completeTick != null ? _completeTick.transform : null;
+            var tickBaseScale = tickTransform != null ? tickTransform.localScale : Vector3.one;
+            var tickColor = _completeTick != null ? _completeTick.color : default;
+
+            // Tick chưa bật vội — nó chờ tới mốc Tick Delay. Bật sẵn từ đầu thì nó nằm
+            // đó ở cỡ khởi đầu suốt quãng ô đang co lại, và cái đứng im đó chính là thứ
+            // phá mất nhịp trước-sau.
+            var tickShown = false;
+
+            var duration = Mathf.Max(0.01f, _completeDuration);
+            var elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+
+                var t = Mathf.Clamp01(elapsed / duration);
+
+                // Cú thu nhỏ chạy trên ĐỒNG HỒ RIÊNG, kết thúc ở mốc Shrink Portion.
+                // Chia lại như vậy thay vì rút ngắn cả màn diễn: dấu tick vẫn được trọn
+                // Complete Duration để diễn, chỉ là ô đã đi trước.
+                var shrink = Mathf.Clamp01(t / _shrinkPortion);
+
+                // InBack: ô phình ra một chút rồi mới hút vào. Thu thẳng tuột thì nó chỉ
+                // đọc ra là "biến mất", còn cú phình nhẹ ấy là thứ làm nó đọc ra thành
+                // "xong rồi, cất đi".
+                target.localScale = baseScale * (1f - DOVirtual.EasedValue(0f, 1f, shrink, Ease.InBack));
+
+                if (jewelRect != null)
+                {
+                    var jewel = Mathf.Clamp01(t / _jewelPortion);
+
+                    // Bay lên theo OutCubic: vọt lên rồi chậm dần, đúng nhịp của một vật
+                    // được thả ra chứ không phải bị kéo.
+                    jewelRect.anchoredPosition = _jewelBasePosition + new Vector2(
+                        0f, _jewelRise * DOVirtual.EasedValue(0f, 1f, jewel, Ease.OutCubic));
+
+                    // Mờ theo InQuad: giữ rõ ở nửa đầu rồi mới tan nhanh. Mờ tuyến tính
+                    // thì viên ngọc nhạt đi ngay từ lúc còn chưa nhúc nhích, và cú bay
+                    // lên coi như không ai thấy.
+                    var color = jewelColor;
+                    color.a = jewelColor.a * (1f - DOVirtual.EasedValue(0f, 1f, jewel, Ease.InQuad));
+                    _completeJewel.color = color;
+                }
+
+                if (_completeTick != null && t >= _tickDelay)
+                {
+                    if (!tickShown)
+                    {
+                        tickShown = true;
+                        _completeTick.gameObject.SetActive(true);
+                    }
+
+                    // Đồng hồ riêng của dấu tick: 0 là lúc nó vừa hiện, 1 là lúc màn diễn
+                    // khép lại. Đo theo t thì Tick Delay càng lớn nó càng bị dồn, mà đó
+                    // đúng là thứ người chỉnh không hề muốn.
+                    var tick = Mathf.Clamp01((t - _tickDelay) / Mathf.Max(0.01f, 1f - _tickDelay));
+
+                    tickTransform.localScale = tickBaseScale * Mathf.LerpUnclamped(
+                        _tickStartScale, _tickEndScale, DOVirtual.EasedValue(0f, 1f, tick, Ease.OutCubic));
+
+                    // Mờ dần chỉ ở đoạn SAU. Mờ ngay từ đầu thì dấu tick chưa kịp to ra
+                    // đã nhạt, và mắt không đọc ra được đó là hình gì.
+                    var fade = Mathf.Clamp01((tick - _tickFadeStart) / Mathf.Max(0.01f, 1f - _tickFadeStart));
+
+                    var color = tickColor;
+                    color.a = 1f - fade;
+                    _completeTick.color = color;
+                }
+
+                yield return null;
+            }
+
+            _complete = null;
+
+            // Dấu tick đã tan hết alpha, tắt object đi cho sạch.
+            if (_completeTick != null) _completeTick.gameObject.SetActive(false);
+
+            // KHÔNG trả cỡ, chỗ đứng và alpha về ở đây.
+            //
+            // Bên gọi có quyền giữ ô này HIỆN thêm một lúc nữa — thanh màu khép khe hở
+            // xong mới tắt nó, mất thêm vài phần mười giây. Trả về ngay tại đây thì cái
+            // nền bung lại nguyên cỡ và viên ngọc sáng lại đúng lúc thanh đang trượt:
+            // một cú nháy rõ mồn một.
+            //
+            // Việc dọn dẹp thuộc về ResetCompleteVisuals, chạy ở Bind — tức là ngay trước
+            // lần ô này được dùng lại, và lúc đó nó đang tắt nên không ai thấy gì.
+            onFinished?.Invoke();
+        }
+
+        /// Trả ô về đúng hình dạng lúc chưa diễn gì. Gọi ở Bind chứ không chỉ ở cuối màn
+        /// diễn: màn diễn có thể đã bị cắt ngang giữa chừng.
+        private void ResetCompleteVisuals()
+        {
+            // Chưa diễn lần nào thì chưa biết cỡ gốc — và cũng chưa có gì để trả về, cỡ
+            // hiện tại chính là cỡ prefab. Ép về 1 ở đây là đoán mò.
+            if (_hasCompleteBase) ShrinkTarget.localScale = _completeBaseScale;
+
+            // Trả cả bề rộng: cú khép có thể đã bị cắt ngang giữa chừng (đổi màn chẳng
+            // hạn), và một ô bị bỏ lại ở bề rộng âm sẽ kéo lệch cả thanh ở màn sau.
+            if (_hasLayoutBase) SetLayoutWidth(_layoutBaseWidth);
+
+            if (_completeJewel != null)
+            {
+                if (_hasJewelBase) ((RectTransform)_completeJewel.transform).anchoredPosition = _jewelBasePosition;
+
+                // Trả alpha về 1 chứ không nhớ màu cũ: Bind gán lại màu ngọc ngay sau lời
+                // gọi này, nên giá trị duy nhất cần đúng ở đây là độ đục.
+                var jewel = _completeJewel.color;
+                jewel.a = 1f;
+                _completeJewel.color = jewel;
+            }
+
+            if (_completeTick == null) return;
+
+            var color = _completeTick.color;
+            color.a = 1f;
+            _completeTick.color = color;
+
+            _completeTick.gameObject.SetActive(false);
         }
 
         /// Bóng loang rộng ra và nhạt đi khi viên đá được nhấc lên.

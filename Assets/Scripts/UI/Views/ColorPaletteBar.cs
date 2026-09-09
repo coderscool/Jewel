@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using JewelPainter.Gameplay.Board;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 using UnityEngine.UI;
@@ -43,6 +44,12 @@ namespace JewelPainter.UI.Views
                  "ngay không có chuyển động.")]
         [SerializeField] private float _focusScrollDuration = 0.22f;
 
+        [Tooltip("Thời gian KHÉP khe hở sau khi một màu tô xong — mấy ô còn lại trượt vào " +
+                 "chỗ trống trong ngần này giây.\n\n" +
+                 "Để 0 là đóng phựt như bản cũ. Với Spacing 140 của thanh hiện tại thì cú " +
+                 "đóng đó dịch cả thanh đi 140 pixel trong một frame.")]
+        [SerializeField] private float _collapseDuration = 0.3f;
+
 
         private readonly List<ColorSwatchView> _swatches = new();
 
@@ -58,12 +65,29 @@ namespace JewelPainter.UI.Views
         private IPaintService _paintService;
         private ILevelService _levelService;
         private ILevelFlowService _levelFlow;
+        private JewelFlyEffect _flyEffect;
 
-        public void Init(IPaintService paintService, ILevelService levelService, ILevelFlowService levelFlow)
+        /// Màu đã diễn xong màn "tô hết màu" rồi thì thôi.
+        ///
+        /// Cần chốt lại vì lúc ô cuối của một màu được tô, vài viên ngọc cùng màu vẫn
+        /// đang bay — mỗi viên đáp xuống lại thấy RemainingFor = 0 và đòi diễn thêm một
+        /// lần nữa. Cùng lý do đã ghi ở ColorCompleteSparkle.
+        private readonly HashSet<int> _completed = new();
+
+        /// flyEffect được phép null — để trống thì ô màu tắt ngay lúc tô xong như bản cũ,
+        /// nghĩa là tắt trong khi mấy viên cuối còn đang bay.
+        public void Init(IPaintService paintService, ILevelService levelService, ILevelFlowService levelFlow,
+            JewelFlyEffect flyEffect)
         {
             _paintService = paintService;
             _levelService = levelService;
             _levelFlow = levelFlow;
+            _flyEffect = flyEffect;
+
+            // Nghe lúc ĐÁP chứ không phải lúc bấm: viên ngọc cuối cùng phải nằm vào tranh
+            // rồi ô màu mới được thu lại. Nghe OnCellPainted thì ô biến mất trong khi vài
+            // viên còn đang bay ra từ chính nó.
+            if (_flyEffect != null) _flyEffect.OnJewelLanded += HandleJewelLanded;
 
             _paintService.OnBoardReady += HandleBoardReady;
             _paintService.OnCellPainted += HandleCellPainted;
@@ -76,6 +100,8 @@ namespace JewelPainter.UI.Views
 
         private void OnDestroy()
         {
+            if (_flyEffect != null) _flyEffect.OnJewelLanded -= HandleJewelLanded;
+
             if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
 
             if (_paintService == null) return;
@@ -113,6 +139,8 @@ namespace JewelPainter.UI.Views
             // mọi màu đều hết ô nên thanh sẽ hiện ra như một dải trống nằm đè lên mép dưới
             // tranh. Bấm nút Tô lại là bảng trắng trở lại và thanh hiện ngay ở lượt nạp sau.
             SetVisible(!_paintService.IsComplete);
+
+            _completed.Clear();
 
             HideAll();
 
@@ -202,20 +230,31 @@ namespace JewelPainter.UI.Views
         {
             yield return null;
 
-            if (_scrollRect == null) yield break;
-
             Canvas.ForceUpdateCanvases();
 
+            ApplyBarAlignment(scrollToStart: true);
+        }
+
+        /// Đặt thanh về đúng chỗ NGAY LẬP TỨC theo bề rộng hiện tại của nó.
+        ///
+        /// Tách ra khỏi coroutine để cú khép khe hở gọi được mỗi frame. Chính chỗ này là
+        /// nguyên nhân của cú giật: trước đây nó chỉ chạy MỘT lần ở cuối, nên suốt 0.3
+        /// giây thanh trượt theo bố cục cũ rồi đến frame chót mới bị đặt lại một phát.
+        ///
+        /// scrollToStart chỉ đúng khi DỰNG LẠI thanh (vào màn mới): lúc đó vị trí cuộn cũ
+        /// không còn nghĩa gì. Trong lúc khép khe hở thì tuyệt đối không được đụng vào —
+        /// người chơi có thể đang xem ở giữa thanh, và giật họ về mép trái vì một màu vừa
+        /// xong là một cú giật khác hẳn, còn khó chịu hơn cú này.
+        private void ApplyBarAlignment(bool scrollToStart)
+        {
+            if (_scrollRect == null) return;
+
             var content = _scrollRect.content;
-            if (content == null) yield break;
+            if (content == null) return;
 
             var viewport = _scrollRect.viewport != null
                 ? _scrollRect.viewport
                 : (RectTransform)_scrollRect.transform;
-
-            // Dừng đà quán tính. Cú kéo dở dang của màn trước còn trớn thì nó đẩy thanh
-            // trôi tiếp ngay sau khi ta đặt xong.
-            _scrollRect.velocity = Vector2.zero;
 
             var fitsInViewport = content.rect.width <= viewport.rect.width;
 
@@ -229,8 +268,14 @@ namespace JewelPainter.UI.Views
 
             if (!fitsInViewport)
             {
+                if (!scrollToStart) return;
+
+                // Dừng đà quán tính. Cú kéo dở dang của màn trước còn trớn thì nó đẩy
+                // thanh trôi tiếp ngay sau khi ta đặt xong.
+                _scrollRect.velocity = Vector2.zero;
                 _scrollRect.horizontalNormalizedPosition = 0f;   // 0 là mép TRÁI
-                yield break;
+
+                return;
             }
 
             // Dịch content sao cho tâm nó trùng tâm khung nhìn.
@@ -241,6 +286,9 @@ namespace JewelPainter.UI.Views
             var contentCenter = viewport.InverseTransformPoint(content.TransformPoint(content.rect.center));
             var delta = viewport.rect.center.x - contentCenter.x;
 
+            if (Mathf.Abs(delta) < 0.01f) return;
+
+            _scrollRect.velocity = Vector2.zero;
             content.anchoredPosition += new Vector2(delta, 0f);
         }
 
@@ -251,20 +299,96 @@ namespace JewelPainter.UI.Views
 
             var remaining = _paintService.RemainingFor(paletteIndex);
 
-            // Tô hết màu này thì gỡ ô ra khỏi thanh — giữ lại một ô bấm vào không làm gì
-            // chỉ tổ gây nhầm.
-            if (remaining <= 0)
-            {
-                swatch.gameObject.SetActive(false);
-
-                // Thanh vừa hụt đi một ô nên phải sắp lại. Đây mới là lúc hay xảy ra nhất:
-                // càng về cuối màn càng ít màu, và đó đúng là lúc dồn về giữa dễ thấy nhất.
-                RelayoutBar();
-                return;
-            }
-
+            // Hết ô mà vẫn cập nhật số và vòng tiến độ như thường: số 0 hiện ra trong lúc
+            // mấy viên cuối còn bay là đúng — người chơi đã bấm hết rồi thật.
+            //
+            // Việc gỡ ô khỏi thanh chuyển sang HandleJewelLanded. Không có hiệu ứng bay
+            // thì ở đây làm nốt, vì lúc đó chẳng có cú đáp nào để mà đợi.
             swatch.SetRemaining(remaining);
             swatch.SetProgress(_paintService.ProgressFor(paletteIndex));
+
+            if (remaining <= 0 && _flyEffect == null) CompleteSwatch(paletteIndex);
+        }
+
+        /// Viên ngọc vừa nằm vào tranh. Đây mới là lúc hỏi "màu này xong chưa".
+        private void HandleJewelLanded(Vector2Int cell, int paletteIndex)
+        {
+            if (_paintService.RemainingFor(paletteIndex) > 0) return;
+
+            // Còn viên nào của màu này giữa trời thì chưa xong. JewelFlyEffect gỡ viên
+            // khỏi sổ TRƯỚC khi bắn sự kiện này, nên câu hỏi trả lời đúng ngay ở viên
+            // cuối cùng.
+            if (_flyEffect.HasInFlight(paletteIndex)) return;
+
+            CompleteSwatch(paletteIndex);
+        }
+
+        /// Ô màu thu nhỏ dần rồi biến mất, xong thì thanh sắp lại.
+        private void CompleteSwatch(int paletteIndex)
+        {
+            if (!_completed.Add(paletteIndex)) return;
+
+            var swatch = FindSwatch(paletteIndex);
+            if (swatch == null) return;
+
+            swatch.PlayComplete(() => StartCoroutine(CollapseRoutine(swatch)));
+        }
+
+        /// Khép dần khe hở của ô vừa xong, rồi mới tắt nó và sắp lại thanh.
+        ///
+        /// Thu bề rộng về ÂM đúng bằng Spacing, không phải về 0.
+        ///
+        /// Horizontal Layout Group chừa spacing giữa MỌI cặp con đang bật, nên một ô rộng
+        /// 0 vẫn ngốn 140 pixel khoảng hở. Dừng ở 0 thì lúc tắt ô đi, thanh vẫn giật đúng
+        /// 140 pixel — chỉ là giật muộn hơn. Đi tới -spacing thì tổng bề rộng lúc đó đã
+        /// bằng đúng tổng sau khi ô biến mất, và cú tắt không dịch một pixel nào.
+        private IEnumerator CollapseRoutine(ColorSwatchView swatch)
+        {
+            var duration = Mathf.Max(0f, _collapseDuration);
+            var from = swatch.LayoutBaseWidth;
+            var to = -LayoutSpacing();
+
+            var elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+
+                swatch.SetLayoutWidth(Mathf.SmoothStep(from, to, Mathf.Clamp01(elapsed / duration)));
+
+                // Ép layout tính lại NGAY rồi căn lại thanh trong CÙNG frame.
+                //
+                // Content Size Fitter chỉ chạy ở cuối frame, nên không ép thì phép căn ở
+                // dòng dưới đọc bề rộng của frame trước — lệch một nhịp suốt cú khép, và
+                // dồn hết vào frame chót thành một cú nảy.
+                Canvas.ForceUpdateCanvases();
+
+                ApplyBarAlignment(scrollToStart: false);
+
+                yield return null;
+            }
+
+            swatch.gameObject.SetActive(false);
+
+            // Trả bề rộng gốc NGAY sau khi tắt: ô này còn được dùng lại ở màn sau, mà
+            // một ô mang bề rộng âm sẽ kéo lệch cả thanh ngay từ lúc dựng.
+            swatch.SetLayoutWidth(from);
+
+            // Chốt lại lần cuối. Không gọi RelayoutBar: hàm đó kéo thanh về mép trái, mà
+            // đây không phải lúc dựng lại thanh — người chơi vẫn đang chơi dở.
+            Canvas.ForceUpdateCanvases();
+
+            ApplyBarAlignment(scrollToStart: false);
+        }
+
+        /// Spacing của Horizontal Layout Group đang xếp các ô màu. 0 khi không có.
+        private float LayoutSpacing()
+        {
+            if (_root == null) return 0f;
+
+            var group = _root.GetComponent<HorizontalLayoutGroup>();
+
+            return group != null ? group.spacing : 0f;
         }
 
         private void HandleColorSelected(int paletteIndex)
