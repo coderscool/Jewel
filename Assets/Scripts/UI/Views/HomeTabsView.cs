@@ -52,6 +52,21 @@ namespace JewelPainter.UI.Views
 
         [SerializeField] private GameObject _shopUnchosen;
 
+        [Header("Icon nhô lên khi thẻ được chọn")]
+        [Tooltip("Icon của thẻ Home — kéo ic_bar vào đây. Nó nhô lên khi thẻ Home đang " +
+                 "mở, hạ về chỗ cũ khi đóng. Để trống thì không có gì nhô.\n\n" +
+                 "Icon phải là object LUÔN HIỆN, đừng để nó nằm trong Home Chosen: object " +
+                 "đó bị tắt lúc thẻ đóng, nên chẳng còn gì để mà hạ xuống.\n\n" +
+                 "Và đừng đặt Layout Group lên object cha của nó. Layout Group ghi đè " +
+                 "vị trí con ở mỗi lần layout, nên nó sẽ kéo icon về chỗ cũ ngay frame sau.")]
+        [SerializeField] private RectTransform _homeIcon;
+
+        [Tooltip("Icon của thẻ cửa hàng — kéo ic_shop vào đây.")]
+        [SerializeField] private RectTransform _shopIcon;
+
+        [Tooltip("Nhô lên bao nhiêu pixel của Canvas.")]
+        [SerializeField] private float _iconRise = 24f;
+
         [Tooltip("Mỗi lần màn hình Home mở lại thì về thẻ Home.\n\n" +
                  "Bỏ tick là nhớ thẻ cũ: chơi xong một màn quay ra sẽ thấy cửa hàng nếu " +
                  "lần trước đang ở đó. Tick vào vì người chơi vừa xong một màn thì thứ họ " +
@@ -62,6 +77,17 @@ namespace JewelPainter.UI.Views
 
         /// Thẻ đang mở. -1 nghĩa là chưa đặt lần nào, để lần đặt đầu tiên không bị bỏ qua.
         private int _current = -1;
+
+        /// Vị trí gốc của hai icon, ghi lại ở lần nâng ĐẦU TIÊN chứ không phải trong
+        /// Awake: lúc Awake layout chưa chạy nên toạ độ đọc ra chưa chắc đã đúng.
+        ///
+        /// Nhớ vị trí gốc chứ không trả về 0: người dựng đặt icon ở đâu là quyền của họ,
+        /// và ép về 0 thì cả hai icon nhảy về tâm nút ngay lần bỏ chọn đầu tiên.
+        private Vector2 _homeIconBase;
+        private bool _hasHomeIconBase;
+
+        private Vector2 _shopIconBase;
+        private bool _hasShopIconBase;
 
         public Tab Current => _current == (int)Tab.Shop ? Tab.Shop : Tab.Home;
 
@@ -124,7 +150,30 @@ namespace JewelPainter.UI.Views
             SetActive(_shopChosen, !isHome);
             SetActive(_shopUnchosen, isHome);
 
+            ApplyRise(_homeIcon, isHome, ref _homeIconBase, ref _hasHomeIconBase);
+            ApplyRise(_shopIcon, !isHome, ref _shopIconBase, ref _hasShopIconBase);
+
             OnTabChanged?.Invoke(tab);
+        }
+
+        /// Nâng icon lên hoặc trả nó về chỗ cũ.
+        ///
+        /// Truyền vị trí gốc bằng ref thay vì gói vào một struct: hai cái icon là hai bộ
+        /// trạng thái độc lập, mà struct có thể sửa được (mutable struct) là loại bẫy mà
+        /// người đọc sau phải dừng lại đúng ba giây để tự trấn an rằng nó có chạy thật.
+        private void ApplyRise(RectTransform icon, bool up, ref Vector2 basePosition, ref bool hasBase)
+        {
+            if (icon == null) return;
+
+            if (!hasBase)
+            {
+                basePosition = icon.anchoredPosition;
+                hasBase = true;
+            }
+
+            icon.anchoredPosition = up
+                ? basePosition + new Vector2(0f, _iconRise)
+                : basePosition;
         }
 
         /// Bỏ qua ô để trống, và bỏ qua luôn khi giá trị không đổi: SetActive chạy qua cả
