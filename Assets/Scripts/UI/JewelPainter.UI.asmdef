@@ -4,6 +4,7 @@
     "references": [
         "JewelPainter.Core",
         "JewelPainter.Gameplay",
+        "BookCurlPro",
         "VContainer",
         "Unity.TextMeshPro"
     ],

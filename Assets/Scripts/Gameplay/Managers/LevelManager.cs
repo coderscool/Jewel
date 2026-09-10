@@ -145,10 +145,34 @@ namespace JewelPainter.Gameplay.Managers
             if (grid == null) return Array.Empty<Color32>();
 
             var ground = grid.Colors;
-            if (_jewelTint == null || _jewelTint.Tint.IsNone) return ground;
+            if (_jewelTint == null) return ground;
+
+            var hasTint = !_jewelTint.Tint.IsNone;
+            var hasOverrides = _jewelTint.HasOverrides;
+
+            if (!hasTint && !hasOverrides) return ground;
 
             var jewel = new Color32[ground.Count];
-            for (var i = 0; i < jewel.Length; i++) jewel[i] = _jewelTint.Tint.Apply(ground[i]);
+
+            for (var i = 0; i < jewel.Length; i++)
+            {
+                var source = ground[i];
+
+                // Dòng ghi đè thay HẲN màu ngọc, không chồng thêm Tint lên nữa.
+                //
+                // Ghi đè tồn tại đúng để cứu những màu mà phép chỉnh chung làm hỏng, nên
+                // cho phép chỉnh chung chạy tiếp lên nó là quay lại đúng chỗ vừa thoát ra.
+                if (_jewelTint.TryGetOverride(source, out var forced))
+                {
+                    // Giữ alpha của màu ĐẤT: shader nhân alpha đỉnh vào kết quả, mà ô ghi
+                    // đè trong Inspector rất dễ bị bỏ quên ở 0.
+                    forced.a = source.a;
+                    jewel[i] = forced;
+                    continue;
+                }
+
+                jewel[i] = hasTint ? _jewelTint.Tint.Apply(source) : source;
+            }
 
             return jewel;
         }

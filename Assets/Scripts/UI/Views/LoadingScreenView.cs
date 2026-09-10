@@ -1,3 +1,4 @@
+using System;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,6 +46,25 @@ namespace JewelPainter.UI.Views
         private bool _isShowing;
         private bool _isBoardBuilt;
         private float _builtAt;
+
+        /// Màn chờ đang che màn hình. Đọc trạng thái THẬT của object chứ không đọc cờ
+        /// _isShowing: cờ đó về false ở đầu Update cuối cùng, còn object thì tắt ở dòng
+        /// sau — hỏi giữa hai dòng đó ra hai câu trả lời khác nhau.
+        public bool IsShowing
+        {
+            get
+            {
+                var target = _content != null ? _content : gameObject;
+
+                return target.activeSelf;
+            }
+        }
+
+        /// Bắn khi màn chờ hiện lên hoặc tắt đi. Chỉ bắn lúc ĐỔI.
+        ///
+        /// Có sự kiện thì phần nhạc nền không phải hỏi thăm mỗi frame, mà màn chờ cũng
+        /// không cần biết nhạc tồn tại — nó chỉ kể ra mình vừa hiện hay vừa tắt.
+        public event Action<bool> OnVisibilityChanged;
 
         /// GameEntryPoint gọi một lần lúc nối dây. Từ đó về sau màn chờ tự chạy theo
         /// sự kiện, không ai phải gọi nó nữa.
@@ -128,7 +148,13 @@ namespace JewelPainter.UI.Views
         {
             var target = _content != null ? _content : gameObject;
 
-            if (target.activeSelf != visible) target.SetActive(visible);
+            if (target.activeSelf == visible) return;
+
+            target.SetActive(visible);
+
+            // Báo SAU khi object đã đổi trạng thái: người nghe có quyền hỏi lại IsShowing
+            // ngay trong handler.
+            OnVisibilityChanged?.Invoke(visible);
         }
     }
 }

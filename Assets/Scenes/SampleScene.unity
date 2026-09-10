@@ -1903,7 +1903,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1767678490}
   m_Direction: 2
   m_Value: 1
-  m_Size: 0.9413629
+  m_Size: 0.91759115
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -4163,6 +4163,9 @@ MonoBehaviour:
   _config: {fileID: 11400000, guid: 809b9beae51206c4384462169c291b85, type: 2}
   _sfxSource: {fileID: 585479628}
   _musicSource: {fileID: 585479629}
+  _musicSourceB: {fileID: 0}
+  _sfxVoices: 12
+  _musicFadeDuration: 0.6
 --- !u!82 &585479628
 AudioSource:
   m_ObjectHideFlags: 0
@@ -6176,7 +6179,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3670e537417aff44caeb0c22b60697c2, type: 2}
   - {fileID: 11400000, guid: ebbe0e22bcd02ba4c9944607df602b91, type: 2}
   - {fileID: 11400000, guid: 2bbbb8e4766441646b67435d49466557, type: 2}
-  _jewelTint: {fileID: 0}
+  _jewelTint: {fileID: 11400000, guid: 905b4d1b0a5f47047bfdb31970a46af8, type: 2}
 --- !u!4 &986912015
 Transform:
   m_ObjectHideFlags: 0
@@ -9400,8 +9403,6 @@ MonoBehaviour:
   _sweepStartDelay: 0.15
   _cellStep: 1
   _maxSpawnPerFrame: 32
-  _victoryEffect: {fileID: 906077616447957839, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
-  _victoryDelay: 0.1
 --- !u!114 &1491911201
 MonoBehaviour:
   m_ObjectHideFlags: 0

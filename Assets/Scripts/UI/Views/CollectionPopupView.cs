@@ -1,7 +1,7 @@
 using System.Collections.Generic;
+using BookCurlPro;
 using JewelPainter.Gameplay.Config;
 using JewelPainter.Gameplay.Interfaces;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -9,6 +9,20 @@ using VContainer;
 namespace JewelPainter.UI.Views
 {
     /// Popup bộ sưu tập: bày ảnh của mọi màn chơi, màn chưa tới thì khoá lại.
+    ///
+    /// Trình bày như một QUYỂN SÁCH (Book-Page Curl Pro). Vài điều của package đó quyết
+    /// định hẳn cách lớp này viết, nên ghi lại ở đây:
+    ///
+    /// - Một "paper" có HAI mặt: Front nằm bên phải, Back nằm bên trái. Thứ tự đọc là
+    ///   Front0 → Back0 → Front1 → Back1… tức là mặt giấy thứ f nằm ở object "Page{f}".
+    ///
+    /// - Cặp trang đang nhìn thấy ở CurrentPaper = c là Back của paper c−1 (trái) và
+    ///   Front của paper c (phải). Nên MỌI mặt phải được dựng sẵn nội dung, không thể chỉ
+    ///   dựng riêng trang đang xem — hai mặt hiện cùng lúc.
+    ///
+    /// - Sách ẩn trang bằng CanvasGroup.alpha = 0 chứ không SetActive, nên mọi ô của mọi
+    ///   trang đều sống cùng lúc. Vài chục Image thì không sao; đừng nhét việc nặng vào
+    ///   Start của ô sưu tập.
     ///
     /// Popup được PopupManager tạo qua IObjectResolver nên [Inject] ở đây chạy được —
     /// Object.Instantiate thường thì không.
@@ -18,10 +32,6 @@ namespace JewelPainter.UI.Views
     public class CollectionPopupView : PopupView
     {
         [SerializeField] private CollectionItemView _itemPrefab;
-
-        [Tooltip("Object chứa các ô, thường gắn Grid Layout Group. Nằm trong Content " +
-                 "của Scroll Rect nếu danh sách dài.")]
-        [SerializeField] private Transform _itemRoot;
 
         [SerializeField] private Button _closeButton;
 
@@ -33,40 +43,48 @@ namespace JewelPainter.UI.Views
                  "không có tác dụng gì và thanh lúc nào cũng đầy.")]
         [SerializeField] private Image _progressFill;
 
-        [Header("Chia trang")]
-        [Tooltip("Mỗi trang bày bao nhiêu ô.\n\n" +
-                 "Để 0 hoặc âm là TẮT chia trang — bày hết trong một trang như bản cũ, và " +
-                 "hai cái nút bên dưới tự ẩn đi.")]
+        [Header("Quyển sách")]
+        [Tooltip("Component BookPro của quyển sách trong popup này.")]
+        [SerializeField] private BookPro _book;
+
+        [Tooltip("Object chứa các ô, xếp đúng THỨ TỰ ĐỌC. Phần tử 0 là mặt giấy hiện ra " +
+                 "trước nhất.\n\n" +
+                 "KHÔNG bắt buộc phải là các mặt liên tiếp. Muốn lưới chỉ nằm ở trang PHẢI " +
+                 "và chừa cặp đầu làm bìa thì cứ kéo Items của Page2, Page4, Page6 — code " +
+                 "tự dò xem mỗi mặt thuộc paper nào để đặt tầm lật cho đúng.\n\n" +
+                 "Kéo Items chứ KHÔNG kéo Page: sách reparent chính object Page về book " +
+                 "panel ở mỗi lần UpdatePages, nên đổ ô thẳng vào đó là trộn với đồ của sách.\n\n" +
+                 "Lưu ý prefab BookPro xuất xưởng ĐÃ CÓ SẴN 2 paper, nên Page4 trở đi mới là " +
+                 "mấy paper bạn tự thêm.")]
+        [SerializeField] private Transform[] _pageRoots;
+
+        [Tooltip("Mỗi MẶT GIẤY bày bao nhiêu ô.")]
         [SerializeField] private int _itemsPerPage = 15;
 
-        [Tooltip("Nút về trang trước. Để trống thì không có nút.")]
+        [Tooltip("Thời gian lật một trang, tính bằng giây.")]
+        [SerializeField] private float _flipDuration = 0.8f;
+
+        [Header("Nút lật")]
         [SerializeField] private Button _prevButton;
 
         [SerializeField] private Button _nextButton;
 
-        [Tooltip("Dòng chữ dạng '1/3'. Để trống thì bỏ qua.")]
+        [Tooltip("Dòng chữ dạng '1/3'. Đếm theo CẶP TRANG đang mở, không phải theo mặt giấy.")]
         [SerializeField] private Text _pageText;
 
-        [Tooltip("Hết trang thì ẨN HẲN nút thay vì chỉ làm xám.\n\n" +
-                 "Bỏ tick là nút vẫn nằm đó nhưng bấm không ăn. Hai kiểu đều dùng được, " +
-                 "chỉ đừng để nút sáng mà bấm không làm gì — đó là lời nói dối nhỏ mà " +
-                 "người chơi phải bấm vài lần mới nhận ra.")]
+        [Tooltip("Hết trang thì ẨN HẲN nút thay vì chỉ làm xám.")]
         [SerializeField] private bool _hideNavAtEnds = true;
 
-        [Tooltip("TẠM THỜI. In ra Console mỗi cú bấm lật trang và trạng thái hai cái nút. " +
-                 "Tắt lại sau khi đã tìm ra nguyên nhân.")]
-        [SerializeField] private bool _logPaging;
-
-        private readonly List<CollectionItemView> _items = new();
+        /// Pool riêng cho TỪNG mặt giấy. Một pool chung không dùng được: ô phải nằm đúng
+        /// object của mặt chứa nó, mà mỗi mặt lại giữ nguyên nội dung suốt lúc popup mở.
+        private List<CollectionItemView>[] _items;
 
         /// Các màn THẬT SỰ bày ra, đã lọc bỏ ô trống trong Inspector.
-        ///
-        /// Giữ lại thành danh sách riêng thay vì lọc lại mỗi lần lật trang: chỉ số trang
-        /// phải trỏ vào một dãy liên tục, mà mảng Levels thì có thể thủng lỗ ở giữa.
         private readonly List<LevelConfig> _visible = new();
 
-        private int _page;
-        private int _pageCount = 1;
+        /// Đang có một cú lật chạy dở. PageFlipper KHÔNG tự chặn lời gọi chồng — AutoFlip
+        /// của package cũng phải tự giữ một cờ y hệt.
+        private bool _isFlipping;
 
         private ILevelService _levelService;
 
@@ -94,47 +112,70 @@ namespace JewelPainter.UI.Views
         {
             base.Show();
 
-            // Mở lại là về trang đầu. Nhớ trang cũ nghe thì tử tế hơn, nhưng người chơi
-            // mở bộ sưu tập sau khi xong một màn thì thứ họ tìm nằm ở trang họ đang xem
-            // dở lần trước chỉ là tình cờ — còn trang đầu thì luôn là chỗ bắt đầu đọc.
-            _page = 0;
+            _isFlipping = false;
+
+            // Tắt vuốt tay. Sách vẫn nghe chạm qua EventTrigger trong prefab của nó, và
+            // interactable là cái công tắc duy nhất chặn được đường đó — thêm nữa,
+            // BookPro.OnMouseDragRightPage đọc Input.mousePosition của Input System CŨ,
+            // thứ mà project này không bật.
+            if (_book != null) _book.interactable = false;
 
             Rebuild();
+            ResetToFirstSpread();
         }
 
         public void ShowPrevPage()
         {
-            if (_logPaging) Debug.Log($"[Collection] bấm PREV — đang ở trang {_page + 1}/{_pageCount}");
+            if (!CanFlip) return;
+            if (_book.CurrentPaper <= _book.StartFlippingPaper) return;
 
-            GoToPage(_page - 1);
+            BeginFlip(FlipMode.LeftToRight);
         }
 
         public void ShowNextPage()
         {
-            if (_logPaging) Debug.Log($"[Collection] bấm NEXT — đang ở trang {_page + 1}/{_pageCount}");
+            if (!CanFlip) return;
+            if (_book.CurrentPaper > _book.EndFlippingPaper) return;
 
-            GoToPage(_page + 1);
+            BeginFlip(FlipMode.RightToLeft);
         }
 
-        private void GoToPage(int page)
+        private bool CanFlip => _book != null && !_isFlipping;
+
+        private void BeginFlip(FlipMode mode)
         {
-            var clamped = Mathf.Clamp(page, 0, Mathf.Max(0, _pageCount - 1));
+            _isFlipping = true;
 
-            if (_logPaging) Debug.Log($"[Collection] xin trang {page + 1}, kẹp thành {clamped + 1}");
+            // Khoá nút NGAY, không đợi lật xong. Bấm chồng trong lúc trang đang bay thì
+            // BookPro nhảy hai paper một lúc và cặp trang hiện ra không khớp với số trang.
+            RefreshNav();
 
-            if (clamped == _page) return;
+            PageFlipper.FlipPage(_book, _flipDuration, mode, () =>
+            {
+                _isFlipping = false;
+                RefreshNav();
+            });
+        }
 
-            _page = clamped;
+        private void ResetToFirstSpread()
+        {
+            if (_book == null) return;
 
-            Rebuild();
+            _book.CurrentPaper = 0;
+
+            // Gọi thẳng UpdatePages: setter của CurrentPaper chỉ dựng lại khi giá trị ĐỔI,
+            // nên mở popup lần thứ hai (vốn đã ở trang 0) sẽ không dựng lại gì cả.
+            _book.UpdatePages();
+
+            RefreshNav();
         }
 
         private void Rebuild()
         {
-            if (_levelService == null || _itemPrefab == null)
+            if (_levelService == null || _itemPrefab == null || _pageRoots == null || _pageRoots.Length == 0)
             {
-                Debug.LogWarning($"{nameof(CollectionPopupView)} thiếu Item Prefab hoặc chưa " +
-                                 "được inject — popup sẽ trống.");
+                Debug.LogWarning($"{nameof(CollectionPopupView)} thiếu Item Prefab, Page Roots hoặc " +
+                                 "chưa được inject — popup sẽ trống.");
                 return;
             }
 
@@ -151,68 +192,127 @@ namespace JewelPainter.UI.Views
                 _visible.Add(config);
 
                 // IsCompleted chứ không phải IsUnlocked. Bộ sưu tập là chỗ bày thứ đã LÀM
-                // XONG; màn đang tô dở tuy đã mở khoá nhưng bức tranh chưa có, bày ra là
-                // hứa nhầm với người chơi.
+                // XONG; màn đang tô dở tuy đã mở khoá nhưng bức tranh chưa có.
                 if (_levelService.IsCompleted(config.LevelId)) collected++;
             }
 
-            var perPage = _itemsPerPage > 0 ? _itemsPerPage : Mathf.Max(1, _visible.Count);
+            var perPage = Mathf.Max(1, _itemsPerPage);
+            var faces = Mathf.CeilToInt(_visible.Count / (float)perPage);
 
-            // Luôn có ÍT NHẤT một trang, kể cả khi chưa có màn nào: 0 trang thì dòng chữ
-            // hiện ra "1/0" và hai cái nút không biết mình đang ở đâu.
-            _pageCount = Mathf.Max(1, Mathf.CeilToInt(_visible.Count / (float)perPage));
-            _page = Mathf.Clamp(_page, 0, _pageCount - 1);
-
-            var first = _page * perPage;
-            var last = Mathf.Min(first + perPage, _visible.Count);
-            var slot = 0;
-
-            for (var i = first; i < last; i++)
+            if (faces > _pageRoots.Length)
             {
-                var config = _visible[i];
-                var item = GetItem(slot++);
+                Debug.LogWarning(
+                    $"{nameof(CollectionPopupView)}: cần {faces} mặt giấy cho {_visible.Count} màn " +
+                    $"nhưng chỉ có {_pageRoots.Length}. {(faces - _pageRoots.Length) * perPage} màn cuối " +
+                    "sẽ không hiện. Thêm paper cho quyển sách trong Inspector.");
 
-                item.Bind(config.LevelId, config.TargetImage, _levelService.IsCompleted(config.LevelId));
-                item.gameObject.SetActive(true);
+                faces = _pageRoots.Length;
             }
 
-            HideFrom(slot);
+            // Dựng HẾT mọi mặt, không riêng mặt đang xem: hai mặt hiện cùng lúc, và mặt
+            // bên trái chính là mặt vừa lật qua.
+            for (var face = 0; face < _pageRoots.Length; face++)
+            {
+                var first = face * perPage;
+                var last = Mathf.Min(first + perPage, _visible.Count);
+                var slot = 0;
 
-            // Tiến độ đếm trên TOÀN BỘ bộ sưu tập, không riêng trang đang xem. Người chơi
-            // hỏi "tôi có bao nhiêu tranh rồi", không hỏi "trang này có bao nhiêu".
+                for (var i = first; i < last; i++)
+                {
+                    var config = _visible[i];
+                    var item = GetItem(face, slot++);
+
+                    item.Bind(config.LevelId, config.TargetImage, _levelService.IsCompleted(config.LevelId));
+                    item.gameObject.SetActive(true);
+                }
+
+                HideFrom(face, slot);
+            }
+
+            // Tiến độ đếm trên TOÀN BỘ bộ sưu tập, không riêng trang đang xem.
             SetProgress(collected, _visible.Count);
 
-            RefreshNav();
+            ApplyFlippingRange(faces);
+        }
+
+        /// Chặn không cho lật quá mặt giấy cuối cùng có nội dung.
+        ///
+        /// DÒ từ chính các object đã gán chứ không suy từ số lượng. Bản trước suy ra, và
+        /// nó chỉ đúng khi các mặt nằm liên tiếp từ Page0 — gán vào Page2, Page4, Page6
+        /// (lưới chỉ ở trang phải) là nó tính hụt và người chơi lật tới trang hai thì kẹt.
+        private void ApplyFlippingRange(int faces)
+        {
+            if (_book == null) return;
+
+            var maxSpread = 0;
+
+            for (var i = 0; i < faces; i++)
+            {
+                var spread = ResolveSpread(_pageRoots[i]);
+
+                if (spread < 0)
+                {
+                    Debug.LogWarning(
+                        $"{nameof(CollectionPopupView)}: Page Roots[{i}] không nằm trong trang nào " +
+                        "của quyển sách. Kéo object Items nằm BÊN TRONG một Page, và kiểm lại " +
+                        "xem quyển sách đã gán đúng component BookPro chưa.");
+                    continue;
+                }
+
+                if (spread > maxSpread) maxSpread = spread;
+            }
+
+            _book.StartFlippingPaper = 0;
+
+            // CurrentPaper bị setter kẹp ở EndFlippingPaper + 1, mà cặp trang cuối cần tới
+            // chính là maxSpread — nên trừ 1.
+            _book.EndFlippingPaper = Mathf.Max(0, maxSpread - 1);
+        }
+
+        /// Mặt giấy này hiện ra ở cặp trang thứ mấy. -1 khi nó không thuộc trang nào.
+        ///
+        /// Front của paper p là trang PHẢI của cặp p; Back của paper p là trang TRÁI của
+        /// cặp p+1. Đó là toàn bộ luật, đọc thẳng ra từ BookPro.UpdatePages.
+        ///
+        /// IsChildOf chứ không so parent trực tiếp: bạn có quyền lồng Items sâu mấy tầng
+        /// trong trang cũng được.
+        private int ResolveSpread(Transform root)
+        {
+            if (root == null || _book == null || _book.papers == null) return -1;
+
+            for (var p = 0; p < _book.papers.Length; p++)
+            {
+                var paper = _book.papers[p];
+                if (paper == null) continue;
+
+                if (paper.Front != null && root.IsChildOf(paper.Front.transform)) return p;
+                if (paper.Back != null && root.IsChildOf(paper.Back.transform)) return p + 1;
+            }
+
+            return -1;
         }
 
         private void RefreshNav()
         {
-            if (_pageText != null) _pageText.text = $"{_page + 1}/{_pageCount}";
+            var spread = _book != null ? _book.CurrentPaper : 0;
+            var spreadCount = _book != null ? _book.EndFlippingPaper + 2 : 1;
 
-            SetNav(_prevButton, _page > 0);
-            SetNav(_nextButton, _page < _pageCount - 1);
+            if (_pageText != null) _pageText.text = $"{spread + 1}/{spreadCount}";
 
-            if (!_logPaging) return;
-
-            Debug.Log($"[Collection] trang {_page + 1}/{_pageCount} — " +
-                      $"prev gán={_prevButton != null} " +
-                      $"bật={(_prevButton != null && _prevButton.gameObject.activeInHierarchy)} " +
-                      $"bấm được={(_prevButton != null && _prevButton.interactable)} | " +
-                      $"next gán={_nextButton != null} " +
-                      $"bật={(_nextButton != null && _nextButton.gameObject.activeInHierarchy)} " +
-                      $"bấm được={(_nextButton != null && _nextButton.interactable)}");
+            // Trong lúc trang đang bay thì cả hai nút đều tắt, dù còn trang để đi.
+            SetNav(_prevButton, !_isFlipping && spread > 0, spreadCount);
+            SetNav(_nextButton, !_isFlipping && spread < spreadCount - 1, spreadCount);
         }
 
-        private void SetNav(Button button, bool usable)
+        private void SetNav(Button button, bool usable, int spreadCount)
         {
             if (button == null) return;
 
-            // Chỉ có MỘT trang thì giấu cả hai nút bất kể kiểu nào: một cặp nút xám ngắt
-            // nằm dưới bộ sưu tập chỉ nói với người chơi rằng còn trang khác mà họ không
-            // với tới được.
-            if (_pageCount <= 1 || _hideNavAtEnds)
+            // Chỉ có MỘT cặp trang thì giấu cả hai nút bất kể kiểu nào: một cặp nút xám
+            // ngắt chỉ nói với người chơi rằng còn trang khác mà họ không với tới được.
+            if (spreadCount <= 1 || _hideNavAtEnds)
             {
-                var visible = _pageCount > 1 && usable;
+                var visible = spreadCount > 1 && usable;
 
                 if (button.gameObject.activeSelf != visible) button.gameObject.SetActive(visible);
                 return;
@@ -229,25 +329,31 @@ namespace JewelPainter.UI.Views
 
             if (_progressFill == null) return;
 
-            // Chia cho 0 khi chưa có màn nào — trong Inspector rất dễ gặp lúc mảng Levels
-            // còn trống, và NaN thì Image vẽ ra một thanh trống trơn không ai lần được vì sao.
+            // Chia cho 0 khi chưa có màn nào — NaN thì Image vẽ ra một thanh trống trơn
+            // không ai lần được vì sao.
             _progressFill.fillAmount = total > 0 ? (float)collected / total : 0f;
         }
 
         /// Tạo một lần rồi bật/tắt để tái dùng — không Instantiate/Destroy mỗi lần mở.
-        private CollectionItemView GetItem(int slot)
+        private CollectionItemView GetItem(int face, int slot)
         {
-            while (_items.Count <= slot)
-            {
-                _items.Add(Instantiate(_itemPrefab, _itemRoot));
-            }
+            if (_items == null) _items = new List<CollectionItemView>[_pageRoots.Length];
+            if (_items[face] == null) _items[face] = new List<CollectionItemView>();
 
-            return _items[slot];
+            var pool = _items[face];
+
+            while (pool.Count <= slot) pool.Add(Instantiate(_itemPrefab, _pageRoots[face]));
+
+            return pool[slot];
         }
 
-        private void HideFrom(int slot)
+        private void HideFrom(int face, int slot)
         {
-            for (var i = slot; i < _items.Count; i++) _items[i].gameObject.SetActive(false);
+            if (_items == null || _items[face] == null) return;
+
+            var pool = _items[face];
+
+            for (var i = slot; i < pool.Count; i++) pool[i].gameObject.SetActive(false);
         }
     }
 }

@@ -445,7 +445,15 @@ namespace JewelPainter.UI.Views
 
         /// Chỉ mở popup. Đường về Home nằm trong chính popup đó, và cũng chính nó lo
         /// việc ẩn HUD — HUD không cần biết Home tồn tại.
-        private void HandleSettingsClicked() => _popupService.Show(PopupKey.Settings);
+        /// Tiếng ButtonClick chứ không phải Direction: bánh răng chỉ MỞ một bảng nằm đè
+        /// lên, người chơi vẫn đang ở trong màn. Direction để dành cho những nút thật sự
+        /// đưa họ đi chỗ khác — Play, Home, Continue.
+        private void HandleSettingsClicked()
+        {
+            if (_sound != null) _sound.Play(SoundKey.ButtonClick);
+
+            _popupService.Show(PopupKey.Settings);
+        }
 
         /// Bấm nút mà hết lượt: mở popup mời thêm lượt. Một dòng cho mỗi booster.
         ///

@@ -220,7 +220,7 @@ namespace JewelPainter.Bootstrap
             // Giữ tham chiếu vào một field chứ không thả trôi: không ai gọi lại nó, nhưng
             // một object chỉ tồn tại nhờ mấy cái event đăng ký được là thứ người đọc sau
             // sẽ tưởng là rác và xoá đi.
-            _musicDirector = new MusicDirector(_sound, _levelService, _home);
+            _musicDirector = new MusicDirector(_sound, _levelService, _home, _loading);
 
             // Màn hình chờ nối vào sự kiện chứ không tự nạp màn. Nhịp nhường frame giờ
             // nằm trong LevelManager.LoadLevel, nên MỌI lời gọi nạp màn — ở đây, nút Play

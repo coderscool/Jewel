@@ -19,7 +19,7 @@ MonoBehaviour:
     pitchVariance: 0
     volume: 1
   - key: 12
-    clip: {fileID: 8300000, guid: 36acfb0bc9b74c64db9174409b43336b, type: 3}
+    clip: {fileID: 8300000, guid: ed3e773d9ae0f9d44910aabe9d520cda, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1
@@ -45,6 +45,11 @@ MonoBehaviour:
     volume: 0
   - key: 8
     clip: {fileID: 8300000, guid: e10774466352457419668cac5bacbd80, type: 3}
+    minInterval: 0
+    pitchVariance: 0
+    volume: 1
+  - key: 1
+    clip: {fileID: 8300000, guid: 36acfb0bc9b74c64db9174409b43336b, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1

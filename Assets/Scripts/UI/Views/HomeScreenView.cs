@@ -878,9 +878,21 @@ namespace JewelPainter.UI.Views
             _levelService.LoadLevel(level);
         }
 
-        private void HandleCollectionClicked() => _popupService.Show(PopupKey.Collection);
+        /// Hai nút này chỉ MỞ một bảng nằm đè lên Home, người chơi không đi đâu cả — nên
+        /// ButtonClick chứ không phải Direction. Xem chú thích cùng loại ở HudView.
+        private void HandleCollectionClicked()
+        {
+            if (_sound != null) _sound.Play(SoundKey.ButtonClick);
 
-        private void HandleSettingsClicked() => _popupService.Show(PopupKey.SettingsHome);
+            _popupService.Show(PopupKey.Collection);
+        }
+
+        private void HandleSettingsClicked()
+        {
+            if (_sound != null) _sound.Play(SoundKey.ButtonClick);
+
+            _popupService.Show(PopupKey.SettingsHome);
+        }
 
         /// Tạo một lần rồi bật tắt để tái dùng. Ô mới sinh ra ở trạng thái TẮT vì prefab
         /// vốn đang bật — ô nào tạo ra mà chưa kịp Bind sẽ hiện nguyên nội dung prefab.

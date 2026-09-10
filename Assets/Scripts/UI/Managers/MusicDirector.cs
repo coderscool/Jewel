@@ -19,17 +19,29 @@ namespace JewelPainter.UI.Managers
         private readonly ISoundService _sound;
         private readonly ILevelService _levelService;
         private readonly HomeScreenView _home;
+        private readonly LoadingScreenView _loading;
 
-        public MusicDirector(ISoundService sound, ILevelService levelService, HomeScreenView home)
+        public MusicDirector(ISoundService sound, ILevelService levelService, HomeScreenView home,
+            LoadingScreenView loading)
         {
             _sound = sound;
             _levelService = levelService;
             _home = home;
+            _loading = loading;
 
             if (_levelService != null) _levelService.OnLevelStarted += HandleLevelStarted;
             if (_home != null) _home.OnVisibilityChanged += HandleHomeVisibilityChanged;
+            if (_loading != null) _loading.OnVisibilityChanged += HandleLoadingVisibilityChanged;
 
-            Refresh();
+            // KHÔNG Refresh ở đây.
+            //
+            // Lớp này dựng xong TRƯỚC lời gọi nạp màn đầu tiên, nên lúc này màn chờ chưa
+            // hiện và Refresh sẽ thấy "không Home, không loading" rồi bật nhạc màn chơi —
+            // đúng một nhịp trước khi màn chờ che lên và tắt nó đi. Người chơi nghe thấy
+            // một tiếng nhạc cụt ngay lúc mở game.
+            //
+            // Để im thì bản nhạc đầu tiên bắt đầu ở đúng chỗ nó nên bắt đầu: lúc màn chờ
+            // tắt đi.
         }
 
         /// Không có ai gọi hàm này hôm nay — lớp sống suốt phiên chơi. Có nó để khi nào
@@ -38,13 +50,19 @@ namespace JewelPainter.UI.Managers
         {
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
             if (_home != null) _home.OnVisibilityChanged -= HandleHomeVisibilityChanged;
+            if (_loading != null) _loading.OnVisibilityChanged -= HandleLoadingVisibilityChanged;
         }
 
         private void HandleLevelStarted(int levelId) => Refresh();
 
         private void HandleHomeVisibilityChanged(bool visible) => Refresh();
 
-        /// Home che kín màn hình thì nhạc theo Home, còn lại thì theo màn chơi.
+        private void HandleLoadingVisibilityChanged(bool visible) => Refresh();
+
+        /// Màn chờ che thì IM; Home che thì nhạc Home; còn lại thì nhạc màn chơi.
+        ///
+        /// Thứ tự ba nhánh chính là thứ tự các lớp nằm chồng lên nhau trên màn hình, nên
+        /// đọc từ trên xuống là ra ngay lớp nào đang thắng.
         ///
         /// Hỏi lại trạng thái thay vì suy từ sự kiện vừa nhận. Suy từ sự kiện thì lúc vào
         /// game sẽ sai: màn chơi dở được nạp NGAY trong khi Home vẫn đang mở, và
@@ -52,6 +70,14 @@ namespace JewelPainter.UI.Managers
         /// một lát sau mới bị đổi lại.
         private void Refresh()
         {
+            // Màn chờ vẫn còn che một lúc SAU khi bàn đã dựng xong (nó giữ thêm
+            // Minimum Seconds), nên OnLevelStarted một mình không đủ để biết đã vào màn.
+            if (_loading != null && _loading.IsShowing)
+            {
+                _sound.StopMusic();
+                return;
+            }
+
             if (_home != null && _home.IsVisible)
             {
                 _sound.PlayMusic(MusicKey.Home);
