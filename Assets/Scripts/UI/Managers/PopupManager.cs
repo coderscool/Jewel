@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JewelPainter.Core.Services;
 using JewelPainter.UI.Data;
 using JewelPainter.UI.Definitions;
 using JewelPainter.UI.Interfaces;
@@ -29,11 +30,13 @@ namespace JewelPainter.UI.Managers
         private readonly Dictionary<PopupKey, PopupView> _instances = new();
 
         private IObjectResolver _resolver;
+        private ISoundService _sound;
 
         [Inject]
-        public void Construct(IObjectResolver resolver)
+        public void Construct(IObjectResolver resolver, ISoundService sound)
         {
             _resolver = resolver;
+            _sound = sound;
         }
 
         private void Awake()
@@ -58,6 +61,10 @@ namespace JewelPainter.UI.Managers
                 // Object.Instantiate không chạy [Inject]; dùng resolver để con nhận được phụ thuộc.
                 popup = _resolver.Instantiate(prefab, _root);
                 _instances[key] = popup;
+
+                // Trao ngay lúc tạo, một lần cho cả đời popup. Đây là chỗ DUY NHẤT sinh
+                // ra popup, nên không có instance nào lọt lưới.
+                popup.SetSoundService(_sound);
             }
 
             popup.Show();

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Board;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
@@ -161,6 +162,12 @@ namespace JewelPainter.UI.Views
 
         /// Chỉ dùng để khai "Home đang che bảng". Home không đọc gì khác của bảng.
         private BoardView _boardView;
+        private ISoundService _sound;
+
+        /// Home đang hiện. MusicDirector đọc cái này để biết lúc nào đổi nhạc, và để
+        /// KHÔNG đổi sang nhạc màn chơi khi màn được nạp sau lưng một Home đang mở —
+        /// chuyện xảy ra ngay lúc vào game.
+        public bool IsVisible { get; private set; }
         private RectTransform _currentItemRect;
 
         /// Số tiền đang hiện trên màn. Chỉ đổi chữ khi giá trị thật sự khác.
@@ -203,13 +210,15 @@ namespace JewelPainter.UI.Views
             IPopupService popupService,
             PaintProgressStore progressStore,
             PlayerWallet wallet,
-            BoardView boardView)
+            BoardView boardView,
+            ISoundService sound)
         {
             _levelService = levelService;
             _popupService = popupService;
             _progressStore = progressStore;
             _wallet = wallet;
             _boardView = boardView;
+            _sound = sound;
 
             // Nghe sự kiện chứ không đọc lại mỗi lần mở Home: tiền cộng vào lúc thắng màn,
             // mà popup thắng màn nằm đè lên Home — người chơi thấy con số nhảy ngay tại chỗ
@@ -266,6 +275,12 @@ namespace JewelPainter.UI.Views
             SetVisible(false);
         }
 
+        /// Bắn khi Home mở ra hoặc đóng lại. Chỉ bắn lúc ĐỔI.
+        ///
+        /// Có sự kiện thì phần nhạc nền không phải hỏi thăm mỗi frame, mà Home cũng
+        /// không phải biết nhạc tồn tại — nó chỉ kể ra mình vừa mở hay vừa đóng.
+        public event System.Action<bool> OnVisibilityChanged;
+
         private void SetVisible(bool visible)
         {
             var target = _content != null ? _content : gameObject;
@@ -285,6 +300,13 @@ namespace JewelPainter.UI.Views
 
             if (visible) BeginEnter();
             else KillEnter();
+
+            // Báo SAU khi mọi thứ đã vào đúng chỗ: người nghe có quyền hỏi lại trạng thái
+            // của Home ngay trong handler.
+            if (IsVisible == visible) return;
+
+            IsVisible = visible;
+            OnVisibilityChanged?.Invoke(visible);
         }
 
         /// Mở đầu bằng alpha 0, chờ hết Enter Delay rồi mờ dần lên 1.
@@ -845,6 +867,8 @@ namespace JewelPainter.UI.Views
 
         private void HandlePlayClicked()
         {
+            if (_sound != null) _sound.Play(SoundKey.Direction);
+
             Hide();
 
             // Nạp màn ĐANG CHỌN, không phải màn theo tiến trình. Người chơi chọn một màn

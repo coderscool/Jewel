@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Board;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
@@ -66,6 +67,7 @@ namespace JewelPainter.UI.Views
         private ILevelService _levelService;
         private ILevelFlowService _levelFlow;
         private JewelFlyEffect _flyEffect;
+        private ISoundService _sound;
 
         /// Màu đã diễn xong màn "tô hết màu" rồi thì thôi.
         ///
@@ -77,12 +79,13 @@ namespace JewelPainter.UI.Views
         /// flyEffect được phép null — để trống thì ô màu tắt ngay lúc tô xong như bản cũ,
         /// nghĩa là tắt trong khi mấy viên cuối còn đang bay.
         public void Init(IPaintService paintService, ILevelService levelService, ILevelFlowService levelFlow,
-            JewelFlyEffect flyEffect)
+            JewelFlyEffect flyEffect, ISoundService sound)
         {
             _paintService = paintService;
             _levelService = levelService;
             _levelFlow = levelFlow;
             _flyEffect = flyEffect;
+            _sound = sound;
 
             // Nghe lúc ĐÁP chứ không phải lúc bấm: viên ngọc cuối cùng phải nằm vào tranh
             // rồi ô màu mới được thu lại. Nghe OnCellPainted thì ô biến mất trong khi vài
@@ -393,6 +396,13 @@ namespace JewelPainter.UI.Views
 
         private void HandleColorSelected(int paletteIndex)
         {
+            // Nghe OnColorSelected chứ không móc vào cú chạm ô màu: giữ tay vào tranh để
+            // bắt màu cũng là một lần chọn ngọc, và nó đi vào đúng cửa này.
+            //
+            // Sự kiện chỉ bắn khi màu THẬT SỰ đổi, nên chạm lại đúng ô đang chọn không
+            // kêu thêm tiếng nào — điều đó đúng, vì có gì đổi đâu.
+            if (_sound != null) _sound.Play(SoundKey.ChooseJewel);
+
             foreach (var swatch in _swatches)
             {
                 if (!swatch.gameObject.activeSelf) continue;

@@ -98,6 +98,11 @@ namespace JewelPainter.UI.Views
         {
             if (_sound == null) return;
 
+            // Phát TRƯỚC khi đổi công tắc: đây là công tắc NHẠC nên tiếng động không bị
+            // nó tắt, nhưng phát trước vẫn đúng hơn về nhịp — người chơi nghe cú bấm rồi
+            // mới nghe nhạc đổi.
+            _sound.Play(SoundKey.Direction);
+
             _sound.SetMusicEnabled(!_sound.IsMusicEnabled);
             RefreshIcons();
         }
@@ -105,6 +110,12 @@ namespace JewelPainter.UI.Views
         private void ToggleSound()
         {
             if (_sound == null) return;
+
+            // Phát TRƯỚC khi đổi công tắc, và ở đây thì bắt buộc: tắt tiếng xong mới gọi
+            // Play là không ai nghe thấy gì, nên cú bấm TẮT sẽ im lặng còn cú bấm BẬT thì
+            // kêu — lệch nhau một cách khó hiểu. Phát trước thì cả hai chiều đều kêu đúng
+            // một tiếng, và tiếng đó cũng chính là thứ xác nhận âm thanh vừa được bật.
+            _sound.Play(SoundKey.Direction);
 
             _sound.SetSoundEnabled(!_sound.IsSoundEnabled);
             RefreshIcons();
@@ -127,7 +138,11 @@ namespace JewelPainter.UI.Views
         /// đi đoán thứ tự Sort Order giữa các Canvas.
         private void HandleHomeClicked()
         {
-            Hide();
+            if (_sound != null) _sound.Play(SoundKey.Direction);
+
+            // HideSilently: cú bấm này đã có tiếng Direction rồi, kêu thêm Cancel là hai
+            // tiếng chồng lên nhau trong cùng một khoảnh khắc.
+            HideSilently();
 
             // Hide vừa thả đồng hồ ra — giữ lại. Về Home là rời hẳn bàn chơi: booster sẽ
             // bị huỷ ở lần nạp màn kế tiếp, nên để nó đếm tiếp sau lưng màn hình Home chỉ

@@ -1,3 +1,4 @@
+using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.UI.Definitions;
@@ -106,6 +107,7 @@ namespace JewelPainter.UI.Views
         private PlayerWallet _wallet;
         private ILevelFlowService _levelFlow;
         private IPopupService _popupService;
+        private ISoundService _sound;
         private int _displayedLevel = -1;
         private int _displayedCredits = -1;
         private int _displayedFreePaintCredits = -1;
@@ -128,7 +130,8 @@ namespace JewelPainter.UI.Views
             ILevelFlowService levelFlow,
             IPopupService popupService,
             PlayerWallet wallet,
-            HomeScreenView home)
+            HomeScreenView home,
+            ISoundService sound)
         {
             _levelService = levelService;
             _paintService = paintService;
@@ -139,6 +142,7 @@ namespace JewelPainter.UI.Views
             _popupService = popupService;
             _wallet = wallet;
             _home = home;
+            _sound = sound;
 
             _levelService.OnLevelStarted += HandleLevelStarted;
             _paintService.OnCellPainted += HandleCellPainted;
@@ -279,11 +283,22 @@ namespace JewelPainter.UI.Views
             if (target.activeSelf != visible) target.SetActive(visible);
         }
 
-        private void HandleHintClicked() => _hintService.UseHint();
+        /// Tiếng kêu ở cú BẤM, không phải ở lúc booster thật sự chạy.
+        ///
+        /// Bấm khi hết lượt thì booster không chạy mà mở popup mời mua — người chơi vẫn
+        /// phải nghe thấy cú bấm của mình có tới nơi. Im lặng ở đó đọc ra là nút hỏng.
+        private void HandleHintClicked()
+        {
+            if (_sound != null) _sound.Play(SoundKey.Hint);
+
+            _hintService.UseHint();
+        }
 
         private void HandleFreePaintClicked()
         {
             if (_freePaintService == null) return;
+
+            if (_sound != null) _sound.Play(SoundKey.FreePaint);
 
             _freePaintService.Use();
         }
@@ -315,6 +330,8 @@ namespace JewelPainter.UI.Views
         private void HandleFillColorClicked()
         {
             if (_fillColorService == null) return;
+
+            if (_sound != null) _sound.Play(SoundKey.MagicWand);
 
             _fillColorService.Use();
         }

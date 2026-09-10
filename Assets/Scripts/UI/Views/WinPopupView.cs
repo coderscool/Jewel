@@ -1,5 +1,6 @@
 using System.Collections;
 using DG.Tweening;
+using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.UI.Components;
@@ -265,6 +266,10 @@ namespace JewelPainter.UI.Views
                 {
                     arrived++;
 
+                    // Mỗi đồng chạm đích một tiếng. Đợt coin bắn dày nên tiếng này cũng
+                    // cần Min Interval và Pitch Variance trong SoundConfig, y như Pop.
+                    if (Sound != null) Sound.Play(SoundKey.Coin);
+
                     var shown = arrived >= coinCount
                         ? reward
                         : Mathf.RoundToInt(reward * (arrived / (float)coinCount));
@@ -352,9 +357,13 @@ namespace JewelPainter.UI.Views
         ///     có khoảng trống, không có lúc nào hai màn hình cùng trên màn.
         private void HandleContinueClicked()
         {
+            if (Sound != null) Sound.Play(SoundKey.Direction);
+
             if (_home == null)
             {
-                Hide();
+                // HideSilently ở cả hai đường ra: popup này không bao giờ bị "huỷ", nó chỉ
+                // được đi tiếp. Cú bấm đã có tiếng Direction rồi.
+                HideSilently();
                 return;
             }
 
@@ -407,7 +416,7 @@ namespace JewelPainter.UI.Views
 
             // Hide vẫn chạy lượt mờ của riêng nó, nhưng alpha đã là 0 nên không ai thấy.
             // Việc còn lại của nó mới là thứ cần: tắt object, dọn tween, trả băng về chỗ.
-            Hide();
+            HideSilently();
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using DG.Tweening;
+using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 
@@ -152,6 +153,7 @@ namespace JewelPainter.Gameplay.Board
         private BoardView _boardView;
         private IPaintService _paintService;
         private IPaintOriginProvider _originProvider;
+        private ISoundService _sound;
 
         /// Đợt tô của booster đang chạy — chỉ để nới hạn mức viên bay cùng lúc.
         private bool _burstActive;
@@ -163,11 +165,13 @@ namespace JewelPainter.Gameplay.Board
         /// Bắn khi ô đã thật sự có ngọc — JewelLayer nghe cái này.
         public event Action<Vector2Int, int> OnJewelLanded;
 
-        public void Init(BoardView boardView, IPaintService paintService, IPaintOriginProvider originProvider)
+        public void Init(BoardView boardView, IPaintService paintService, IPaintOriginProvider originProvider,
+            ISoundService sound)
         {
             _boardView = boardView;
             _paintService = paintService;
             _originProvider = originProvider;
+            _sound = sound;
 
             _boardView.OnBoardRebuilt += HandleBoardRebuilt;
             _paintService.OnCellPainted += HandleCellPainted;
@@ -428,6 +432,16 @@ namespace JewelPainter.Gameplay.Board
         /// Ô chỉ đổi từ xám sang màu thật ở đây, không phải lúc người chơi bấm.
         private void Land(Vector2Int cell, int paletteIndex)
         {
+            // Kêu ở đây chứ không ở lúc bấm, và đây là chỗ ĐÚNG DUY NHẤT: mọi đường đều
+            // đi qua nó — viên bay bình thường, viên bị bỏ hiệu ứng vì hết hạn mức, viên
+            // không tìm được điểm xuất phát. Móc vào OnCellPainted thì tiếng kêu đi trước
+            // viên ngọc cả nửa giây.
+            //
+            // Đợt tô của booster đặt hàng chục ô mỗi frame, nên tiếng này bắn dày hơn mọi
+            // tiếng khác trong game. Việc giãn nhịp không nằm ở đây mà nằm ở Min Interval
+            // của SoundConfig — chỗ đó chỉnh được bằng tay và áp cho mọi nguồn gọi.
+            if (_sound != null) _sound.Play(SoundKey.Pop);
+
             _boardView.RevealCell(cell, paletteIndex);
 
             OnJewelLanded?.Invoke(cell, paletteIndex);

@@ -1,4 +1,5 @@
 using DG.Tweening;
+using JewelPainter.Core.Services;
 using UnityEngine;
 
 namespace JewelPainter.UI.Views
@@ -11,6 +12,11 @@ namespace JewelPainter.UI.Views
     public class PopupView : MonoBehaviour
     {
         [SerializeField] private CanvasGroup _canvasGroup;
+
+        [Tooltip("Tiếng phát khi popup này ĐÓNG. Cancel là mặc định cho mọi popup; đổi " +
+                 "sang None ở những popup mà cú đóng đã có tiếng riêng — popup thắng màn " +
+                 "chẳng hạn, nút Continue của nó phát tiếng Direction.")]
+        [SerializeField] private SoundKey _closeSound = SoundKey.Cancel;
 
         [Tooltip("Thời gian mờ dần VÀO, tính bằng giây. Để 0 là hiện tức khắc như bản cũ.")]
         [SerializeField] private float _fadeInDuration = 0.15f;
@@ -42,6 +48,18 @@ namespace JewelPainter.UI.Views
 
         protected CanvasGroup CanvasGroup => _canvasGroup;
 
+        /// null cho tới khi PopupManager trao vào. Mọi chỗ dùng phải tự kiểm null —
+        /// popup đặt sẵn trong scene để thử nghiệm sẽ không bao giờ nhận được nó.
+        protected ISoundService Sound { get; private set; }
+
+        /// PopupManager gọi ngay sau khi tạo instance.
+        ///
+        /// Trao bằng một hàm chứ không dùng [Inject]: gần hết popup con đã có sẵn một
+        /// hàm Construct mang [Inject] của riêng nó, và chồng thêm một hàm [Inject] ở
+        /// lớp cha là loại phụ thuộc vào hành vi của container mà không ai kiểm được
+        /// bằng mắt. Một lời gọi tường minh thì đọc phát ra ngay.
+        public void SetSoundService(ISoundService sound) => Sound = sound;
+
         public virtual void Show()
         {
             KillFade();
@@ -65,9 +83,27 @@ namespace JewelPainter.UI.Views
             _fade = FadeTo(1f, duration);
         }
 
-        public virtual void Hide()
+        public virtual void Hide() => Close(playCloseSound: true);
+
+        /// Đóng mà KHÔNG kêu tiếng đóng. Dùng ở những đường ra đã có tiếng riêng: nút
+        /// Home trong popup Cài đặt phát Direction, kêu thêm Cancel là hai tiếng chồng lên
+        /// nhau trong cùng một cú bấm.
+        public void HideSilently() => Close(playCloseSound: false);
+
+        private void Close(bool playCloseSound)
         {
             KillFade();
+
+            // Tiếng đóng phát ở đây chứ không ở từng nút đóng: mỗi popup có mấy đường ra
+            // khác nhau — nút X, nút Back, HideAll gọi từ chỗ khác — mà tất cả đều đi qua
+            // đúng chỗ này.
+            //
+            // Phát TRƯỚC nhánh thoát bên dưới thì popup đã đóng sẵn vẫn kêu thêm một
+            // tiếng nữa, nên nó nằm sau.
+            if (playCloseSound && _isShown && _closeSound != SoundKey.None && Sound != null)
+            {
+                Sound.Play(_closeSound);
+            }
 
             // Đã đóng rồi thì chỉ chốt lại cho chắc. Không có nhánh này thì HideAll gọi
             // lên một popup đang mờ dở sẽ khởi động lại cú mờ từ giữa chừng.

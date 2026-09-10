@@ -12,4 +12,51 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36c123e50a563f94fb105a42b6a7a491, type: 3}
   m_Name: SoundConfig
   m_EditorClassIdentifier: 
-  _entries: []
+  _entries:
+  - key: 5
+    clip: {fileID: 8300000, guid: 0510bd4feb5185f47839cad0df7f0a08, type: 3}
+    minInterval: 0
+    pitchVariance: 0
+    volume: 1
+  - key: 12
+    clip: {fileID: 8300000, guid: 36acfb0bc9b74c64db9174409b43336b, type: 3}
+    minInterval: 0
+    pitchVariance: 0
+    volume: 1
+  - key: 6
+    clip: {fileID: 8300000, guid: 33ba8c6889ae7124a9fbdccf989bad58, type: 3}
+    minInterval: 0.04
+    pitchVariance: 0.06
+    volume: 1
+  - key: 7
+    clip: {fileID: 8300000, guid: 3b81168f1ab627248a7fed3e46d41f4c, type: 3}
+    minInterval: 0
+    pitchVariance: 0
+    volume: 1
+  - key: 9
+    clip: {fileID: 8300000, guid: 8a5e4aebb8276da4a9494faac675d5c5, type: 3}
+    minInterval: 0.05
+    pitchVariance: 0.08
+    volume: 1
+  - key: 10
+    clip: {fileID: 8300000, guid: 8a5e4aebb8276da4a9494faac675d5c5, type: 3}
+    minInterval: 0
+    pitchVariance: 0.5
+    volume: 0
+  - key: 8
+    clip: {fileID: 8300000, guid: e10774466352457419668cac5bacbd80, type: 3}
+    minInterval: 0
+    pitchVariance: 0
+    volume: 1
+  - key: 11
+    clip: {fileID: 8300000, guid: bb828aceaf1c84f4386e3f9809e4a28e, type: 3}
+    minInterval: 0
+    pitchVariance: 0
+    volume: 1
+  _music:
+  - key: 1
+    clip: {fileID: 8300000, guid: 847369109c7d92946b8cc9a71d3af0b8, type: 3}
+    volume: 1
+  - key: 2
+    clip: {fileID: 8300000, guid: 642761f23b7fc074cbaa15a24f6ac09d, type: 3}
+    volume: 1

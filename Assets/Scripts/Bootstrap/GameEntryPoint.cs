@@ -22,6 +22,9 @@ namespace JewelPainter.Bootstrap
         private readonly ISaveService _save;
         private readonly PlayerProgress _progress;
         private readonly SoundService _sound;
+
+        /// Dựng ở Start, sống hết phiên chơi. Xem chú thích ở chỗ khởi tạo.
+        private MusicDirector _musicDirector;
         private readonly LevelManager _levelManager;
         private readonly ILevelService _levelService;
         private readonly PaintProgressStore _paintProgressStore;
@@ -178,12 +181,12 @@ namespace JewelPainter.Bootstrap
 
             _hud.Init(
                 _levelService, _paintService, _hintFocus, _freePaint, _fillColor, _levelFlow,
-                _popupService, _wallet, _home);
+                _popupService, _wallet, _home, _sound);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             // Cũng nhận JewelFlyEffect: ô màu chỉ được thu lại khi viên ngọc CUỐI CÙNG
             // của màu đó đã đáp xuống tranh, không phải lúc ô cuối được bấm.
-            _paletteBar.Init(_paintService, _levelService, _levelFlow, _jewelFlyEffect);
+            _paletteBar.Init(_paintService, _levelService, _levelFlow, _jewelFlyEffect, _sound);
 
             // Hướng dẫn Init SAU PaletteBar: cả hai nghe OnBoardReady, mà ngón tay chỉ
             // biết đứng ở đâu sau khi thanh màu đã dựng xong các ô.
@@ -191,7 +194,7 @@ namespace JewelPainter.Bootstrap
 
             // JewelFlyEffect quyết định lúc nào một ô coi như "xong": nó đổi màu ô,
             // gỡ marker gợi ý và cho hiện ngọc. Hai lớp dưới đều chờ tín hiệu của nó.
-            _jewelFlyEffect.Init(_boardView, _paintService, _paletteBar);
+            _jewelFlyEffect.Init(_boardView, _paintService, _paletteBar, _sound);
             _hintLayer.Init(_boardView, _paintService, _jewelFlyEffect);
 
             // Lớp số Init CÙNG CHỖ với hai lớp ô kia, không còn ở trên cùng: nó cũng nghe
@@ -209,7 +212,15 @@ namespace JewelPainter.Bootstrap
             _notificationPresenter.Init(_paintService, _popupService);
 
             // Home dựng sẵn nhưng không tự mở — nút Home trong popup Cài đặt mới mở nó.
-            _home.Init(_levelService, _popupService, _paintProgressStore, _wallet, _boardView);
+            _home.Init(_levelService, _popupService, _paintProgressStore, _wallet, _boardView, _sound);
+
+            // Nhạc nền: dựng SAU Home vì nó nghe sự kiện Home mở/đóng, và TRƯỚC lời gọi
+            // nạp màn ở cuối hàm vì nó cũng nghe OnLevelStarted.
+            //
+            // Giữ tham chiếu vào một field chứ không thả trôi: không ai gọi lại nó, nhưng
+            // một object chỉ tồn tại nhờ mấy cái event đăng ký được là thứ người đọc sau
+            // sẽ tưởng là rác và xoá đi.
+            _musicDirector = new MusicDirector(_sound, _levelService, _home);
 
             // Màn hình chờ nối vào sự kiện chứ không tự nạp màn. Nhịp nhường frame giờ
             // nằm trong LevelManager.LoadLevel, nên MỌI lời gọi nạp màn — ở đây, nút Play
