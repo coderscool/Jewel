@@ -5,12 +5,14 @@ namespace JewelPainter.Gameplay.Board
     /// Vệt sáng quét qua ô ngay khi viên ngọc đáp xuống.
     ///
     /// Nghe OnJewelLanded — sự kiện chỉ nổ MỘT LẦN cho mỗi ô trong cả màn. Nhờ vậy kéo
-    /// camera ra rồi kéo vào lại không làm hiệu ứng chạy lại, khác hẳn với việc gắn
-    /// Particle System vào prefab viên ngọc.
+    /// camera ra rồi kéo vào lại không làm hiệu ứng chạy lại, khác hẳn với việc gắn hiệu
+    /// ứng vào prefab viên ngọc.
     public class JewelLandSparkle : MonoBehaviour
     {
         [SerializeField] private Camera _camera;
-        [SerializeField] private ParticleBurstPool _burstPool;
+        [Tooltip("Kho hiệu ứng loé. Gán ParticleBurstPool hay FlipbookBurstPool đều " +
+                 "được — lớp này không quan tâm hiệu ứng được vẽ bằng gì.")]
+        [SerializeField] private BurstEffectPool _burstPool;
 
         [Tooltip("Ô chiếu lên màn hình nhỏ hơn ngần này pixel thì bỏ qua — ở cỡ đó hiệu " +
                  "ứng chỉ còn vài pixel nhấp nháy, trông như nhiễu.")]

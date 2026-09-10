@@ -1903,7 +1903,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 1767678490}
   m_Direction: 2
   m_Value: 1
-  m_Size: 0.91759115
+  m_Size: 0.8557845
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
@@ -3354,6 +3354,7 @@ GameObject:
   - component: {fileID: 454836497}
   - component: {fileID: 454836499}
   - component: {fileID: 454836498}
+  - component: {fileID: 454836500}
   m_Layer: 0
   m_Name: JewelLand
   m_TagString: Untagged
@@ -3389,7 +3390,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _camera: {fileID: 519420031}
-  _burstPool: {fileID: 454836499}
+  _burstPool: {fileID: 454836500}
   _minCellScreenPixels: 8
 --- !u!114 &454836499
 MonoBehaviour:
@@ -3408,6 +3409,25 @@ MonoBehaviour:
   _prewarmCount: 32
   _maxConcurrent: 160
   _minAliveSeconds: 0.3
+--- !u!114 &454836500
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 454836496}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 691f3139d66a5dd4ba18fb4a6a1d83d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _clip: {fileID: 11400000, guid: 12b8a5cfe50218144a1955ab00c659c3, type: 2}
+  _prefab: {fileID: 28050608099827096, guid: d55081002c92ea3419b742c0e0ea1507, type: 3}
+  _root: {fileID: 454836497}
+  _prewarmCount: 64
+  _maxConcurrent: 400
+  _speed: 1
+  _randomRotation: 0
 --- !u!1 &489299760
 GameObject:
   m_ObjectHideFlags: 0
@@ -9363,6 +9383,7 @@ GameObject:
   - component: {fileID: 1491911199}
   - component: {fileID: 1491911201}
   - component: {fileID: 1491911200}
+  - component: {fileID: 1491911202}
   m_Layer: 0
   m_Name: WinCelebration
   m_TagString: Untagged
@@ -9397,12 +9418,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20f9e05b44fc4e048a2ba349d7de8bf2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _burstPool: {fileID: 1491911201}
+  _burstPool: {fileID: 1491911202}
   _cameraDuration: 1.1
   _sweepDuration: 1.4
   _sweepStartDelay: 0.15
-  _cellStep: 1
-  _maxSpawnPerFrame: 32
+  _sparklesPerDiagonal: 16
+  _maxSpawnPerFrame: 64
 --- !u!114 &1491911201
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9420,6 +9441,25 @@ MonoBehaviour:
   _prewarmCount: 120
   _maxConcurrent: 200
   _minAliveSeconds: 0.3
+--- !u!114 &1491911202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1491911198}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 691f3139d66a5dd4ba18fb4a6a1d83d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _clip: {fileID: 11400000, guid: 12b8a5cfe50218144a1955ab00c659c3, type: 2}
+  _prefab: {fileID: 28050608099827096, guid: d55081002c92ea3419b742c0e0ea1507, type: 3}
+  _root: {fileID: 1491911199}
+  _prewarmCount: 120
+  _maxConcurrent: 400
+  _speed: 1
+  _randomRotation: 0
 --- !u!1 &1511668454
 GameObject:
   m_ObjectHideFlags: 0
@@ -10366,6 +10406,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _popupDelaySeconds: 2
+  _winCelebrationDelaySeconds: 0.35
 --- !u!4 &1620359275
 Transform:
   m_ObjectHideFlags: 0
@@ -10417,7 +10458,7 @@ MonoBehaviour:
   _showAtZoomProgress: 0.2
   _minCellScreenPixels: 32
   _showHysteresis: 0.08
-  _numberColor: {r: 0, g: 0, b: 0, a: 1}
+  _numberColor: {r: 0.35686275, g: 0.35686275, b: 0.35686275, a: 1}
   _hideOnPainted: 1
   _rebuildCooldown: 0.12
 --- !u!23 &1638538589
@@ -11427,6 +11468,7 @@ GameObject:
   - component: {fileID: 1809138253}
   - component: {fileID: 1809138254}
   - component: {fileID: 1809138255}
+  - component: {fileID: 1809138256}
   m_Layer: 0
   m_Name: ColorComplete
   m_TagString: Untagged
@@ -11462,8 +11504,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _camera: {fileID: 519420031}
-  _burstPool: {fileID: 1809138255}
+  _burstPool: {fileID: 1809138256}
   _maxPerFrame: 0
+  _startDelay: 0.15
   _visibleCellsOnly: 1
   _minCellScreenPixels: 8
   _logBurstCount: 0
@@ -11484,6 +11527,25 @@ MonoBehaviour:
   _prewarmCount: 160
   _maxConcurrent: 0
   _minAliveSeconds: 0.3
+--- !u!114 &1809138256
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1809138252}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 691f3139d66a5dd4ba18fb4a6a1d83d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _clip: {fileID: 11400000, guid: 0caaec8a599e68a41a7e62f8b5ca8774, type: 2}
+  _prefab: {fileID: 28050608099827096, guid: d55081002c92ea3419b742c0e0ea1507, type: 3}
+  _root: {fileID: 1809138253}
+  _prewarmCount: 64
+  _maxConcurrent: 400
+  _speed: 1
+  _randomRotation: 0
 --- !u!1 &1819305913
 GameObject:
   m_ObjectHideFlags: 0

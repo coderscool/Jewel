@@ -69,6 +69,9 @@ namespace JewelPainter.UI.Views
         private JewelFlyEffect _flyEffect;
         private ISoundService _sound;
 
+        /// Đang xử lý cú chạm vào một ô màu trên thanh. Xem HandleSwatchClicked.
+        private bool _selectingFromSwatch;
+
         /// Màu đã diễn xong màn "tô hết màu" rồi thì thôi.
         ///
         /// Cần chốt lại vì lúc ô cuối của một màu được tô, vài viên ngọc cùng màu vẫn
@@ -281,13 +284,15 @@ namespace JewelPainter.UI.Views
                 return;
             }
 
-            // Dịch content sao cho tâm nó trùng tâm khung nhìn.
+            // Dịch content sao cho MÉP TRÁI của nó trùng mép trái khung nhìn.
             //
             // Đo qua toạ độ thế giới rồi đổi về hệ của viewport, thay vì tính từ
             // anchoredPosition: cách này không phụ thuộc người dựng đặt Anchor và Pivot
             // của content ở đâu.
-            var contentCenter = viewport.InverseTransformPoint(content.TransformPoint(content.rect.center));
-            var delta = viewport.rect.center.x - contentCenter.x;
+            var contentLeft = viewport.InverseTransformPoint(
+                content.TransformPoint(new Vector3(content.rect.xMin, 0f, 0f))).x;
+
+            var delta = viewport.rect.xMin - contentLeft;
 
             if (Mathf.Abs(delta) < 0.01f) return;
 
@@ -411,16 +416,47 @@ namespace JewelPainter.UI.Views
             }
         }
 
-        private void HandleSwatchClicked(int paletteIndex) => _paintService.SelectColor(paletteIndex);
-
-        private void HandleColorFocusRequested(int paletteIndex) => ScrollToSwatch(paletteIndex);
-
-        /// Cuộn thanh sao cho ô màu nằm CHÍNH GIỮA khung nhìn, trong chừng mực cuộn được.
+        /// Chạm thẳng vào một ô màu thì KHÔNG cuộn thanh.
         ///
-        /// "Trong chừng mực" là phần quan trọng: mấy ô đầu và mấy ô cuối thanh không bao
-        /// giờ ra được giữa, vì đưa chúng vào giữa nghĩa là kéo content ra khỏi biên và
-        /// để lộ một khoảng trống. Phép kẹp 0..1 ở dưới lo đúng chuyện đó — ô đầu thanh
-        /// dừng ở mép trái, ô cuối dừng ở mép phải, còn lại thì vào giữa.
+        /// Ô đó đang nằm ngay dưới ngón tay người chơi — nó hiển nhiên đang trong tầm
+        /// nhìn, và dịch thanh ngay lúc vừa bấm là cách chắc chắn nhất để lần bấm kế tiếp
+        /// trượt sang ô bên cạnh.
+        ///
+        /// Chặn bằng một cờ dựng lên quanh lời gọi chứ không thêm tham số vào IPaintService:
+        /// SelectColor chạy đồng bộ, nên OnColorFocusRequested bắn ra NGAY BÊN TRONG hai
+        /// dòng này. Cửa duy nhất còn cần cuộn là cú giữ tay trên tranh để bắt màu — và
+        /// nó đi vào từ BoardInput, ngoài phạm vi cái cờ.
+        private void HandleSwatchClicked(int paletteIndex)
+        {
+            _selectingFromSwatch = true;
+
+            try
+            {
+                _paintService.SelectColor(paletteIndex);
+            }
+            finally
+            {
+                // finally: người nghe OnColorSelected có thể ném, và một cái cờ kẹt ở true
+                // sẽ tắt vĩnh viễn phép cuộn của cú giữ tay.
+                _selectingFromSwatch = false;
+            }
+        }
+
+        private void HandleColorFocusRequested(int paletteIndex)
+        {
+            if (_selectingFromSwatch) return;
+
+            ScrollToSwatch(paletteIndex);
+        }
+
+        /// Cuộn thanh để ô màu lọt vào tầm nhìn — CHỈ khi nó đang nằm ngoài.
+        ///
+        /// Trên thực tế chỉ còn một đường gọi tới đây: giữ tay trên tranh để bắt màu của
+        /// một ô. Đó đúng là lúc màu được chọn có thể nằm tít đầu kia thanh.
+        ///
+        /// Khi phải dịch thì đưa ô vào CHÍNH GIỮA, trong chừng mực cuộn được: mấy ô đầu
+        /// và mấy ô cuối thanh không bao giờ ra được giữa, vì đưa chúng vào giữa nghĩa là
+        /// kéo content ra khỏi biên và để lộ một khoảng trống. Phép kẹp 0..1 lo chuyện đó.
         private void ScrollToSwatch(int paletteIndex)
         {
             if (_scrollRect == null || !isActiveAndEnabled) return;
@@ -472,7 +508,17 @@ namespace JewelPainter.UI.Views
             var window = viewport.rect.width;
             var from = Mathf.Clamp01(_scrollRect.horizontalNormalizedPosition);
 
-            // Mép trái của khung nhìn phải nằm ở đâu để tâm ô trùng tâm khung.
+            // Ô đang nằm gọn trong khung thì ĐỨNG YÊN.
+            //
+            // Đây là điều kiện quan trọng nhất của cả hàm. Cuộn vô điều kiện thì mỗi lần
+            // chọn màu cả thanh lại trượt đi dưới ngón tay, kể cả khi ô ấy đang nằm ngay
+            // trước mắt — người chơi vừa nhắm trúng thì mọi ô khác đã đổi chỗ.
+            var visibleLeft = from * scrollable;
+
+            if (left >= visibleLeft && right <= visibleLeft + window) yield break;
+
+            // Phải dịch thật thì đưa hẳn ô vào GIỮA, đừng dịch vừa đủ cho nó ló ra: ô nằm
+            // sát mép khung vẫn khó thấy, và lần chọn kế tiếp lại phải dịch tiếp.
             var windowLeft = (left + right) * 0.5f - window * 0.5f;
 
             var to = Mathf.Clamp01(windowLeft / scrollable);

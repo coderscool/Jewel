@@ -1,0 +1,1130 @@
+fileFormatVersion: 2
+guid: 1248cd80c055700448796331d8a9ed14
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3727455900985914434
+    second: light_Jewel_SkeletonData_anim_2_Sheet_0
+  - first:
+      213: -7567089144777773842
+    second: light_Jewel_SkeletonData_anim_2_Sheet_1
+  - first:
+      213: 2245343032092415832
+    second: light_Jewel_SkeletonData_anim_2_Sheet_2
+  - first:
+      213: -1184394127404399117
+    second: light_Jewel_SkeletonData_anim_2_Sheet_3
+  - first:
+      213: 4948073569997297334
+    second: light_Jewel_SkeletonData_anim_2_Sheet_4
+  - first:
+      213: 410833150330948007
+    second: light_Jewel_SkeletonData_anim_2_Sheet_5
+  - first:
+      213: 7399149566706684372
+    second: light_Jewel_SkeletonData_anim_2_Sheet_6
+  - first:
+      213: -6019458718907612632
+    second: light_Jewel_SkeletonData_anim_2_Sheet_7
+  - first:
+      213: 3167970833367746848
+    second: light_Jewel_SkeletonData_anim_2_Sheet_8
+  - first:
+      213: -5174504889069502667
+    second: light_Jewel_SkeletonData_anim_2_Sheet_9
+  - first:
+      213: 4762533027280566444
+    second: light_Jewel_SkeletonData_anim_2_Sheet_10
+  - first:
+      213: -1403642058453050175
+    second: light_Jewel_SkeletonData_anim_2_Sheet_11
+  - first:
+      213: -4262075525009013221
+    second: light_Jewel_SkeletonData_anim_2_Sheet_12
+  - first:
+      213: 4150204955590829865
+    second: light_Jewel_SkeletonData_anim_2_Sheet_13
+  - first:
+      213: 42979929315660916
+    second: light_Jewel_SkeletonData_anim_2_Sheet_14
+  - first:
+      213: -5091109369507050174
+    second: light_Jewel_SkeletonData_anim_2_Sheet_15
+  - first:
+      213: 3893984028313966864
+    second: light_Jewel_SkeletonData_anim_2_Sheet_16
+  - first:
+      213: -3617380791386455026
+    second: light_Jewel_SkeletonData_anim_2_Sheet_17
+  - first:
+      213: -6596821048047626353
+    second: light_Jewel_SkeletonData_anim_2_Sheet_18
+  - first:
+      213: -8815353454489028746
+    second: light_Jewel_SkeletonData_anim_2_Sheet_19
+  - first:
+      213: -3636768464944795374
+    second: light_Jewel_SkeletonData_anim_2_Sheet_20
+  - first:
+      213: -4657730046438606711
+    second: light_Jewel_SkeletonData_anim_2_Sheet_21
+  - first:
+      213: 7944378443418914529
+    second: light_Jewel_SkeletonData_anim_2_Sheet_22
+  - first:
+      213: -2155186797118173528
+    second: light_Jewel_SkeletonData_anim_2_Sheet_23
+  - first:
+      213: -6557635597337493278
+    second: light_Jewel_SkeletonData_anim_2_Sheet_24
+  - first:
+      213: -2465608620311215461
+    second: light_Jewel_SkeletonData_anim_2_Sheet_25
+  - first:
+      213: 6072833751677913701
+    second: light_Jewel_SkeletonData_anim_2_Sheet_26
+  - first:
+      213: 1625444191407993486
+    second: light_Jewel_SkeletonData_anim_2_Sheet_27
+  - first:
+      213: -115208609720130723
+    second: light_Jewel_SkeletonData_anim_2_Sheet_28
+  - first:
+      213: 8387952799363965482
+    second: light_Jewel_SkeletonData_anim_2_Sheet_29
+  - first:
+      213: 1315278351768347132
+    second: light_Jewel_SkeletonData_anim_2_Sheet_30
+  - first:
+      213: 8918735550555715766
+    second: light_Jewel_SkeletonData_anim_2_Sheet_31
+  - first:
+      213: 1561776459618793635
+    second: light_Jewel_SkeletonData_anim_2_Sheet_32
+  - first:
+      213: -712309943830143635
+    second: light_Jewel_SkeletonData_anim_2_Sheet_33
+  - first:
+      213: -261066676583738138
+    second: light_Jewel_SkeletonData_anim_2_Sheet_34
+  - first:
+      213: 7629486843656309742
+    second: light_Jewel_SkeletonData_anim_2_Sheet_35
+  - first:
+      213: 7640836003861394430
+    second: light_Jewel_SkeletonData_anim_2_Sheet_36
+  - first:
+      213: -1266288440822470579
+    second: light_Jewel_SkeletonData_anim_2_Sheet_37
+  - first:
+      213: 8778983465739579775
+    second: light_Jewel_SkeletonData_anim_2_Sheet_38
+  - first:
+      213: 4998035041624644808
+    second: light_Jewel_SkeletonData_anim_2_Sheet_39
+  - first:
+      213: -5789112668076363387
+    second: light_Jewel_SkeletonData_anim_2_Sheet_40
+  - first:
+      213: 3580090307262604718
+    second: light_Jewel_SkeletonData_anim_2_Sheet_41
+  - first:
+      213: -2798696283004712795
+    second: light_Jewel_SkeletonData_anim_2_000
+  - first:
+      213: 4152082836457303837
+    second: light_Jewel_SkeletonData_anim_2_001
+  - first:
+      213: 5131025619689853325
+    second: light_Jewel_SkeletonData_anim_2_002
+  - first:
+      213: 2295527894607738118
+    second: light_Jewel_SkeletonData_anim_2_003
+  - first:
+      213: -1830901557094504278
+    second: light_Jewel_SkeletonData_anim_2_004
+  - first:
+      213: 3454409568827868332
+    second: light_Jewel_SkeletonData_anim_2_005
+  - first:
+      213: 7529621558766550845
+    second: light_Jewel_SkeletonData_anim_2_006
+  - first:
+      213: -8446580811858980352
+    second: light_Jewel_SkeletonData_anim_2_007
+  - first:
+      213: 4713360133730231744
+    second: light_Jewel_SkeletonData_anim_2_008
+  - first:
+      213: -4411192464849567845
+    second: light_Jewel_SkeletonData_anim_2_009
+  - first:
+      213: -3698721801159583023
+    second: light_Jewel_SkeletonData_anim_2_010
+  - first:
+      213: -535959981463759089
+    second: light_Jewel_SkeletonData_anim_2_011
+  - first:
+      213: 2481658072478057198
+    second: light_Jewel_SkeletonData_anim_2_012
+  - first:
+      213: -4014687736129977661
+    second: light_Jewel_SkeletonData_anim_2_013
+  - first:
+      213: 4424633755735573420
+    second: light_Jewel_SkeletonData_anim_2_014
+  - first:
+      213: 8403850538246933329
+    second: light_Jewel_SkeletonData_anim_2_015
+  - first:
+      213: 6324241672683571935
+    second: light_Jewel_SkeletonData_anim_2_016
+  - first:
+      213: 7647758592665089301
+    second: light_Jewel_SkeletonData_anim_2_017
+  - first:
+      213: 2298301265782070560
+    second: light_Jewel_SkeletonData_anim_2_018
+  - first:
+      213: 3082645302996621551
+    second: light_Jewel_SkeletonData_anim_2_019
+  - first:
+      213: 6738350889089409045
+    second: light_Jewel_SkeletonData_anim_2_020
+  - first:
+      213: 700433884765594522
+    second: light_Jewel_SkeletonData_anim_2_021
+  - first:
+      213: 8659835407648074753
+    second: light_Jewel_SkeletonData_anim_2_022
+  - first:
+      213: -2725885640672601950
+    second: light_Jewel_SkeletonData_anim_2_023
+  - first:
+      213: 2826595168187122816
+    second: light_Jewel_SkeletonData_anim_2_024
+  - first:
+      213: 104570404440188220
+    second: light_Jewel_SkeletonData_anim_2_025
+  - first:
+      213: 2030816306613544386
+    second: light_Jewel_SkeletonData_anim_2_026
+  - first:
+      213: -2780416311547394355
+    second: light_Jewel_SkeletonData_anim_2_027
+  - first:
+      213: 637391213411730295
+    second: light_Jewel_SkeletonData_anim_2_028
+  - first:
+      213: 2177115714795895992
+    second: light_Jewel_SkeletonData_anim_2_029
+  - first:
+      213: 7018033387029280404
+    second: light_Jewel_SkeletonData_anim_2_030
+  - first:
+      213: -4426997680946643362
+    second: light_Jewel_SkeletonData_anim_2_031
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 65.66123
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_000
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 500
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a84c490f880929d0800000000000000
+      internalID: -2798696283004712795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_001
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 500
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d1fa80157592f9930800000000000000
+      internalID: 4152082836457303837
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_002
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 500
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d81da03ad90153740800000000000000
+      internalID: 5131025619689853325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_003
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 500
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 605381a357a5bdf10800000000000000
+      internalID: 2295527894607738118
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_004
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 500
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa82caefbb45796e0800000000000000
+      internalID: -1830901557094504278
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_005
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 500
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca402ba533780ff20800000000000000
+      internalID: 3454409568827868332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_006
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 400
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3f376ff9e69e7860800000000000000
+      internalID: 7529621558766550845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_007
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 400
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 002d386e087b7ca80800000000000000
+      internalID: -8446580811858980352
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_008
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 400
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c56a75b118396140800000000000000
+      internalID: 4713360133730231744
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_009
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 400
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9ff2c023db48c2c0800000000000000
+      internalID: -4411192464849567845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_010
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 400
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dad3e65e108bacc0800000000000000
+      internalID: -3698721801159583023
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_011
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 400
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f07170b8c33ef88f0800000000000000
+      internalID: -535959981463759089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_012
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 300
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee209085ede907220800000000000000
+      internalID: 2481658072478057198
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_013
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 300
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c20bd356c6f848c0800000000000000
+      internalID: -4014687736129977661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_014
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 300
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca342d745f4776d30800000000000000
+      internalID: 4424633755735573420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_015
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 300
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15b0fadf98970a470800000000000000
+      internalID: 8403850538246933329
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_016
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 300
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdac6064b4834c750800000000000000
+      internalID: 6324241672683571935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_017
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 300
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5157eb3abeb422a60800000000000000
+      internalID: 7647758592665089301
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_018
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 200
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02d55c503d435ef10800000000000000
+      internalID: 2298301265782070560
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_019
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 200
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe8d3ad0291c7ca20800000000000000
+      internalID: 3082645302996621551
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_020
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 200
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 510ac1cae6e638d50800000000000000
+      internalID: 6738350889089409045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_021
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 200
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a93a91a38e078b900800000000000000
+      internalID: 700433884765594522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_022
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 200
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10ca636eb6aed2870800000000000000
+      internalID: 8659835407648074753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_023
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 200
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a81f51c375bb2ad0800000000000000
+      internalID: -2725885640672601950
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_024
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 100
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08401ab54551a3720800000000000000
+      internalID: 2826595168187122816
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_025
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 100
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c352da29a32837100800000000000000
+      internalID: 104570404440188220
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_026
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 100
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c565cfcba8ee2c10800000000000000
+      internalID: 2030816306613544386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_027
+      rect:
+        serializedVersion: 2
+        x: 300
+        y: 100
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc6048e881af969d0800000000000000
+      internalID: -2780416311547394355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_028
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 100
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7738c5a7ee778d800800000000000000
+      internalID: 637391213411730295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_029
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 100
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8bc745f253ba63e10800000000000000
+      internalID: 2177115714795895992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_030
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49636bfae20156160800000000000000
+      internalID: 7018033387029280404
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: light_Jewel_SkeletonData_anim_2_031
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 0
+        width: 100
+        height: 100
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5e72bd70152092c0800000000000000
+      internalID: -4426997680946643362
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      light_Jewel_SkeletonData_anim_2_000: -2798696283004712795
+      light_Jewel_SkeletonData_anim_2_001: 4152082836457303837
+      light_Jewel_SkeletonData_anim_2_002: 5131025619689853325
+      light_Jewel_SkeletonData_anim_2_003: 2295527894607738118
+      light_Jewel_SkeletonData_anim_2_004: -1830901557094504278
+      light_Jewel_SkeletonData_anim_2_005: 3454409568827868332
+      light_Jewel_SkeletonData_anim_2_006: 7529621558766550845
+      light_Jewel_SkeletonData_anim_2_007: -8446580811858980352
+      light_Jewel_SkeletonData_anim_2_008: 4713360133730231744
+      light_Jewel_SkeletonData_anim_2_009: -4411192464849567845
+      light_Jewel_SkeletonData_anim_2_010: -3698721801159583023
+      light_Jewel_SkeletonData_anim_2_011: -535959981463759089
+      light_Jewel_SkeletonData_anim_2_012: 2481658072478057198
+      light_Jewel_SkeletonData_anim_2_013: -4014687736129977661
+      light_Jewel_SkeletonData_anim_2_014: 4424633755735573420
+      light_Jewel_SkeletonData_anim_2_015: 8403850538246933329
+      light_Jewel_SkeletonData_anim_2_016: 6324241672683571935
+      light_Jewel_SkeletonData_anim_2_017: 7647758592665089301
+      light_Jewel_SkeletonData_anim_2_018: 2298301265782070560
+      light_Jewel_SkeletonData_anim_2_019: 3082645302996621551
+      light_Jewel_SkeletonData_anim_2_020: 6738350889089409045
+      light_Jewel_SkeletonData_anim_2_021: 700433884765594522
+      light_Jewel_SkeletonData_anim_2_022: 8659835407648074753
+      light_Jewel_SkeletonData_anim_2_023: -2725885640672601950
+      light_Jewel_SkeletonData_anim_2_024: 2826595168187122816
+      light_Jewel_SkeletonData_anim_2_025: 104570404440188220
+      light_Jewel_SkeletonData_anim_2_026: 2030816306613544386
+      light_Jewel_SkeletonData_anim_2_027: -2780416311547394355
+      light_Jewel_SkeletonData_anim_2_028: 637391213411730295
+      light_Jewel_SkeletonData_anim_2_029: 2177115714795895992
+      light_Jewel_SkeletonData_anim_2_030: 7018033387029280404
+      light_Jewel_SkeletonData_anim_2_031: -4426997680946643362
+      light_Jewel_SkeletonData_anim_2_Sheet_0: -3727455900985914434
+      light_Jewel_SkeletonData_anim_2_Sheet_1: -7567089144777773842
+      light_Jewel_SkeletonData_anim_2_Sheet_10: 4762533027280566444
+      light_Jewel_SkeletonData_anim_2_Sheet_11: -1403642058453050175
+      light_Jewel_SkeletonData_anim_2_Sheet_12: -4262075525009013221
+      light_Jewel_SkeletonData_anim_2_Sheet_13: 4150204955590829865
+      light_Jewel_SkeletonData_anim_2_Sheet_14: 42979929315660916
+      light_Jewel_SkeletonData_anim_2_Sheet_15: -5091109369507050174
+      light_Jewel_SkeletonData_anim_2_Sheet_16: 3893984028313966864
+      light_Jewel_SkeletonData_anim_2_Sheet_17: -3617380791386455026
+      light_Jewel_SkeletonData_anim_2_Sheet_18: -6596821048047626353
+      light_Jewel_SkeletonData_anim_2_Sheet_19: -8815353454489028746
+      light_Jewel_SkeletonData_anim_2_Sheet_2: 2245343032092415832
+      light_Jewel_SkeletonData_anim_2_Sheet_20: -3636768464944795374
+      light_Jewel_SkeletonData_anim_2_Sheet_21: -4657730046438606711
+      light_Jewel_SkeletonData_anim_2_Sheet_22: 7944378443418914529
+      light_Jewel_SkeletonData_anim_2_Sheet_23: -2155186797118173528
+      light_Jewel_SkeletonData_anim_2_Sheet_24: -6557635597337493278
+      light_Jewel_SkeletonData_anim_2_Sheet_25: -2465608620311215461
+      light_Jewel_SkeletonData_anim_2_Sheet_26: 6072833751677913701
+      light_Jewel_SkeletonData_anim_2_Sheet_27: 1625444191407993486
+      light_Jewel_SkeletonData_anim_2_Sheet_28: -115208609720130723
+      light_Jewel_SkeletonData_anim_2_Sheet_29: 8387952799363965482
+      light_Jewel_SkeletonData_anim_2_Sheet_3: -1184394127404399117
+      light_Jewel_SkeletonData_anim_2_Sheet_30: 1315278351768347132
+      light_Jewel_SkeletonData_anim_2_Sheet_31: 8918735550555715766
+      light_Jewel_SkeletonData_anim_2_Sheet_32: 1561776459618793635
+      light_Jewel_SkeletonData_anim_2_Sheet_33: -712309943830143635
+      light_Jewel_SkeletonData_anim_2_Sheet_34: -261066676583738138
+      light_Jewel_SkeletonData_anim_2_Sheet_35: 7629486843656309742
+      light_Jewel_SkeletonData_anim_2_Sheet_36: 7640836003861394430
+      light_Jewel_SkeletonData_anim_2_Sheet_37: -1266288440822470579
+      light_Jewel_SkeletonData_anim_2_Sheet_38: 8778983465739579775
+      light_Jewel_SkeletonData_anim_2_Sheet_39: 4998035041624644808
+      light_Jewel_SkeletonData_anim_2_Sheet_4: 4948073569997297334
+      light_Jewel_SkeletonData_anim_2_Sheet_40: -5789112668076363387
+      light_Jewel_SkeletonData_anim_2_Sheet_41: 3580090307262604718
+      light_Jewel_SkeletonData_anim_2_Sheet_5: 410833150330948007
+      light_Jewel_SkeletonData_anim_2_Sheet_6: 7399149566706684372
+      light_Jewel_SkeletonData_anim_2_Sheet_7: -6019458718907612632
+      light_Jewel_SkeletonData_anim_2_Sheet_8: 3167970833367746848
+      light_Jewel_SkeletonData_anim_2_Sheet_9: -5174504889069502667
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

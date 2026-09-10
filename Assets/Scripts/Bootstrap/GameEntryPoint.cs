@@ -205,7 +205,8 @@ namespace JewelPainter.Bootstrap
             _jewelLandSparkle.Init(_boardView, _jewelFlyEffect);
             _colorCompleteSparkle.Init(_boardView, _paintService, _jewelFlyEffect);
             _winCelebration.Init(_boardView, _boardCamera);
-            _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect, _winCelebration);
+            _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect, _winCelebration,
+                _colorCompleteSparkle);
 
             // Init sau LevelFlow: nó đăng ký nghe sự kiện thắng màn của LevelFlow.
             _winPopupPresenter.Init(_levelFlow, _popupService);

@@ -3,7 +3,8 @@
     "rootNamespace": "JewelPainter.Editor",
     "references": [
         "JewelPainter.Core",
-        "JewelPainter.Gameplay"
+        "JewelPainter.Gameplay",
+        "spine-unity"
     ],
     "includePlatforms": [
         "Editor"

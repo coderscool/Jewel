@@ -3,18 +3,12 @@ using UnityEngine;
 
 namespace JewelPainter.Gameplay.Board
 {
-    /// Kho hệ hạt dùng lại: ai cần loé một phát ở toạ độ nào thì gọi Play, không phải
-    /// tự lo tạo, thu hồi hay đếm xem hiệu ứng chạy xong chưa.
+    /// Bản chạy bằng Particle System của BurstEffectPool.
     ///
-    /// Vì sao hiệu ứng KHÔNG được gắn thẳng vào prefab viên ngọc: JewelLayer thu ngọc
-    /// về kho khi ô trôi ra ngoài khung hình rồi lấy ra dùng lại khi ô trở vào. Hệ hạt
-    /// nằm trong đó, bật `Play On Awake`, sẽ chạy lại mỗi lần viên được bật — kéo camera
-    /// qua lại là cả bảng loé sáng như mới tô. Hiệu ứng có vòng đời riêng thì một sự
-    /// kiện mới phát đúng một lần.
-    ///
-    /// Kèm theo đó là lợi ích về hiệu năng: số hệ hạt sống cùng lúc phụ thuộc số sự
-    /// kiện vừa xảy ra, không phụ thuộc số ngọc đang hiện trên màn.
-    public class ParticleBurstPool : MonoBehaviour
+    /// Lợi ích về hiệu năng so với việc gắn hệ hạt thẳng vào prefab viên ngọc: số hệ hạt
+    /// sống cùng lúc phụ thuộc số sự kiện vừa xảy ra, không phụ thuộc số ngọc đang hiện
+    /// trên màn. Vì sao KHÔNG gắn thẳng vào viên ngọc thì xem chú thích ở lớp cha.
+    public class ParticleBurstPool : BurstEffectPool
     {
         [Tooltip("Prefab Particle System. Phải TẮT Play On Awake — kho tự gọi Play().")]
         [SerializeField] private ParticleSystem _prefab;
@@ -46,14 +40,11 @@ namespace JewelPainter.Gameplay.Board
         private readonly List<ActiveBurst> _active = new();
         private readonly Stack<ParticleSystem> _pool = new();
 
-        public bool HasPrefab => _prefab != null;
+        public override bool HasPrefab => _prefab != null;
 
-        /// false khi đã chạm trần đồng thời, hoặc thiếu prefab.
-        ///
-        /// Trả về kết quả thay vì im lặng bỏ qua: bên gọi cần biết để XẾP LẠI HÀNG. Nuốt
-        /// lặng lẽ nghĩa là hiệu ứng mất hẳn, mà thứ duy nhất người dùng thấy là "sao nó
-        /// không loé hết".
-        public bool Play(Vector2 world)
+        public override int ActiveCount => _active.Count;
+
+        public override bool Play(Vector2 world)
         {
             if (_maxConcurrent > 0 && _active.Count >= _maxConcurrent) return false;
 
@@ -71,9 +62,7 @@ namespace JewelPainter.Gameplay.Board
             return true;
         }
 
-        /// Dựng sẵn lúc vào màn. Instantiate cả trăm hệ hạt đúng vào frame cần dùng là
-        /// cách chắc chắn nhất để khoảnh khắc đáng lẽ đã mắt biến thành cú khựng.
-        public void Prewarm()
+        public override void Prewarm()
         {
             if (_prefab == null) return;
 
@@ -85,7 +74,7 @@ namespace JewelPainter.Gameplay.Board
             }
         }
 
-        public void ReleaseAll()
+        public override void ReleaseAll()
         {
             for (var i = _active.Count - 1; i >= 0; i--) Release(i);
         }

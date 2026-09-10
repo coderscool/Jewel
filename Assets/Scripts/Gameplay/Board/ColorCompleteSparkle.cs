@@ -7,9 +7,9 @@ namespace JewelPainter.Gameplay.Board
 {
     /// Tô xong TOÀN BỘ ô của một màu thì mọi ô mang màu đó loé sáng cùng lúc.
     ///
-    /// Lớp này KHÔNG dựng hiệu ứng và cũng không quản hệ hạt — hình ảnh nằm trong prefab
-    /// Particle System bạn tự làm trong Editor, việc tạo/thu hồi do ParticleBurstPool lo.
-    /// Ở đây chỉ trả lời hai câu: *lúc nào* và *ở những ô nào*.
+    /// Lớp này KHÔNG dựng hiệu ứng và cũng không quản kho — hình ảnh nằm trong prefab bạn
+    /// tự làm trong Editor, việc tạo/thu hồi do BurstEffectPool lo. Ở đây chỉ trả lời hai
+    /// câu: *lúc nào* và *ở những ô nào*.
     ///
     /// Chỉ phát ở ô đang lọt trong khung hình. Một màu trên bảng 64x64 có thể chiếm hơn
     /// 500 ô, mà ô ngoài màn hình thì người chơi không thấy — sinh ra chỉ để tụt khung
@@ -17,7 +17,9 @@ namespace JewelPainter.Gameplay.Board
     public class ColorCompleteSparkle : MonoBehaviour
     {
         [SerializeField] private Camera _camera;
-        [SerializeField] private ParticleBurstPool _burstPool;
+        [Tooltip("Kho hiệu ứng loé. Gán ParticleBurstPool hay FlipbookBurstPool đều " +
+                 "được — lớp này không quan tâm hiệu ứng được vẽ bằng gì.")]
+        [SerializeField] private BurstEffectPool _burstPool;
 
         [Tooltip("Số ô loé trong MỖI FRAME.\n\n" +
                  "**Để 0 là cả màu loé cùng một lúc** — đây là mặc định.\n\n" +
@@ -25,8 +27,17 @@ namespace JewelPainter.Gameplay.Board
                  "nhịp rải, KHÔNG phải giới hạn: ô chưa tới lượt nằm chờ frame sau, " +
                  "không ô nào bị bỏ.\n\n" +
                  "Loé cùng lúc thì nhớ đặt Prewarm Count của kho đủ lớn, không thì cả " +
-                 "trăm hệ hạt phải Instantiate ngay trong frame đó.")]
+                 "trăm hiệu ứng phải Instantiate ngay trong frame đó.")]
         [SerializeField] private int _maxPerFrame;
+
+        [Tooltip("Chờ ngần này giây kể từ lúc viên ngọc cuối của màu ĐÁP XUỐNG rồi mới " +
+                 "bắt đầu loé.\n\n" +
+                 "Có nó thì mắt kịp thấy hai nhịp tách nhau: vệt sáng của ô vừa tô trước, " +
+                 "rồi mới tới cả màu cùng loé. Để 0 thì hai hiệu ứng nổ chung một frame và " +
+                 "dính vào nhau thành một mảng sáng.\n\n" +
+                 "Đừng đặt dưới 0.05: một frame ở 60fps đã là 0.017 giây, thấp hơn thế thì " +
+                 "không có gì để nhìn.")]
+        [SerializeField] private float _startDelay = 0.15f;
 
         [Tooltip("Chỉ loé những ô đang lọt trong khung hình. Bỏ tick thì loé cả ô ngoài " +
                  "màn — trung thực với ý 'mọi ô đều loé' nhưng tốn hệ hạt cho thứ không " +
@@ -50,9 +61,26 @@ namespace JewelPainter.Gameplay.Board
         /// RemainingFor = 0 và đòi loé thêm một lần nữa.
         private readonly HashSet<int> _celebrated = new();
 
+        /// Còn lại bao nhiêu giây trong khoảng chờ trước khi rút hàng.
+        private float _delayRemaining;
+
+        /// Đang trong một lượt ăn mừng màu: từ lúc xếp hàng cho tới khi cú loé CUỐI CÙNG
+        /// tắt hẳn.
+        ///
+        /// Không suy ra từ _pending.Count được. Hàng chờ rỗng chỉ có nghĩa là đã bắn hết
+        /// lệnh; những cú loé vừa bắn vẫn còn sáng thêm gần một giây. LevelFlowController
+        /// đợi đúng cờ này để biết lúc nào mở màn ăn mừng thắng.
+        private bool _celebrating;
+
         private BoardView _boardView;
         private IPaintService _paintService;
         private JewelFlyEffect _flyEffect;
+
+        /// Dải loé của một màu đã tắt hẳn chưa.
+        ///
+        /// Đọc ActiveCount của KHO, nên nếu kho này dùng chung với JewelLandSparkle thì
+        /// cờ sẽ còn bật vì những vệt sáng của lớp kia. Hai lớp phải có kho riêng.
+        public bool IsCelebrating => _celebrating;
 
         public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect)
         {
@@ -78,6 +106,9 @@ namespace JewelPainter.Gameplay.Board
         {
             _celebrated.Clear();
             _pending.Clear();
+
+            _celebrating = false;
+            _delayRemaining = 0f;
 
             if (_burstPool == null) return;
 
@@ -137,6 +168,12 @@ namespace JewelPainter.Gameplay.Board
                 }
             }
 
+            if (queued > 0)
+            {
+                _celebrating = true;
+                _delayRemaining = Mathf.Max(0f, _startDelay);
+            }
+
             if (_logBurstCount) LogBurstCount(paletteIndex, grid, queued);
         }
 
@@ -168,6 +205,30 @@ namespace JewelPainter.Gameplay.Board
         /// Rút từ CUỐI danh sách để xoá không phải dịch cả đuôi. Thứ tự loé vì thế đi
         /// ngược từ dưới phải lên — không ai nhận ra, vì cả màu loé xong trong vài frame.
         private void Update()
+        {
+            if (_delayRemaining > 0f)
+            {
+                _delayRemaining -= Time.deltaTime;
+
+                // Chưa hết giờ thì KHÔNG rơi xuống phép hạ cờ bên dưới. Lúc này hàng chờ
+                // đã đầy nhưng chưa bắn cú nào, nên cả hai điều kiện "rỗng" đều đúng —
+                // hạ cờ ở đây là báo xong trước khi kịp bắt đầu.
+                if (_delayRemaining > 0f) return;
+
+                _delayRemaining = 0f;
+            }
+
+            Drain();
+
+            // Cờ chỉ tắt khi lệnh đã bắn hết VÀ cú loé cuối cùng đã tắt.
+            if (_celebrating && _pending.Count == 0
+                && (_burstPool == null || _burstPool.ActiveCount == 0))
+            {
+                _celebrating = false;
+            }
+        }
+
+        private void Drain()
         {
             if (_pending.Count == 0 || _burstPool == null) return;
 

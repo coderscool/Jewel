@@ -26,10 +26,17 @@ namespace JewelPainter.Gameplay.Managers
                  "đang quét — đôi khi đó lại là thứ bạn muốn.")]
         [SerializeField] private float _popupDelaySeconds = 2f;
 
+        [Tooltip("Chờ ngần này giây SAU KHI dải loé của màu cuối đã tắt hẳn, rồi mới mở " +
+                 "màn ăn mừng (thu camera + dải quét chéo).\n\n" +
+                 "Đây là nhịp nghỉ giữa hai màn diễn, không phải tổng thời gian chờ: đồng " +
+                 "hồ chỉ bắt đầu chạy khi ColorCompleteSparkle báo đã xong.")]
+        [SerializeField] private float _winCelebrationDelaySeconds = 0.35f;
+
         private ILevelService _levelService;
         private IPaintService _paintService;
         private JewelFlyEffect _flyEffect;
         private WinCelebration _winCelebration;
+        private ColorCompleteSparkle _colorCompleteSparkle;
 
         /// Đã báo thắng cho màn này rồi. Giữ lại vì OnJewelLanded còn nổ thêm vài lần
         /// nữa sau ô cuối, khi những viên đang bay lần lượt đáp xuống.
@@ -61,12 +68,14 @@ namespace JewelPainter.Gameplay.Managers
             ILevelService levelService,
             IPaintService paintService,
             JewelFlyEffect flyEffect,
-            WinCelebration winCelebration)
+            WinCelebration winCelebration,
+            ColorCompleteSparkle colorCompleteSparkle)
         {
             _levelService = levelService;
             _paintService = paintService;
             _flyEffect = flyEffect;
             _winCelebration = winCelebration;
+            _colorCompleteSparkle = colorCompleteSparkle;
 
             // Nghe lúc viên ngọc ĐÁP XUỐNG, không phải lúc bấm tô. Xét sớm thì màn ăn
             // mừng bắt đầu trong khi viên cuối vẫn đang bay giữa trời.
@@ -198,10 +207,18 @@ namespace JewelPainter.Gameplay.Managers
             if (!isReplay) AdvanceProgress();
             else _levelService.MarkLevelFinished(ClearedLevel);
 
-            // Ăn mừng chạy NGAY, còn popup đếm giờ song song. Hai thứ độc lập nhau về
-            // thời gian: đổi thời lượng dải quét không kéo theo lúc popup hiện, và
-            // ngược lại.
-            if (playCelebration && _winCelebration != null) _winCelebration.Play();
+            // Ăn mừng KHÔNG chạy ngay nữa. Ba màn diễn phải nối tiếp chứ không chồng lên
+            // nhau: vệt sáng của ô vừa tô, rồi dải loé của cả màu cuối, rồi mới tới thu
+            // camera và dải quét chéo. Việc canh nhịp nằm trong CelebrateRoutine.
+            //
+            // Popup vì thế cũng đếm giờ TỪ LÚC ăn mừng bắt đầu, không phải từ lúc viên
+            // ngọc cuối đáp — giữ nguyên ý nghĩa "bao lâu sau khi ăn mừng khởi động" của
+            // Popup Delay Seconds, thay vì bắt bạn tự cộng tay ba khoảng chờ.
+            if (playCelebration)
+            {
+                StartCoroutine(CelebrateRoutine(announceAfter: !isReplay));
+                return;
+            }
 
             // Chơi lại thì DỪNG Ở ĐÂY: dải lấp lánh vẫn chạy vì nó là phần thưởng cho cú
             // đặt viên ngọc cuối, nhưng không bắn OnLevelCleared.
@@ -219,11 +236,42 @@ namespace JewelPainter.Gameplay.Managers
             StartCoroutine(AnnounceCleared());
         }
 
+        /// Đợi dải loé của màu cuối tắt hẳn, nghỉ một nhịp, rồi mở màn ăn mừng.
+        private IEnumerator CelebrateRoutine(bool announceAfter)
+        {
+            if (_colorCompleteSparkle != null)
+            {
+                // Nhường đúng một frame TRƯỚC khi hỏi. Lớp này và ColorCompleteSparkle
+                // cùng nghe OnJewelLanded, và thứ tự gọi hai handler chính là thứ tự đăng
+                // ký ở GameEntryPoint. Hôm nay ColorCompleteSparkle.Init chạy trước nên cờ
+                // đã bật kịp — nhưng đó là một chi tiết ở file khác, và đảo hai dòng Init
+                // ở đó sẽ lặng lẽ làm vòng chờ bên dưới trôi tuột qua như không có gì.
+                // Một frame nhường ở đây cắt đứt sự phụ thuộc đó.
+                yield return null;
+
+                while (_colorCompleteSparkle.IsCelebrating) yield return null;
+            }
+
+            if (_winCelebrationDelaySeconds > 0f)
+            {
+                yield return new WaitForSeconds(_winCelebrationDelaySeconds);
+            }
+
+            if (_winCelebration != null) _winCelebration.Play();
+
+            if (!announceAfter) yield break;
+
+            yield return AnnounceCleared();
+        }
+
         private IEnumerator AnnounceCleared()
         {
             // Đếm thẳng một con số thay vì đợi WinCelebration báo xong. Đổi lại là bạn
             // phải tự canh nó với thời lượng màn ăn mừng, nhưng bù lại thời điểm popup
             // hiện ra nằm gọn trong một ô Inspector chứ không phải suy từ ba ô khác.
+            //
+            // Mốc 0 của con số này là lúc ăn mừng BẮT ĐẦU, vì CelebrateRoutine gọi tới
+            // đây sau khi đã chạy WinCelebration.Play().
             if (_popupDelaySeconds > 0f) yield return new WaitForSeconds(_popupDelaySeconds);
 
             OnLevelCleared?.Invoke();
