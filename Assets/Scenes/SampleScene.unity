@@ -6199,7 +6199,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3670e537417aff44caeb0c22b60697c2, type: 2}
   - {fileID: 11400000, guid: ebbe0e22bcd02ba4c9944607df602b91, type: 2}
   - {fileID: 11400000, guid: 2bbbb8e4766441646b67435d49466557, type: 2}
-  _jewelTint: {fileID: 11400000, guid: 905b4d1b0a5f47047bfdb31970a46af8, type: 2}
+  _jewelTint: {fileID: 0}
 --- !u!4 &986912015
 Transform:
   m_ObjectHideFlags: 0

@@ -22,10 +22,70 @@ MonoBehaviour:
       rgba: 1050865
     jewel:
       serializedVersion: 2
-      rgba: 4012017
+      rgba: 4282202097
   - ground:
       serializedVersion: 2
       rgba: 1511910
     jewel:
       serializedVersion: 2
-      rgba: 1709288
+      rgba: 4282794731
+  - ground:
+      serializedVersion: 2
+      rgba: 3473663
+    jewel:
+      serializedVersion: 2
+      rgba: 4284364031
+  - ground:
+      serializedVersion: 2
+      rgba: 925668
+    jewel:
+      serializedVersion: 2
+      rgba: 4282338794
+  - ground:
+      serializedVersion: 2
+      rgba: 14381087
+    jewel:
+      serializedVersion: 2
+      rgba: 4293037389
+  - ground:
+      serializedVersion: 2
+      rgba: 851969
+    jewel:
+      serializedVersion: 2
+      rgba: 4284037704
+  - ground:
+      serializedVersion: 2
+      rgba: 134626
+    jewel:
+      serializedVersion: 2
+      rgba: 4281745128
+  - ground:
+      serializedVersion: 2
+      rgba: 401660
+    jewel:
+      serializedVersion: 2
+      rgba: 4281945597
+  - ground:
+      serializedVersion: 2
+      rgba: 5374972
+    jewel:
+      serializedVersion: 2
+      rgba: 4285871869
+  - ground:
+      serializedVersion: 2
+      rgba: 12590073
+    jewel:
+      serializedVersion: 2
+      rgba: 4291643898
+  - ground:
+      serializedVersion: 2
+      rgba: 13700561
+    jewel:
+      serializedVersion: 2
+      rgba: 4292493018
+  - ground:
+      serializedVersion: 2
+      rgba: 595194
+    jewel:
+      serializedVersion: 2
+      rgba: 4282074363

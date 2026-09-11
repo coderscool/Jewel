@@ -25,6 +25,7 @@ Shader "JewelPainter/Jewel Facets"
         _HighlightWhite ("Độ trắng mặt đỉnh", Range(0, 1)) = 1
         _DarkLift ("Loé trên màu tối", Range(0, 1)) = 0.35
         _Depth ("Tách khỏi nền", Range(0, 0.5)) = 0
+        _FacetFloor ("Sàn kênh thấp nhất", Range(0, 0.2)) = 0.05
 
         [Header(Chinh chung cho ca vien ngoc)]
         _Saturation ("Độ rực", Range(-1, 1)) = 0
@@ -114,6 +115,7 @@ Shader "JewelPainter/Jewel Facets"
             float _HighlightWhite;
             float _DarkLift;
             float _Depth;
+            float _FacetFloor;
             float _Saturation;
             float _Contrast;
             float _Brightness;
@@ -153,6 +155,40 @@ Shader "JewelPainter/Jewel Facets"
                 float k = (p.g * 2.0 - 1.0) * _FacetStrength;
                 float b = (p.b - 0.5) * _FacetStrength;
 
+                // Cộng độ rực chung LÊN TRƯỚC, vì đoạn ngay dưới phải biết lượng đẩy
+                // THẬT SỰ của mặt cắt này. s không được dùng ở đâu khác trước
+                // AdjustColor nên dời lên đây không đổi kết quả.
+                s += _Saturation;
+
+                // NÂNG ĐÁY MÀU Ô — cứu những màu nằm sát góc gamut.
+                //
+                // Mặt cắt tạo hình khối bằng cách ĐẨY ĐỘ RỰC. Đẩy độ rực là kéo ba kênh
+                // ra xa mức xám, nên kênh thấp nhất đi xuống. Màu nào đã có kênh thấp
+                // gần 0 — #E61117, #FA1409, #F91BC0 — thì kênh ấy tụt xuống ÂM, saturate()
+                // kẹp về đúng 0, và mọi mặt cắt đẩy đủ mạnh cùng ra một màu. Đo trên bản
+                // đồ mặt cắt thật: ba trong sáu mặt lớn nhất của #E61117 cho ra đúng #FF0000,
+                // chiếm 21% diện tích viên ngọc. Đó là mảng phẳng người chơi nhìn thấy.
+                //
+                // Cách chữa là trả lại chỗ cho kênh thấp trước khi đẩy. Nâng đáy theo
+                // ĐÚNG LƯỢNG CẦN chứ không nâng đều: tính trước xem kênh thấp nhất sẽ
+                // rơi tới đâu, thiếu bao nhiêu so với sàn thì bù bấy nhiêu.
+                //
+                // Vì vậy màu đang đẹp KHÔNG bị đụng tới. #81C5FF có kênh thấp rơi tới
+                // 0.35, trên sàn, nên lift ra 0 và phép tính y hệt bản cũ. Cũng vì vậy
+                // mỗi mặt cắt được bù một lượng khác nhau — mặt đẩy nhẹ gần như không bù.
+                //
+                // Để _FacetFloor = 0 là tắt hẳn, chạy đúng như trước.
+                float lowest = min(rgb.r, min(rgb.g, rgb.b));
+                float mid = dot(rgb, float3(0.299, 0.587, 0.114));
+
+                // Kênh thấp nhất sẽ rơi tới đây nếu không bù. Có thể âm.
+                float landing = mid + (lowest - mid) * (1.0 + s);
+
+                // Giải L trong: L + (1 - L) * landing = _FacetFloor.
+                float lift = saturate((_FacetFloor - landing) / max(1.0 - landing, 1e-4));
+
+                rgb = lift + rgb * (1.0 - lift);
+
                 // Mọi mặt trong ảnh tham số đều là phép PHA THEO TỈ LỆ: pha về trắng
                 // một lượng t thì (k, b) = (-t, +t/2), pha về đen thì (-t, -t/2).
                 // Nên dấu của b cho biết mặt này đang pha về đâu, và -k chính là t.
@@ -176,8 +212,7 @@ Shader "JewelPainter/Jewel Facets"
                 k = lerp(k, -t, towardWhite);
                 b = lerp(b, 0.5 * t, towardWhite);
 
-                // Bộ số chung của cả viên, cộng sau cùng.
-                s += _Saturation;
+                // Bộ số chung của cả viên, cộng sau cùng. (_Saturation đã cộng ở trên.)
                 k += _Contrast;
                 b += _Brightness;
 
