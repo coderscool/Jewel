@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using DG.Tweening;
 using TMPro;
+using JewelPainter.Gameplay.Config;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -141,6 +142,24 @@ namespace JewelPainter.UI.Views
         [Range(0f, 0.9f)]
         [SerializeField] private float _tickFadeStart = 0.35f;
 
+        [Header("Cú loé lúc viên ngọc tan")]
+        [Tooltip("Ảnh vẽ hoạt ảnh loé. Phải là Image của UI, KHÔNG phải Sprite Renderer: " +
+                 "Canvas vẽ đè lên mọi Sprite Renderer nên hiệu ứng sẽ vô hình.\n\n" +
+                 "Đặt nó ở chỗ viên ngọc, và để object TẮT sẵn trong prefab.")]
+        [SerializeField] private Image _completeBurst;
+
+        [Tooltip("Cùng asset mà FlipbookBurstPool dùng — một lần bake, hai nơi phát.")]
+        [SerializeField] private FlipbookClip _completeBurstClip;
+
+        [Tooltip("Loé vào lúc nào, tính theo TỈ LỆ của Complete Duration.\n\n" +
+                 "Để bằng Jewel Portion (mặc định 0.5) thì cú loé nổ đúng khoảnh khắc viên " +
+                 "ngọc vừa tan hết — nó thế chỗ viên ngọc chứ không chồng lên.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float _burstDelay = 0.5f;
+
+        [Tooltip("Nhân vào tốc độ phát. 1 là đúng nhịp lúc bake.")]
+        [SerializeField] private float _burstSpeed = 1f;
+
         private Action<int> _onClicked;
         private int _displayedRemaining = -1;
         private float _displayedProgress = -1f;
@@ -166,6 +185,22 @@ namespace JewelPainter.UI.Views
         /// Bề rộng gốc của chính ô này. Cùng khuôn nhớ-một-lần như hai cái trên.
         private float _layoutBaseWidth;
         private bool _hasLayoutBase;
+
+        /// Đang trong màn diễn "tô xong màu này".
+        ///
+        /// Cần một cờ riêng vì RefreshRaisedLook có thể chạy giữa chừng — booster tô tự do
+        /// tắt đúng lúc đó chẳng hạn — và nó sẽ bật lại icon cùng bóng mà màn diễn vừa cố
+        /// tình giấu đi.
+        private bool _hidingForComplete;
+
+        /// Cỡ gốc của dấu tick. Cùng khuôn nhớ-một-lần, và nó PHẢI theo khuôn đó.
+        ///
+        /// Bản trước đọc thẳng tickTransform.localScale ở đầu mỗi màn diễn, trong khi
+        /// chính màn diễn lại để dấu tick nằm lại ở base x Tick End Scale. Lần sau đọc
+        /// trúng con số đã phóng to ấy rồi nhân tiếp — dấu tick to lên 1.6 lần sau mỗi
+        /// màu hoàn thành, và không có gì kéo nó về.
+        private Vector3 _tickBaseScale = Vector3.one;
+        private bool _hasTickBase;
 
         private RectTransform _shadowRect;
         private Vector3 _shadowBaseScale;
@@ -287,6 +322,19 @@ namespace JewelPainter.UI.Views
         {
             var up = _selected || _raised;
 
+            // Màn diễn tô-xong đang chạy thì icon và bóng phải nằm im ở trạng thái ẩn.
+            // Xem chú thích ở _hidingForComplete.
+            if (_hidingForComplete)
+            {
+                if (_selectedIcon != null) _selectedIcon.SetActive(false);
+                if (_shadow != null) _shadow.enabled = false;
+
+                if (_progressRing != null) _progressRing.enabled = up;
+
+                ApplyRise(up);
+                return;
+            }
+
             if (_selectedIcon != null) _selectedIcon.SetActive(up);
 
             // Vòng tiến độ cũng theo tư thế nhô, không theo việc được chọn: booster tô
@@ -388,7 +436,14 @@ namespace JewelPainter.UI.Views
             }
 
             var tickTransform = _completeTick != null ? _completeTick.transform : null;
-            var tickBaseScale = tickTransform != null ? tickTransform.localScale : Vector3.one;
+
+            if (tickTransform != null && !_hasTickBase)
+            {
+                _tickBaseScale = tickTransform.localScale;
+                _hasTickBase = true;
+            }
+
+            var tickBaseScale = _tickBaseScale;
             var tickColor = _completeTick != null ? _completeTick.color : default;
 
             // Tick chưa bật vội — nó chờ tới mốc Tick Delay. Bật sẵn từ đầu thì nó nằm
@@ -397,9 +452,37 @@ namespace JewelPainter.UI.Views
             var tickShown = false;
 
             var duration = Mathf.Max(0.01f, _completeDuration);
+
+            // Giấu icon và bóng NGAY từ frame đầu, vì viên ngọc bắt đầu bay lên từ đó.
+            // Để chúng ở lại thì viên ngọc bay đi mà cái bóng của nó vẫn nằm dưới, và
+            // icon thì lơ lửng trên một chỗ trống.
+            _hidingForComplete = true;
+
+            if (_selectedIcon != null) _selectedIcon.SetActive(false);
+            if (_shadow != null) _shadow.enabled = false;
+
+            var burstUsable = _completeBurst != null
+                              && _completeBurstClip != null
+                              && _completeBurstClip.IsUsable;
+
+            var burstFrames = burstUsable ? _completeBurstClip.FrameCount : 0;
+            var burstRate = burstUsable ? _completeBurstClip.Fps * Mathf.Max(0.01f, _burstSpeed) : 0f;
+            var burstStart = Mathf.Clamp01(_burstDelay) * duration;
+            var burstFrame = -1;
+            var burstShown = false;
+
+            // Cú loé có quyền dài hơn phần còn lại của màn diễn, nên vòng lặp phải sống
+            // tới khi nó chạy hết. Cắt ngang ở mốc Complete Duration thì hoạt ảnh cụt
+            // đúng đoạn đẹp nhất, mà bên gọi lại đi ẩn ô ngay sau đó.
+            //
+            // t vẫn kẹp ở 1 nên mọi thứ khác đã diễn xong chỉ đứng yên, không diễn lố.
+            var total = burstFrames > 0
+                ? Mathf.Max(duration, burstStart + burstFrames / burstRate)
+                : duration;
+
             var elapsed = 0f;
 
-            while (elapsed < duration)
+            while (elapsed < total)
             {
                 elapsed += Time.unscaledDeltaTime;
 
@@ -457,6 +540,33 @@ namespace JewelPainter.UI.Views
                     _completeTick.color = color;
                 }
 
+                if (burstFrames > 0 && elapsed >= burstStart)
+                {
+                    if (!burstShown)
+                    {
+                        burstShown = true;
+                        _completeBurst.gameObject.SetActive(true);
+                    }
+
+                    var frame = (int)((elapsed - burstStart) * burstRate);
+
+                    if (frame >= burstFrames)
+                    {
+                        if (_completeBurst.gameObject.activeSelf)
+                        {
+                            _completeBurst.gameObject.SetActive(false);
+                        }
+                    }
+                    else if (frame != burstFrame)
+                    {
+                        // Chỉ gán khi số khung THẬT SỰ nhảy: gán lại đúng cái sprite cũ
+                        // vẫn làm Canvas dirty và dựng lại quad, mà ở 30 khung/giây thì
+                        // phần lớn frame là gán thừa.
+                        burstFrame = frame;
+                        _completeBurst.sprite = _completeBurstClip.Frame(frame);
+                    }
+                }
+
                 yield return null;
             }
 
@@ -464,6 +574,7 @@ namespace JewelPainter.UI.Views
 
             // Dấu tick đã tan hết alpha, tắt object đi cho sạch.
             if (_completeTick != null) _completeTick.gameObject.SetActive(false);
+            if (_completeBurst != null) _completeBurst.gameObject.SetActive(false);
 
             // KHÔNG trả cỡ, chỗ đứng và alpha về ở đây.
             //
@@ -481,6 +592,14 @@ namespace JewelPainter.UI.Views
         /// diễn: màn diễn có thể đã bị cắt ngang giữa chừng.
         private void ResetCompleteVisuals()
         {
+            // Trả icon và bóng về trước mọi thứ khác: màn diễn có thể đã bị cắt ngang khi
+            // object bị tắt, và lúc đó không có ai chạy đoạn dọn ở cuối coroutine.
+            _hidingForComplete = false;
+
+            if (_selectedIcon != null) _selectedIcon.SetActive(_selected || _raised);
+            if (_shadow != null) _shadow.enabled = true;
+            if (_completeBurst != null) _completeBurst.gameObject.SetActive(false);
+
             // Chưa diễn lần nào thì chưa biết cỡ gốc — và cũng chưa có gì để trả về, cỡ
             // hiện tại chính là cỡ prefab. Ép về 1 ở đây là đoán mò.
             if (_hasCompleteBase) ShrinkTarget.localScale = _completeBaseScale;
@@ -501,6 +620,10 @@ namespace JewelPainter.UI.Views
             }
 
             if (_completeTick == null) return;
+
+            // Trả cỡ về, không chỉ alpha. Màn diễn để dấu tick nằm lại ở cỡ đã phóng to,
+            // và ô này còn được dùng lại cho màu khác ở màn sau.
+            if (_hasTickBase) _completeTick.transform.localScale = _tickBaseScale;
 
             var color = _completeTick.color;
             color.a = 1f;
