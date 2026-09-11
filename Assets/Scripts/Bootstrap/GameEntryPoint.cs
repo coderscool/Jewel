@@ -181,7 +181,7 @@ namespace JewelPainter.Bootstrap
 
             _hud.Init(
                 _levelService, _paintService, _hintFocus, _freePaint, _fillColor, _levelFlow,
-                _popupService, _wallet, _home, _sound);
+                _popupService, _wallet, _home, _sound, _progress);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             // Cũng nhận JewelFlyEffect: ô màu chỉ được thu lại khi viên ngọc CUỐI CÙNG

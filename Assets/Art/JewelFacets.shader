@@ -26,6 +26,7 @@ Shader "JewelPainter/Jewel Facets"
         _DarkLift ("Loé trên màu tối", Range(0, 1)) = 0.35
         _Depth ("Tách khỏi nền", Range(0, 0.5)) = 0
         _FacetFloor ("Sàn kênh thấp nhất", Range(0, 0.2)) = 0.05
+        _RimSeparation ("Vành ngoài tách khỏi màu ô", Range(0, 0.4)) = 0.22
 
         [Header(Chinh chung cho ca vien ngoc)]
         _Saturation ("Độ rực", Range(-1, 1)) = 0
@@ -73,6 +74,17 @@ Shader "JewelPainter/Jewel Facets"
             // không phải bớt loé.
             #define HIGHLIGHT_FLOOR 0.5
 
+            // Dấu hiệu nhận ra VÀNH NGOÀI trong bản đồ mặt cắt: nó là mặt đẩy độ rực
+            // mạnh nhất (p.r cao) VÀ dìm về phía tối (p.b dưới mốc giữa). Hai điều kiện
+            // mới đủ — mặt loé ở đỉnh cũng đẩy rực mạnh ngang thế, khác ở chỗ nó pha về
+            // TRẮNG. Đo trên Jewel_Params.png: bắt đúng 4614 trên 4632 pixel của vành,
+            // thừa 80.
+            //
+            // BAKE LẠI BẢN ĐỒ MẶT CẮT thì phải soi lại hai số này: chúng mô tả bộ số mà
+            // công cụ đang sinh ra, không phải một quy ước cố định.
+            #define RIM_SAT_MIN  0.49
+            #define RIM_DARK_MAX 0.5
+
             struct appdata_t
             {
                 float4 vertex   : POSITION;
@@ -116,6 +128,7 @@ Shader "JewelPainter/Jewel Facets"
             float _DarkLift;
             float _Depth;
             float _FacetFloor;
+            float _RimSeparation;
             float _Saturation;
             float _Contrast;
             float _Brightness;
@@ -150,6 +163,10 @@ Shader "JewelPainter/Jewel Facets"
                 #ifndef UNITY_COLORSPACE_GAMMA
                 rgb = LinearToGammaSpace(rgb);
                 #endif
+
+                // Màu Ô, giữ lại trước mọi phép chỉnh. Đoạn tách vành ngoài ở cuối cần
+                // nó để biết viên ngọc đang nằm trên cái gì.
+                float3 cell = rgb;
 
                 float s = lerp(SAT_MIN, SAT_MAX, p.r) * _FacetStrength;
                 float k = (p.g * 2.0 - 1.0) * _FacetStrength;
@@ -224,6 +241,42 @@ Shader "JewelPainter/Jewel Facets"
                 b = (0.5 + b) * (1.0 - _Depth) - 0.5;
 
                 rgb = AdjustColor(rgb, s, k, b);
+
+                // TÁCH VÀNH NGOÀI KHỎI MÀU Ô.
+                //
+                // Vành ngoài là dải rộng 6 pixel ôm sát mép hình bóng — cái làm viên ngọc
+                // đọc ra là một khối có cạnh chứ không phải một vệt màu. Nó tách khỏi ô
+                // nhờ đẩy độ rực rất mạnh (s cao nhất trong cả bản đồ mặt cắt). Màu nào
+                // đã hết chỗ đẩy thì vành rơi lại gần đúng màu ô: đo trên bản đồ thật,
+                // #81C5FF chênh 0.29 độ sáng, còn #483A59 chỉ chênh 0.07 — mắt không
+                // thấy cạnh nữa.
+                //
+                // Độ rực hết chỗ thì còn ĐỘ SÁNG. Ép đúng một khoảng chênh tối thiểu:
+                // thiếu bao nhiêu bù bấy nhiêu, đủ rồi thì không đụng. Nhân cả ba kênh
+                // (dìm xuống) hoặc pha về trắng (nâng lên) nên sắc màu giữ nguyên.
+                //
+                // Ô sáng thì dìm vành, ô quá tối thì không còn chỗ dìm nên nâng lên.
+                //
+                // Để _RimSeparation = 0 là tắt hẳn.
+                float rimMask = step(RIM_SAT_MIN, p.r) * step(p.b, RIM_DARK_MAX);
+
+                if (rimMask * _RimSeparation > 0.0)
+                {
+                    float lumCell = dot(cell, float3(0.299, 0.587, 0.114));
+                    float lumRim = dot(rgb, float3(0.299, 0.587, 0.114));
+
+                    float target = lumCell > _RimSeparation
+                        ? lumCell - _RimSeparation
+                        : lumCell + _RimSeparation;
+
+                    float3 pushed = lumCell > _RimSeparation
+                        ? rgb * saturate(target / max(lumRim, 1e-4))
+                        : lerp(rgb, 1.0, saturate((target - lumRim) / max(1.0 - lumRim, 1e-4)));
+
+                    // step(): đã đủ chênh thì thôi. Ngay tại mốc thì target trùng lumRim
+                    // nên phép ép ra đúng màu cũ — không có bậc nhảy nào ở biên.
+                    rgb = lerp(rgb, pushed, rimMask * step(abs(lumCell - lumRim), _RimSeparation));
+                }
 
                 #ifndef UNITY_COLORSPACE_GAMMA
                 rgb = GammaToLinearSpace(rgb);

@@ -1,6 +1,7 @@
 using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
+using JewelPainter.UI.Data;
 using JewelPainter.UI.Definitions;
 using JewelPainter.UI.Interfaces;
 using TMPro;
@@ -94,6 +95,38 @@ namespace JewelPainter.UI.Views
         [FormerlySerializedAs("_homeButton")]
         [SerializeField] private Button _settingsButton;
 
+        [Header("Mở khoá booster")]
+        [Tooltip("Bảng mốc mở khoá của từng booster. Để trống thì mọi booster mở sẵn từ " +
+                 "màn 1 — HUD chạy đúng như trước khi có phần này.")]
+        [SerializeField] private BoosterUnlockConfig _boosterUnlock;
+
+        [Tooltip("Phần mặt ĐÃ MỞ KHOÁ của nút gợi ý — icon, huy hiệu, những gì người " +
+                 "chơi thấy khi booster dùng được. Tự ẩn khi chưa tới mốc, để lộ mặt khoá " +
+                 "nằm dưới (ảnh nền của chính cái nút).\n\n" +
+                 "Bật sẵn trong prefab: nó là trạng thái thường, còn khoá mới là ngoại lệ.\n\n" +
+                 "Để trống thì nút vẫn bị khoá đúng, chỉ là trông y hệt lúc mở — người " +
+                 "chơi gặp một cái nút bấm không ăn và không biết vì sao.")]
+        [SerializeField] private GameObject _hintUnlockRoot;
+
+        [Tooltip("Chữ ghi màn mở khoá, ví dụ \"5\". Ngược với ô trên: object này chỉ HIỆN " +
+                 "khi đang khoá. Để trống thì không hiện số.")]
+        [SerializeField] private Text _hintLockLevelText;
+
+        [Tooltip("Phần mặt đã mở khoá của nút tô tự do. Cùng quy ước với nút gợi ý.")]
+        [SerializeField] private GameObject _freePaintUnlockRoot;
+
+        [SerializeField] private Text _freePaintLockLevelText;
+
+        [Tooltip("Phần mặt đã mở khoá của nút tô hết màu. Cùng quy ước với nút gợi ý.")]
+        [SerializeField] private GameObject _fillColorUnlockRoot;
+
+        [SerializeField] private Text _fillColorLockLevelText;
+
+        [Tooltip("Khuôn chữ ghi màn mở khoá. {0} là số màn.\n\n" +
+                 "Để trống thì chỉ ghi trần con số — hợp khi trong ảnh ổ khoá đã có sẵn " +
+                 "chữ \"Level\".")]
+        [SerializeField] private string _lockLevelFormat = "{0}";
+
         [Tooltip("Object bị ẩn khi thắng màn. Để TRỐNG thì ẩn chính object này — cách " +
                  "đó vẫn chạy đúng, chỉ là không tách được phần nào của HUD ở lại.")]
         [SerializeField] private GameObject _content;
@@ -108,6 +141,17 @@ namespace JewelPainter.UI.Views
         private ILevelFlowService _levelFlow;
         private IPopupService _popupService;
         private ISoundService _sound;
+        private PlayerProgress _progress;
+
+        /// Ba booster đang mở khoá hay chưa, tính lại mỗi lần vào màn.
+        ///
+        /// Giữ lại thay vì hỏi config mỗi lần: SetHintAvailable và hai hàm anh em của nó
+        /// chạy theo sự kiện của service, có thể nổ nhiều lần trong một màn, và cả ba đều
+        /// phải AND với trạng thái khoá.
+        private bool _hintUnlocked = true;
+        private bool _freePaintUnlocked = true;
+        private bool _fillColorUnlocked = true;
+
         private int _displayedLevel = -1;
         private int _displayedCredits = -1;
         private int _displayedFreePaintCredits = -1;
@@ -131,8 +175,11 @@ namespace JewelPainter.UI.Views
             IPopupService popupService,
             PlayerWallet wallet,
             HomeScreenView home,
-            ISoundService sound)
+            ISoundService sound,
+            PlayerProgress progress)
         {
+            _progress = progress;
+
             _levelService = levelService;
             _paintService = paintService;
             _hintService = hintService;
@@ -143,6 +190,10 @@ namespace JewelPainter.UI.Views
             _wallet = wallet;
             _home = home;
             _sound = sound;
+
+            // TRƯỚC mọi lời gọi SetXAvailable ở dưới: ba hàm đó đọc cờ khoá, mà cờ mặc
+            // định là "đã mở". Chạy sau thì nút khoá vẫn bấm được cho tới lần vào màn kế.
+            RefreshBoosterLocks();
 
             _levelService.OnLevelStarted += HandleLevelStarted;
             _paintService.OnCellPainted += HandleCellPainted;
@@ -260,7 +311,72 @@ namespace JewelPainter.UI.Views
             SetVisible(true);
             SetLevel(levelId);
 
+            // Tiến trình chỉ nhích lên giữa hai màn, nên đây là chỗ duy nhất cần soi lại.
+            RefreshBoosterLocks();
+
             RefreshResetAvailable();
+        }
+
+        /// Đọc lại mốc mở khoá rồi dựng lại cả ba nút.
+        ///
+        /// So với PlayerProgress.Level — TIẾN TRÌNH CAO NHẤT — chứ không phải màn đang
+        /// chơi. Chơi lại màn 1 sau khi đã tới màn 20 thì booster vẫn còn đó.
+        private void RefreshBoosterLocks()
+        {
+            // Chưa gán bảng thì mọi thứ mở sẵn, y như trước khi có phần này. Không cảnh
+            // báo: một game không khoá booster nào là cấu hình hợp lệ.
+            var level = _progress != null ? _progress.Level : int.MaxValue;
+
+            _hintUnlocked = _boosterUnlock == null
+                            || _boosterUnlock.IsUnlocked(CreditPoolKind.Hint, level);
+            _freePaintUnlocked = _boosterUnlock == null
+                                 || _boosterUnlock.IsUnlocked(CreditPoolKind.FreePaint, level);
+            _fillColorUnlocked = _boosterUnlock == null
+                                 || _boosterUnlock.IsUnlocked(CreditPoolKind.FillColor, level);
+
+            ApplyLockVisual(CreditPoolKind.Hint, _hintUnlocked, _hintUnlockRoot, _hintLockLevelText);
+            ApplyLockVisual(CreditPoolKind.FreePaint, _freePaintUnlocked,
+                _freePaintUnlockRoot, _freePaintLockLevelText);
+            ApplyLockVisual(CreditPoolKind.FillColor, _fillColorUnlocked,
+                _fillColorUnlockRoot, _fillColorLockLevelText);
+
+            // Dựng lại trạng thái bấm được từ nguồn thật. Không tự đặt interactable ở đây:
+            // nút còn phụ thuộc vào việc service có cho dùng hay không, và chỉ service mới
+            // biết điều đó.
+            if (_hintService != null) SetHintAvailable(_hintService.CanUseHint);
+            if (_freePaintService != null) SetFreePaintAvailable(_freePaintService.CanUse);
+            if (_fillColorService != null) SetFillColorAvailable(_fillColorService.CanUse);
+
+            // Huy hiệu số lượt cũng phải theo: một con số 3 nằm cạnh ổ khoá chỉ gây nhiễu.
+            // Cùng lý do đã ghi ở chỗ huy hiệu tự ẩn khi hết lượt.
+            if (_hintCreditsBadge != null && !_hintUnlocked) _hintCreditsBadge.SetActive(false);
+            if (_freePaintCreditsBadge != null && !_freePaintUnlocked) _freePaintCreditsBadge.SetActive(false);
+            if (_fillColorCreditsBadge != null && !_fillColorUnlocked) _fillColorCreditsBadge.SetActive(false);
+        }
+
+        /// Hai object ngược chiều nhau: phần mở khoá hiện khi ĐÃ mở, chữ số màn hiện khi
+        /// CHƯA. Mặt khoá không có ô riêng — nó là thứ nằm sẵn dưới phần mở khoá, lộ ra
+        /// khi phần đó tắt đi.
+        private void ApplyLockVisual(CreditPoolKind booster, bool unlocked, GameObject unlockRoot, Text levelText)
+        {
+            if (unlockRoot != null) unlockRoot.SetActive(unlocked);
+
+            if (levelText == null) return;
+
+            levelText.gameObject.SetActive(!unlocked);
+
+            // Chỉ ghi chữ khi đang khoá. Ghi cả lúc đã mở là dựng lưới chữ cho một dòng
+            // nằm trong object vừa tắt.
+            //
+            // string.Format sinh rác, nhưng hàm này chạy đúng một lần mỗi lần vào màn —
+            // không phải chỗ đáng đi vòng để né.
+            if (unlocked || _boosterUnlock == null) return;
+
+            var level = _boosterUnlock.UnlockLevelFor(booster);
+
+            levelText.text = string.IsNullOrEmpty(_lockLevelFormat)
+                ? level.ToString()
+                : string.Format(_lockLevelFormat, level);
         }
 
         /// Ô đầu tiên được tô là lúc nút Tô lại có việc để làm. Nghe từng ô nghe thì phí,
@@ -389,7 +505,7 @@ namespace JewelPainter.UI.Views
 
         private void SetFreePaintCredits(int remaining)
         {
-            if (_freePaintCreditsBadge != null) _freePaintCreditsBadge.SetActive(remaining > 0);
+            if (_freePaintCreditsBadge != null) _freePaintCreditsBadge.SetActive(remaining > 0 && _freePaintUnlocked);
 
             if (_freePaintCreditsText == null) return;
             if (remaining == _displayedFreePaintCredits) return;
@@ -402,12 +518,12 @@ namespace JewelPainter.UI.Views
         {
             if (_freePaintButton == null) return;
 
-            _freePaintButton.interactable = available;
+            _freePaintButton.interactable = available && _freePaintUnlocked;
         }
 
         private void SetFillColorCredits(int remaining)
         {
-            if (_fillColorCreditsBadge != null) _fillColorCreditsBadge.SetActive(remaining > 0);
+            if (_fillColorCreditsBadge != null) _fillColorCreditsBadge.SetActive(remaining > 0 && _fillColorUnlocked);
 
             if (_fillColorCreditsText == null) return;
             if (remaining == _displayedFillColorCredits) return;
@@ -420,7 +536,7 @@ namespace JewelPainter.UI.Views
         {
             if (_fillColorButton == null) return;
 
-            _fillColorButton.interactable = available;
+            _fillColorButton.interactable = available && _fillColorUnlocked;
         }
 
         /// Xoá tiến độ tô của màn đang chơi rồi nạp lại. Gameplay lo phần còn lại — HUD
@@ -471,7 +587,7 @@ namespace JewelPainter.UI.Views
         /// Chỉ SetText khi con số thật sự đổi — cùng lý do đã ghi ở SetLevel.
         private void SetHintCredits(int remaining)
         {
-            if (_hintCreditsBadge != null) _hintCreditsBadge.SetActive(remaining > 0);
+            if (_hintCreditsBadge != null) _hintCreditsBadge.SetActive(remaining > 0 && _hintUnlocked);
 
             if (_hintCreditsText == null) return;
             if (remaining == _displayedCredits) return;
@@ -480,11 +596,16 @@ namespace JewelPainter.UI.Views
             _hintCreditsText.SetText("{0}", remaining);
         }
 
+        /// Booster đang khoá thì nút TẮT, dù service có nói gì.
+        ///
+        /// Phải chặn ngay tại đây chứ không chỉ ở lúc đổi màn: hàm này chạy theo sự kiện
+        /// của service, và một tín hiệu "dùng được" nổ ra giữa màn sẽ lặng lẽ bật lại
+        /// đúng cái nút vừa bị khoá.
         private void SetHintAvailable(bool available)
         {
             if (_hintButton == null) return;
 
-            _hintButton.interactable = available;
+            _hintButton.interactable = available && _hintUnlocked;
         }
 
         /// Chỉ đổi chữ khi con số thật sự khác — đổi text là dựng lại lưới chữ, mà sự
