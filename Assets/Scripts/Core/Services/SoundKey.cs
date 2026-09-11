@@ -38,5 +38,9 @@ namespace JewelPainter.Core.Services
         /// Các nút ĐI TỚI: Play ở Home, Home trong popup Cài đặt, Continue ở popup
         /// thắng màn, và hai công tắc âm thanh.
         Direction = 12,
+
+        /// Cả một màu vừa được tô xong — tiếng đi kèm đợt loé của ColorCompleteSparkle.
+        /// Bắn đúng MỘT lần cho mỗi màu, không phải một lần cho mỗi ô loé.
+        ColorComplete = 13,
     }
 }

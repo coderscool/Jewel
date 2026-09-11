@@ -203,7 +203,7 @@ namespace JewelPainter.Bootstrap
             _numberLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLandSparkle.Init(_boardView, _jewelFlyEffect);
-            _colorCompleteSparkle.Init(_boardView, _paintService, _jewelFlyEffect);
+            _colorCompleteSparkle.Init(_boardView, _paintService, _jewelFlyEffect, _sound);
             _winCelebration.Init(_boardView, _boardCamera);
             _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect, _winCelebration,
                 _colorCompleteSparkle);

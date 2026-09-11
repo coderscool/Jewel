@@ -56,15 +56,26 @@ namespace JewelPainter.UI.Views
         [Header("Bóng đổ — để trống cũng chạy")]
         [Tooltip("Vệt bóng mờ dưới chân viên đá.\n\n" +
                  "PHẢI đặt NGOÀI Rise Target (con trực tiếp của ColorSwatch, nằm TRÊN CÙNG " +
-                 "trong danh sách con để vẽ sau lưng mọi thứ). Đặt trong Rise Target thì " +
-                 "bóng nhô lên theo viên đá — mà bóng dính chặt vào vật thì mắt đọc ra là " +
-                 "cả hai cùng nằm phẳng, và toàn bộ cảm giác 'được nhấc lên' biến mất.\n\n" +
+                 "trong danh sách con để vẽ sau lưng mọi thứ). Nằm trong Rise Target thì " +
+                 "nó bị cú phóng to của Rise Target nhân thêm một lần nữa — phần nhấc lên " +
+                 "do chính lớp này lo, xem ô Selected Shadow Rise.\n\n" +
                  "Kiểu Graphic chứ không phải Image: sau này đổi sang RawImage hay một " +
                  "graphic tự viết đều không phải sửa lại chỗ này.")]
         [SerializeField] private Graphic _shadow;
 
-        [Tooltip("Cỡ bóng khi ô ĐƯỢC CHỌN, so với cỡ lúc thường. Lớn hơn 1 vì vật nhấc " +
-                 "cao thì bóng loang rộng ra.")]
+        [Tooltip("Bóng NHẤC LÊN bao nhiêu pixel khi ô được chọn.\n\n" +
+                 "Đặt bằng Selected Rise thì bóng đi theo viên ngọc, giữ nguyên khoảng " +
+                 "cách giữa hai thứ — viên ngọc và bóng của nó thành một khối cùng nhấc " +
+                 "lên. Đặt THẤP HƠN Selected Rise thì khoảng cách giãn ra và ô đọc ra là " +
+                 "có chiều sâu: bóng rơi lại phía sau vì nó ở xa mắt hơn.\n\n" +
+                 "Để 0 là bóng nằm im dưới đất như bản trước.")]
+        [SerializeField] private float _selectedShadowRise = 24f;
+
+        [Tooltip("Cỡ bóng khi ô ĐƯỢC CHỌN, so với cỡ lúc thường.\n\n" +
+                 "Bóng đã nhấc lên theo viên ngọc thì để 1: cỡ và độ đục chỉ đổi khi bóng " +
+                 "ĐỨNG YÊN dưới đất mà vật thì đi lên, vì lúc ấy chúng là thứ duy nhất kể " +
+                 "được độ cao. Bóng đi cùng vật mà còn loang ra thì thành hai lời kể " +
+                 "chỏi nhau.")]
         [SerializeField] private float _selectedShadowScale = 1.4f;
 
         [Tooltip("Độ đục của bóng khi KHÔNG được chọn.")]
@@ -214,6 +225,9 @@ namespace JewelPainter.UI.Views
 
         private RectTransform _shadowRect;
         private Vector3 _shadowBaseScale;
+
+        /// Chỗ đứng gốc của bóng. Cùng khuôn nhớ-một-lần như cỡ gốc ngay trên.
+        private Vector2 _shadowBasePosition;
         private bool _hasShadowBase;
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -763,8 +777,18 @@ namespace JewelPainter.UI.Views
             {
                 _shadowRect = (RectTransform)_shadow.transform;
                 _shadowBaseScale = _shadowRect.localScale;
+                _shadowBasePosition = _shadowRect.anchoredPosition;
                 _hasShadowBase = true;
             }
+
+            // Bóng đi LÊN theo viên ngọc thay vì nằm lại dưới đất.
+            //
+            // Bóng nằm ngoài Rise Target nên không được nhấc kèm — phần nhấc của nó phải
+            // làm riêng ở đây. Nhờ nằm ngoài mà nó cũng không bị cú phóng to của Rise
+            // Target nhân thêm một lần nữa, và số pixel nhấc lên tự do khác Selected Rise.
+            _shadowRect.anchoredPosition = selected
+                ? _shadowBasePosition + new Vector2(0f, _selectedShadowRise)
+                : _shadowBasePosition;
 
             _shadowRect.localScale = selected
                 ? _shadowBaseScale * Mathf.Max(0.01f, _selectedShadowScale)

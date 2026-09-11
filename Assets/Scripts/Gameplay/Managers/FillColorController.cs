@@ -100,11 +100,12 @@ namespace JewelPainter.Gameplay.Managers
                 // đúng việc đang làm.
                 if (IsFilling) return false;
 
-                // Booster khác đang chạy dở thì khoá. Hai booster chồng lên nhau là một
-                // mớ: đợt tô bắn hàng trăm viên trong lúc người chơi đang chạy đua với
-                // đồng hồ, mà số ô nó tô mất lại chính là số ô đáng lẽ họ tự tô được
-                // trong ngần ấy giây vừa trả tiền.
-                if (_paintService.ColorLocked) return false;
+                // KHÔNG khoá theo ColorLocked — xem chú thích cùng chỗ ở
+                // FreePaintController.CanUse.
+                //
+                // Bấm nút này giữa lúc tô tự do đang đếm ngược thì đợt tô ăn mất phần ô
+                // mà người chơi đáng lẽ tự tô được trong ngần ấy giây. Vẫn cho bấm: đó là
+                // lượt của họ, và một cái nút xám không giải thích được điều đó.
 
                 // Hỏi CẢ BẢNG, không hỏi riêng màu đang chọn — và cũng không đòi phải chọn
                 // màu. Chưa chọn màu vẫn cho BẤM: cú bấm đó mở lời nhắc chọn màu, xem

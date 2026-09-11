@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
@@ -82,11 +83,13 @@ namespace JewelPainter.Gameplay.Board
         /// cờ sẽ còn bật vì những vệt sáng của lớp kia. Hai lớp phải có kho riêng.
         public bool IsCelebrating => _celebrating;
 
-        public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect)
+        public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect,
+            ISoundService sound)
         {
             _boardView = boardView;
             _paintService = paintService;
             _flyEffect = flyEffect;
+            _sound = sound;
 
             _boardView.OnBoardRebuilt += HandleBoardRebuilt;
 
@@ -95,6 +98,15 @@ namespace JewelPainter.Gameplay.Board
             // còn đang bay giữa đường.
             _flyEffect.OnJewelLanded += HandleJewelLanded;
         }
+
+        /// Còn nợ một tiếng kêu cho đợt loé đang chờ tới lượt.
+        ///
+        /// Cần cờ riêng chứ không kêu ngay trong Burst: Burst chạy lúc XẾP HÀNG, mà đợt
+        /// loé còn đợi hết Start Delay mới bắt đầu. Kêu ở đó thì tiếng đi trước hình một
+        /// nhịp — đúng cái nhịp mà Start Delay được đặt ra để tạo.
+        private bool _soundPending;
+
+        private ISoundService _sound;
 
         private void OnDestroy()
         {
@@ -172,6 +184,7 @@ namespace JewelPainter.Gameplay.Board
             {
                 _celebrating = true;
                 _delayRemaining = Mathf.Max(0f, _startDelay);
+                _soundPending = true;
             }
 
             if (_logBurstCount) LogBurstCount(paletteIndex, grid, queued);
@@ -216,6 +229,17 @@ namespace JewelPainter.Gameplay.Board
                 if (_delayRemaining > 0f) return;
 
                 _delayRemaining = 0f;
+            }
+
+            // Kêu đúng lúc cú loé ĐẦU TIÊN sắp bắn ra, không sớm hơn.
+            //
+            // Đặt ở đây chứ không đặt trong nhánh hết giờ phía trên, vì Start Delay có
+            // thể bằng 0 — khi đó nhánh kia không bao giờ chạy và tiếng sẽ im luôn.
+            if (_soundPending)
+            {
+                _soundPending = false;
+
+                if (_sound != null) _sound.Play(SoundKey.ColorComplete);
             }
 
             Drain();

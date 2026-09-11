@@ -14,54 +14,64 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _entries:
   - key: 5
-    clip: {fileID: 8300000, guid: 0510bd4feb5185f47839cad0df7f0a08, type: 3}
+    clip: {fileID: 8300000, guid: 35f29402be19cf5479b33d9413530f86, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1
   - key: 12
-    clip: {fileID: 8300000, guid: ed3e773d9ae0f9d44910aabe9d520cda, type: 3}
+    clip: {fileID: 8300000, guid: 472ed81555a4f34459b3e3de185e4694, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1
   - key: 6
-    clip: {fileID: 8300000, guid: 33ba8c6889ae7124a9fbdccf989bad58, type: 3}
+    clip: {fileID: 8300000, guid: f1332269e5b3ab5418de6e3de21d83f7, type: 3}
     minInterval: 0.04
     pitchVariance: 0.06
     volume: 1
   - key: 7
-    clip: {fileID: 8300000, guid: 3b81168f1ab627248a7fed3e46d41f4c, type: 3}
+    clip: {fileID: 8300000, guid: ba502eed388dfa24d97b74022bddda30, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1
   - key: 9
-    clip: {fileID: 8300000, guid: 8a5e4aebb8276da4a9494faac675d5c5, type: 3}
+    clip: {fileID: 8300000, guid: 7dea438df18c664419b2860aceeb8158, type: 3}
     minInterval: 0.05
     pitchVariance: 0.08
     volume: 1
   - key: 10
-    clip: {fileID: 8300000, guid: 8a5e4aebb8276da4a9494faac675d5c5, type: 3}
+    clip: {fileID: 8300000, guid: 8dda2e0b96af67c408f95563f59d25cc, type: 3}
     minInterval: 0
     pitchVariance: 0.5
     volume: 0
   - key: 8
-    clip: {fileID: 8300000, guid: e10774466352457419668cac5bacbd80, type: 3}
+    clip: {fileID: 8300000, guid: 7dea438df18c664419b2860aceeb8158, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1
   - key: 1
-    clip: {fileID: 8300000, guid: 36acfb0bc9b74c64db9174409b43336b, type: 3}
+    clip: {fileID: 8300000, guid: 549470d1351d4bc48be5e735ffc50836, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1
   - key: 11
-    clip: {fileID: 8300000, guid: bb828aceaf1c84f4386e3f9809e4a28e, type: 3}
+    clip: {fileID: 8300000, guid: 5bbccc7948c70b84492e6e4b43d772eb, type: 3}
     minInterval: 0
     pitchVariance: 0
     volume: 1
+  - key: 13
+    clip: {fileID: 8300000, guid: 75600bb6b4549d947841dc1eda32f47c, type: 3}
+    minInterval: 0
+    pitchVariance: 0
+    volume: 1
+  - key: 4
+    clip: {fileID: 8300000, guid: d930f3be708a1a64f817461a1952e263, type: 3}
+    minInterval: 0
+    pitchVariance: 0.353
+    volume: 1
   _music:
   - key: 1
-    clip: {fileID: 8300000, guid: 847369109c7d92946b8cc9a71d3af0b8, type: 3}
+    clip: {fileID: 8300000, guid: 6b4450aecf52fc545b3c2416325d0942, type: 3}
     volume: 1
   - key: 2
-    clip: {fileID: 8300000, guid: 642761f23b7fc074cbaa15a24f6ac09d, type: 3}
+    clip: {fileID: 8300000, guid: 4c7fa13947d3c484c80a65a950eb75fb, type: 3}
     volume: 1

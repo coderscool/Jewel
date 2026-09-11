@@ -60,10 +60,25 @@ namespace JewelPainter.Gameplay.Managers
             get
             {
                 if (_paintService == null) return false;
-                if (IsActive) return false;
 
-                // Đợt tô của booster kia đang chạy thì khoá — đối xứng với luật bên đó.
-                if (_paintService.ColorLocked) return false;
+                // KHÔNG xám đi trong lúc CHÍNH NÓ đang chạy.
+                //
+                // Hai chục giây đếm ngược là quãng dài nhất của bất cứ booster nào, và
+                // một cái nút xám suốt quãng đó đọc ra là hỏng chứ không đọc ra là đang
+                // chạy — nhất là khi đồng hồ nằm ở chỗ khác trên màn hình.
+                //
+                // Cú bấm lặp lại vẫn không tốn lượt: Use() thoát ngay ở đầu khi booster
+                // đang chạy, TRƯỚC cú trừ. Xem chú thích ở đó.
+
+                // KHÔNG khoá theo ColorLocked.
+                //
+                // Cờ đó vẫn còn nguyên việc của nó — chặn đổi màu giữa chừng — nhưng nó
+                // không còn làm xám ba cái nút booster nữa. Một booster đang chạy mà hai
+                // nút kia xám đi thì người chơi đọc ra là game đang bận, chứ không đọc ra
+                // là "đợi nó xong đã"; họ bấm vào khoảng không và không hiểu vì sao.
+                //
+                // Đổi lại: hai booster chồng lên nhau thì hơi lộn xộn. Đó là lựa chọn có
+                // chủ ý — người chơi tiêu lượt của chính họ, và họ được quyền tiêu lãng phí.
 
                 // Hỏi CẢ BẢNG: còn ô nào chưa tô thì booster còn việc để làm. Không hỏi
                 // riêng màu đang chọn, và cũng không đòi phải chọn màu — cả điểm của
@@ -108,6 +123,14 @@ namespace JewelPainter.Gameplay.Managers
         public bool Use()
         {
             if (!CanUse) return false;
+
+            // Đang chạy dở thì cú bấm này rơi vào khoảng không — KHÔNG trừ lượt, không
+            // thả lại đồng hồ.
+            //
+            // Phép kiểm này từng nằm trong CanUse, nhưng ở đó nó làm xám cái nút suốt
+            // hai chục giây. Chuyển xuống đây thì nút vẫn sáng mà lượt vẫn an toàn: chỉ
+            // riêng chỗ này mới biết một cú bấm có đáng bị tính tiền hay không.
+            if (IsActive) return false;
 
             // Mọi đường thoát nằm hết TRÊN cú trừ lượt. Có đường nào lấy mất một lượt rồi
             // trả về false là người chơi mất lượt mà không thấy gì xảy ra.

@@ -125,7 +125,7 @@ namespace JewelPainter.UI.Views
         [Tooltip("Khuôn chữ ghi màn mở khoá. {0} là số màn.\n\n" +
                  "Để trống thì chỉ ghi trần con số — hợp khi trong ảnh ổ khoá đã có sẵn " +
                  "chữ \"Level\".")]
-        [SerializeField] private string _lockLevelFormat = "{0}";
+        [SerializeField] private string _lockLevelFormat = "Level {0}";
 
         [Tooltip("Object bị ẩn khi thắng màn. Để TRỐNG thì ẩn chính object này — cách " +
                  "đó vẫn chạy đúng, chỉ là không tách được phần nào của HUD ở lại.")]
@@ -423,9 +423,11 @@ namespace JewelPainter.UI.Views
 
         /// Bật/tắt phần đồng hồ đếm ngược.
         ///
-        /// Không đụng tới nút: nút tự xám trong lúc booster chạy, nhưng đường đi của nó
-        /// là CanUse → OnAvailabilityChanged → SetFreePaintAvailable. Tắt tay thêm ở đây
-        /// là dựng ra hai nguồn sự thật cho cùng một cái nút.
+        /// Không đụng tới nút. Nút giờ KHÔNG xám trong lúc booster chạy — cú bấm lặp
+        /// lại bị FreePaintController.Use bỏ qua mà không trừ lượt. Mọi thay đổi trạng
+        /// thái nút vẫn chỉ đi một đường: CanUse → OnAvailabilityChanged →
+        /// SetFreePaintAvailable. Tắt tay thêm ở đây là dựng ra hai nguồn sự thật cho
+        /// cùng một cái nút.
         private void HandleFreePaintActiveChanged(bool active)
         {
             if (_freePaintTimerRoot != null)

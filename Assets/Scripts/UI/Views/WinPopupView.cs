@@ -115,6 +115,10 @@ namespace JewelPainter.UI.Views
         {
             base.Show();
 
+            // Tiếng thắng màn nằm ở đây chứ không ở PopupManager: chỉ riêng popup này có
+            // nó, còn mọi popup khác mở ra trong im lặng.
+            if (Sound != null) Sound.Play(SoundKey.LevelComplete);
+
             CaptureBannerHome();
 
             var isLastLevel = _levelFlow != null && _levelFlow.IsLastLevel;

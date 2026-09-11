@@ -44,14 +44,12 @@ namespace JewelPainter.Gameplay.Managers
                 // Chưa chọn màu vẫn cho BẤM: bấm vào sẽ hiện lời nhắc chọn màu. Nút xám
                 // ngắt không nói được gì, mà đó lại đúng lúc người chơi cần biết nhất.
                 //
-                // Trừ lúc một booster khác đang chạy dở.
+                // KHÔNG khoá theo ColorLocked — xem chú thích cùng chỗ ở
+                // FreePaintController.CanUse.
                 //
-                // Tô tự do: dấu gợi ý lúc đó đã phủ KHẮP bảng, bấm thêm gợi ý vào giữa là
-                // tiêu một lượt nữa để làm đúng cái việc đang được làm sẵn.
-                //
-                // Đợt tô hết màu: gợi ý có thể phải ĐỔI màu khi màu đang chọn hết ô — mà
-                // đợt tô chính là thứ đang làm cho nó hết ô, và lúc ấy màu đang bị khoá.
-                if (_paintService.ColorLocked) return false;
+                // Trường hợp gợi ý phải ĐỔI màu trong lúc màu đang bị khoá được chặn ở
+                // UseHint, TRƯỚC cú trừ lượt. Chặn ở đây thì nút xám cả những lần gợi ý
+                // hoàn toàn chạy được — tức gần như mọi lần.
 
                 return !_paintService.IsComplete;
             }
@@ -109,6 +107,17 @@ namespace JewelPainter.Gameplay.Managers
             // người chơi mất lượt mà không thấy gì xảy ra.
             var paletteIndex = ResolveHintColor();
             if (paletteIndex < 0) return false;
+
+            // Gợi ý cần đổi sang màu khác, mà màu đang bị một booster khác khoá.
+            //
+            // Phải thoát TẠI ĐÂY, trên cú trừ lượt. Đi tiếp thì SelectColor lặng lẽ không
+            // làm gì, camera vẫn bay tới nơi, dấu gợi ý vẫn rơi xuống — và người chơi mất
+            // một lượt để tới đứng trước một ô họ không tô được, vì màu đang chọn vẫn là
+            // màu cũ.
+            if (paletteIndex != _paintService.SelectedPaletteIndex && _paintService.ColorLocked)
+            {
+                return false;
+            }
 
             if (_boardCamera == null)
             {
