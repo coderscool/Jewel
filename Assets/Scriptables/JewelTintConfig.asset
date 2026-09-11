@@ -23,3 +23,9 @@ MonoBehaviour:
     jewel:
       serializedVersion: 2
       rgba: 4012017
+  - ground:
+      serializedVersion: 2
+      rgba: 1511910
+    jewel:
+      serializedVersion: 2
+      rgba: 1709288

@@ -144,8 +144,18 @@ namespace JewelPainter.UI.Views
 
         [Header("Cú loé lúc viên ngọc tan")]
         [Tooltip("Ảnh vẽ hoạt ảnh loé. Phải là Image của UI, KHÔNG phải Sprite Renderer: " +
-                 "Canvas vẽ đè lên mọi Sprite Renderer nên hiệu ứng sẽ vô hình.\n\n" +
-                 "Đặt nó ở chỗ viên ngọc, và để object TẮT sẵn trong prefab.")]
+                 "Canvas vẽ đè lên mọi Sprite Renderer nên hiệu ứng sẽ vô hình. Đó cũng là " +
+                 "lý do không gắn thẳng FlipbookBurstPool vào đây: kho đó phát bằng " +
+                 "SpriteRenderer, hợp với bàn cờ chứ không hợp với Canvas. Hai bên dùng " +
+                 "chung asset Flipbook Clip — một lần bake, hai nơi phát, chỉ khác cái đem " +
+                 "đi vẽ.\n\n" +
+                 "Đặt nó ở chỗ viên ngọc, để object TẮT sẵn trong prefab, và đặt NGOÀI " +
+                 "Shrink Target: nằm trong đó thì nó bị thu về cỡ 0 cùng cái nền, đúng vào " +
+                 "lúc đáng lẽ phải loé.\n\n" +
+                 "Thanh màu nằm trong một Scroll Rect có Mask, nên cú loé tràn ra khỏi " +
+                 "khung sẽ bị cắt cụt. Bỏ tick Maskable trên chính Image này là nó thoát " +
+                 "khỏi mọi Mask cha và vẽ tràn thoải mái — đổi lại, nó cũng vẽ tràn khi ô " +
+                 "màu đang trôi nửa trong nửa ngoài mép thanh.")]
         [SerializeField] private Image _completeBurst;
 
         [Tooltip("Cùng asset mà FlipbookBurstPool dùng — một lần bake, hai nơi phát.")]
@@ -205,6 +215,12 @@ namespace JewelPainter.UI.Views
         private RectTransform _shadowRect;
         private Vector3 _shadowBaseScale;
         private bool _hasShadowBase;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// Đã soi cách dựng cú loé chưa. Chỉ soi MỘT lần cho mỗi ô: lời cảnh báo lặp lại
+        /// mỗi màu hoàn thành thì chẳng ai đọc nữa.
+        private bool _burstChecked;
+#endif
 
         /// Hai lý do ĐỘC LẬP để viên ngọc nhô lên, giữ riêng ra chứ không gộp thành một
         /// cờ: "ô này đang được chọn" và "booster đang cho tô mọi màu". Gộp lại thì lúc
@@ -461,6 +477,8 @@ namespace JewelPainter.UI.Views
             if (_selectedIcon != null) _selectedIcon.SetActive(false);
             if (_shadow != null) _shadow.enabled = false;
 
+            WarnBurstSetupOnce();
+
             var burstUsable = _completeBurst != null
                               && _completeBurstClip != null
                               && _completeBurstClip.IsUsable;
@@ -545,7 +563,7 @@ namespace JewelPainter.UI.Views
                     if (!burstShown)
                     {
                         burstShown = true;
-                        _completeBurst.gameObject.SetActive(true);
+                        ShowBurst();
                     }
 
                     var frame = (int)((elapsed - burstStart) * burstRate);
@@ -588,6 +606,97 @@ namespace JewelPainter.UI.Views
             onFinished?.Invoke();
         }
 
+        /// Bật cú loé và ép nó về đúng trạng thái NHÌN THẤY ĐƯỢC.
+        ///
+        /// Không chỉ SetActive: một Image nằm im trong prefab hay bị người dựng tắt
+        /// component, hay bị kéo alpha về 0 trong lúc ngắm nghía, và cả hai thứ đó sống
+        /// sót qua mọi lần chạy sau. Triệu chứng giống hệt "chưa gán gì cả" nên cực khó
+        /// truy — đặt lại cả ba ở đây rẻ hơn nhiều so với một buổi đi tìm.
+        ///
+        /// Kéo xuống làm con ÚT để vẽ sau cùng: cú loé mà chui xuống dưới viên ngọc hay
+        /// dưới cái nền thì cũng coi như không có.
+        private void ShowBurst()
+        {
+            if (_completeBurst == null) return;
+
+            _completeBurst.enabled = true;
+
+            var color = _completeBurst.color;
+            color.a = 1f;
+            _completeBurst.color = color;
+
+            _completeBurst.transform.SetAsLastSibling();
+            _completeBurst.gameObject.SetActive(true);
+        }
+
+        /// Soi cách dựng cú loé và kêu lên nếu nó sẽ không bao giờ hiện.
+        ///
+        /// Ba cái bẫy dưới đây đều cho ra cùng một kết quả: hiệu ứng đã gán đủ, code đã
+        /// chạy đủ, mà màn hình không có gì. Không ai đoán ra được nếu engine im lặng,
+        /// nên thà ồn một lần trong Console.
+        private void WarnBurstSetupOnce()
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (_burstChecked) return;
+            _burstChecked = true;
+
+            // Gán một nửa cũng là chưa gán: thiếu bên nào thì cả cú loé im lặng biến mất.
+            if (_completeBurst != null && (_completeBurstClip == null || !_completeBurstClip.IsUsable))
+            {
+                Debug.LogWarning(
+                    $"[{name}] Đã gán Complete Burst nhưng Complete Burst Clip trống hoặc " +
+                    "không có khung nào — cú loé sẽ không hiện.", this);
+                return;
+            }
+
+            if (_completeBurst == null)
+            {
+                if (_completeBurstClip != null)
+                {
+                    Debug.LogWarning(
+                        $"[{name}] Đã gán Complete Burst Clip nhưng ô Complete Burst trống " +
+                        "— chưa có Image nào để vẽ cú loé.", this);
+                }
+
+                return;
+            }
+
+            var burst = _completeBurst.transform;
+
+            // Bẫy nặng nhất, và là bẫy mặc định: để trống ô Shrink Target thì Shrink
+            // Target chính là cả ô màu này, và MỌI thứ bên trong — kể cả cú loé — bị thu
+            // về cỡ 0 trước khi tới lượt nó diễn.
+            if (burst.IsChildOf(ShrinkTarget))
+            {
+                Debug.LogWarning(
+                    $"[{name}] Complete Burst đang nằm TRONG Shrink Target nên nó bị thu về " +
+                    "cỡ 0 đúng lúc phải loé. Kéo nó ra ngoài Shrink Target.", this);
+            }
+
+            // Bẫy im lặng nhất: hiệu ứng CÓ chạy, chỉ là phần tràn ra ngoài khung Scroll
+            // Rect bị Mask xén mất, và thứ còn lại nhỏ tới mức trông như không có gì.
+            if (_completeBurst.maskable
+                && (_completeBurst.GetComponentInParent<Mask>() != null
+                    || _completeBurst.GetComponentInParent<RectMask2D>() != null))
+            {
+                Debug.LogWarning(
+                    $"[{name}] Complete Burst đang nằm trong một Mask (Scroll Rect của " +
+                    "thanh màu) và vẫn bật Maskable, nên phần tràn ra ngoài khung bị cắt. " +
+                    "Bỏ tick Maskable trên Image đó nếu muốn cú loé tràn trọn vẹn.", this);
+            }
+
+            // Alpha của Graphic không lan xuống con, nhưng CanvasGroup thì có — và viên
+            // ngọc tan đi bằng alpha. Nằm dưới một cái đang tan thì cú loé tan theo.
+            if (_completeJewel != null && burst.IsChildOf(_completeJewel.transform)
+                                       && burst != _completeJewel.transform)
+            {
+                Debug.LogWarning(
+                    $"[{name}] Complete Burst đang nằm TRONG Complete Jewel — nó sẽ bay lên " +
+                    "và mờ đi theo viên ngọc thay vì thế chỗ viên ngọc.", this);
+            }
+#endif
+        }
+
         /// Trả ô về đúng hình dạng lúc chưa diễn gì. Gọi ở Bind chứ không chỉ ở cuối màn
         /// diễn: màn diễn có thể đã bị cắt ngang giữa chừng.
         private void ResetCompleteVisuals()
@@ -598,7 +707,14 @@ namespace JewelPainter.UI.Views
 
             if (_selectedIcon != null) _selectedIcon.SetActive(_selected || _raised);
             if (_shadow != null) _shadow.enabled = true;
-            if (_completeBurst != null) _completeBurst.gameObject.SetActive(false);
+
+            if (_completeBurst != null)
+            {
+                // Bỏ sprite của lần loé trước. Giữ lại thì frame đầu của lần sau còn đeo
+                // khung CUỐI của lần trước cho tới khi số khung nhảy — đúng một cú nháy.
+                _completeBurst.sprite = null;
+                _completeBurst.gameObject.SetActive(false);
+            }
 
             // Chưa diễn lần nào thì chưa biết cỡ gốc — và cũng chưa có gì để trả về, cỡ
             // hiện tại chính là cỡ prefab. Ép về 1 ở đây là đoán mò.
