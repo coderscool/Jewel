@@ -4,6 +4,7 @@ using JewelPainter.Gameplay.Board;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
+using JewelPainter.UI.Data;
 using JewelPainter.UI.Interfaces;
 using JewelPainter.UI.Managers;
 using JewelPainter.UI.Views;
@@ -34,6 +35,11 @@ namespace JewelPainter.Bootstrap
         /// bỏ qua hẳn một phần việc của màn chơi. Phát nhiều thì người chơi bấm ba cái là
         /// xong tranh và không còn gì để chơi nữa.
         private const int FreeFillColorUses = 2;
+
+        [UnityEngine.Tooltip("Bảng mốc mở khoá booster — cùng asset đã gán cho HudView.\n\n" +
+            "Để trống thì không có popup báo mở khoá nào cả. Hợp lý: không có bảng mốc " +
+            "thì không booster nào bị khoá, nên cũng chẳng có gì để báo.")]
+        [UnityEngine.SerializeField] private BoosterUnlockConfig _boosterUnlock;
 
         /// Xong bao nhiêu màn thì mời đánh giá một lần. Đếm lại từ đầu sau mỗi lần mời,
         /// và tắt hẳn khi người chơi đã bấm đánh giá.
@@ -131,6 +137,17 @@ namespace JewelPainter.Bootstrap
             // Rình lúc màn hình sạch để mời đánh giá. Thuần C# nên không cần object nào
             // trong scene — ITickable của VContainer cấp nhịp Update cho nó.
             builder.RegisterEntryPoint<RatePopupPresenter>();
+
+            // Báo booster vừa mở khoá. Cùng khuôn với lời mời đánh giá: rình lúc màn hình
+            // sạch rồi mới mở popup.
+            //
+            // Chỉ dựng khi có bảng mốc. RegisterInstance không nhận null, mà quan trọng
+            // hơn: không có bảng thì không booster nào khoá, nên cũng không có gì để báo.
+            if (_boosterUnlock != null)
+            {
+                builder.RegisterInstance(_boosterUnlock);
+                builder.RegisterEntryPoint<BoosterUnlockPresenter>();
+            }
 
             // Điểm khởi động: nối dây rồi bắt đầu màn chơi
             builder.RegisterEntryPoint<GameEntryPoint>();

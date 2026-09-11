@@ -364,6 +364,7 @@ MonoBehaviour:
     TypeName: 
   autoRun: 1
   autoInjectGameObjects: []
+  _boosterUnlock: {fileID: 11400000, guid: 541775cc33d349dbaac438176ad33240, type: 2}
 --- !u!4 &66959932
 Transform:
   m_ObjectHideFlags: 0

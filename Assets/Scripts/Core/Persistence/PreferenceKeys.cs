@@ -38,6 +38,13 @@ namespace JewelPainter.Core.Persistence
         /// Đã bấm nút đánh giá chưa. Bấm rồi thì popup mời đánh giá tắt vĩnh viễn.
         public const string HasRated = "has_rated";
 
+        /// Đã báo mở khoá booster này chưa. Nối thêm SỐ của CreditPoolKind vào sau:
+        /// "booster_unlock_shown_1".
+        ///
+        /// Nối theo SỐ chứ không theo tên: tên enum có thể đổi mà không ai nghĩ tới bản
+        /// lưu, còn con số thì đã có luật cấm đổi ghi ngay trên CreditPoolKind.
+        public const string BoosterUnlockShownPrefix = "booster_unlock_shown_";
+
         /// Số màn đã tô xong kể từ lần mời đánh giá gần nhất. Đếm lại từ 0 sau mỗi lần
         /// mời, nên bỏ qua một lần thì phải xong thêm đủ số màn nữa mới bị hỏi lại.
         public const string LevelsSinceRatePrompt = "levels_since_rate_prompt";

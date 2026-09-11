@@ -34,6 +34,12 @@ namespace JewelPainter.UI.Data
                      "đầu.")]
             [Min(1)]
             public int unlockLevel;
+
+            [Tooltip("Popup báo booster này vừa mở khoá. Để None thì mở khoá im lặng — " +
+                     "nút chỉ đơn giản hết ổ khoá.\n\n" +
+                     "Nằm ở đây chứ không nằm trong code: thêm booster thứ tư sau này chỉ " +
+                     "phải thêm một dòng vào bảng, không phải mở presenter ra sửa.")]
+            public PopupKey unlockPopup;
         }
 
         [Tooltip("Booster KHÔNG có tên trong danh sách này thì mở sẵn từ màn 1.\n\n" +
@@ -45,14 +51,22 @@ namespace JewelPainter.UI.Data
 
         /// Dựng ở lần hỏi đầu tiên rồi giữ lại. Dictionary không serialize được nên bảng
         /// gốc phải là List — cùng khuôn đã dùng ở PopupConfig và SoundConfig.
-        private Dictionary<CreditPoolKind, int> _lookup;
+        private Dictionary<CreditPoolKind, Entry> _lookup;
 
         /// Màn mà booster này mở khoá. Không có trong bảng thì trả 1 — mở sẵn.
         public int UnlockLevelFor(CreditPoolKind booster)
         {
             if (_lookup == null) BuildLookup();
 
-            return _lookup.TryGetValue(booster, out var level) ? level : 1;
+            return _lookup.TryGetValue(booster, out var entry) ? entry.unlockLevel : 1;
+        }
+
+        /// Popup báo booster này mở khoá. PopupKey.None nghĩa là mở khoá im lặng.
+        public PopupKey UnlockPopupFor(CreditPoolKind booster)
+        {
+            if (_lookup == null) BuildLookup();
+
+            return _lookup.TryGetValue(booster, out var entry) ? entry.unlockPopup : PopupKey.None;
         }
 
         /// Tiến trình đã tới mốc chưa.
@@ -68,14 +82,17 @@ namespace JewelPainter.UI.Data
 
         private void BuildLookup()
         {
-            _lookup = new Dictionary<CreditPoolKind, int>(_entries.Count);
+            _lookup = new Dictionary<CreditPoolKind, Entry>(_entries.Count);
 
             foreach (var entry in _entries)
             {
                 // Dòng trùng thì dòng SAU thắng, không cảnh báo. Cùng lý do đã ghi ở
                 // JewelTintConfig: gõ trùng rồi sửa dòng dưới là chuyện bình thường lúc
                 // cân nhịp, và một Console đầy cảnh báo sẽ dạy người ta bỏ qua cảnh báo.
-                _lookup[entry.booster] = Mathf.Max(1, entry.unlockLevel);
+                var clamped = entry;
+                clamped.unlockLevel = Mathf.Max(1, entry.unlockLevel);
+
+                _lookup[entry.booster] = clamped;
             }
         }
 

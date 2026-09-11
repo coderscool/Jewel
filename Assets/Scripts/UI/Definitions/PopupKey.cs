@@ -28,5 +28,14 @@ namespace JewelPainter.UI.Definitions
 
         /// Hết lượt booster "tô hết màu đang chọn".
         FillColor = 10,
+
+        /// Ba popup báo booster VỪA MỞ KHOÁ, mỗi booster một cái.
+        ///
+        /// Mở đúng một lần cho mỗi booster, ở lần vào màn đầu tiên sau khi tiến trình
+        /// chạm mốc. BoosterUnlockConfig quyết định booster nào gọi popup nào — ba con số
+        /// dưới đây không bị code nào tra thẳng.
+        BoosterUnlockHint = 11,
+        BoosterUnlockFreePaint = 12,
+        BoosterUnlockFillColor = 13,
     }
 }

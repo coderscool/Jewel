@@ -15,7 +15,10 @@ MonoBehaviour:
   _entries:
   - booster: 0
     unlockLevel: 3
+    unlockPopup: 11
   - booster: 1
     unlockLevel: 5
+    unlockPopup: 12
   - booster: 2
     unlockLevel: 10
+    unlockPopup: 13
