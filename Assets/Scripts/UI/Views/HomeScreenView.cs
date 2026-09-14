@@ -119,6 +119,21 @@ namespace JewelPainter.UI.Views
         [Tooltip("Thời gian mờ dần vào.")]
         [SerializeField] private float _enterDuration = 0.25f;
 
+        [Tooltip("Màn che chuyển cảnh dùng shader. Có gán thì nó THAY HẲN lượt mờ ở hai ô " +
+                 "trên: màn hình bị che kín, Home dựng lại phía sau, rồi màn che quét ra.\n\n" +
+                 "Hai cách không cộng dồn được. Mờ chồng là cho người chơi thấy cả hai màn " +
+                 "hình cùng lúc; che là giấu hẳn cú đổi. Làm cả hai thì Home mờ dần lên " +
+                 "SAU một tấm đục — không ai thấy, chỉ tốn thêm thời gian chờ.\n\n" +
+                 "Để trống thì mọi thứ chạy y như cũ.")]
+        [SerializeField] private ScreenTransition _screenTransition;
+
+        [Tooltip("Chờ thêm ngần này giây SAU KHI màn che quét ra hết, rồi mới thả bức " +
+                 "tranh bay vào bộ sưu tập.\n\n" +
+                 "Chỉ dùng khi có màn che. Không có nó thì tranh bay đúng vào lúc mép màn " +
+                 "che vừa rời khỏi màn hình — hai chuyển động dính liền, mắt không kịp " +
+                 "nhận ra Home đã hiện ra rồi mới có thứ bay.")]
+        [SerializeField] private float _celebrateDelayAfterTransition = 0.2f;
+
         [Tooltip("Bức tranh vừa xong bay RA TỪ ĐÂU. Thường gán nút Play.\n\n" +
                  "Để TRỐNG thì nó bay ra từ ô của màn đó trong danh sách — nhưng cách ấy " +
                  "chỉ đúng khi danh sách đang HIỆN. Danh sách bị tắt thì ô vẫn được dựng, " +
@@ -195,7 +210,20 @@ namespace JewelPainter.UI.Views
         /// chồng lên nhau — mà đó là cảnh xấu nhất, vì nền Home không phủ kín tuyệt đối.
         ///
         /// 0 khi Home không có lượt mờ nào: popup tắt ngay, đúng bằng hành vi cũ.
-        public float EnterDelaySeconds => _fadeGroup != null ? Mathf.Max(0f, _enterDelay) : 0f;
+        ///
+        /// Cũng là 0 khi có màn che: lúc đó popup được ẩn ở đúng frame màn hình đục kín,
+        /// nên nó chẳng có gì để tan đi một cách duyên dáng nữa — và tan chậm thì nó còn
+        /// nằm đó khi màn che quét ra.
+        public float EnterDelaySeconds =>
+            _screenTransition == null && _fadeGroup != null ? Mathf.Max(0f, _enterDelay) : 0f;
+
+        /// Màn che chuyển cảnh, null nếu chưa gán.
+        ///
+        /// Công khai để popup thắng màn gói cú đổi màn hình của nó vào giữa hai nửa của
+        /// màn che. Home giữ tham chiếu chứ không phải popup, vì popup là một PREFAB —
+        /// prefab không trỏ tới object trong scene được, mà Home thì đã nằm sẵn trong
+        /// scene và vốn đã được tiêm vào popup rồi.
+        public ScreenTransition Transition => _screenTransition;
 
         private int _pendingCelebrationLevel = -1;
 
@@ -315,6 +343,15 @@ namespace JewelPainter.UI.Views
             KillEnter();
 
             if (_fadeGroup == null) return;
+
+            // Có màn che thì bỏ hẳn lượt mờ: xem tooltip của Screen Transition. Vẫn phải
+            // chốt lại alpha và blocksRaycasts — lần mở trước có thể đã để chúng ở giữa
+            // chừng.
+            if (_screenTransition != null)
+            {
+                EndEnter();
+                return;
+            }
 
             var delay = Mathf.Max(0f, _enterDelay);
             var duration = Mathf.Max(0f, _enterDuration);
@@ -456,8 +493,7 @@ namespace JewelPainter.UI.Views
             // hai thứ đó không còn liên quan gì tới nhau.
             if (TryResolveCelebration(celebrateItem, celebrateLevel, out var fromRect, out var sprite))
             {
-                // Đợi Home hiện xong rồi mới thả tranh bay — xem chú thích ở _isEntering.
-                while (_isEntering) yield return null;
+                yield return WaitBeforeCelebrate();
 
                 yield return CelebrateRoutine(fromRect, sprite, celebrateItem);
                 yield break;
@@ -469,6 +505,34 @@ namespace JewelPainter.UI.Views
             {
                 _scrollRect.verticalNormalizedPosition = position;
             }
+        }
+
+        /// Chờ tới khi màn hình THẬT SỰ nhìn thấy được, rồi mới thả tranh bay.
+        ///
+        /// Có màn che thì Show() chạy lúc màn hình còn đục kín — không đợi là cả cú bay
+        /// diễn ra sau tấm che, và tới lúc lộ Home thì nó đã xong từ đời nào. Đây là cái
+        /// bẫy của việc đổi màn hình trong bóng tối: mọi thứ vẫn chạy đúng, chỉ là không
+        /// ai xem được.
+        ///
+        /// Không màn che thì mốc cần đợi là lượt mờ của Home — giữ nguyên như cũ.
+        private IEnumerator WaitBeforeCelebrate()
+        {
+            var underTransition = _screenTransition != null && _screenTransition.IsPlaying;
+
+            if (underTransition)
+            {
+                while (_screenTransition.IsPlaying) yield return null;
+
+                if (_celebrateDelayAfterTransition > 0f)
+                {
+                    // Thời gian THẬT: cú chuyển cảnh hay chạy lúc game đang dừng vì popup.
+                    yield return new WaitForSecondsRealtime(_celebrateDelayAfterTransition);
+                }
+
+                yield break;
+            }
+
+            while (_isEntering) yield return null;
         }
 
         /// Chốt hai thứ mà đoạn ăn mừng cần: bay ra TỪ ĐÂU, và bay cái GÌ.

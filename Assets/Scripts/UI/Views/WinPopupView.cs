@@ -399,6 +399,32 @@ namespace JewelPainter.UI.Views
             CanvasGroup.interactable = false;
             CanvasGroup.blocksRaycasts = false;
 
+            var transition = _home.Transition;
+
+            // Có màn che thì cú đổi màn hình chui vào giữa hai nửa của nó: quét vào che
+            // kín → đổi → quét ra. Người chơi không nhìn thấy frame nào của lúc Home dựng
+            // lại danh sách, và cũng không có cảnh hai màn hình chồng lên nhau.
+            //
+            // Không lo bấm hai lần: chạm đã bị khoá ở trên, và tấm che còn tự bật
+            // raycastTarget của nó để nuốt mọi cú chạm lọt qua.
+            if (transition != null)
+            {
+                transition.Play(GoHome);
+                return;
+            }
+
+            GoHome();
+
+            StartCoroutine(FadeOutBeforeHomeEnters());
+        }
+
+        /// Đổi sang Home. Tách ra thành hàm riêng vì nó là thứ phải chạy ở ĐÚNG MỘT
+        /// khoảnh khắc — ngay lập tức khi không có màn che, hoặc ở frame màn hình đục kín
+        /// khi có. Cùng một việc, hai thời điểm.
+        private void GoHome()
+        {
+            if (_home == null) return;
+
             // Tiến trình đã nhích từ lúc tô xong, ở đây chỉ còn việc điều hướng.
             //
             // ShowCelebrating tự gọi Show bên trong, nên KHÔNG được gọi Show thêm lần nữa
@@ -412,7 +438,11 @@ namespace JewelPainter.UI.Views
             if (clearedLevel >= 0) _home.ShowCelebrating(clearedLevel);
             else _home.Show();
 
-            StartCoroutine(FadeOutBeforeHomeEnters());
+            // Ẩn NGAY khi có màn che. EnterDelaySeconds trả 0 trong trường hợp đó nên
+            // FadeOutBeforeHomeEnters cũng tắt ngay, nhưng gọi thẳng ở đây thì không phải
+            // đợi thêm một coroutine nữa mới xong — mà frame này là frame duy nhất người
+            // chơi không nhìn thấy gì.
+            if (_home.Transition != null) HideSilently();
         }
 
         /// Tan dần về 0 trong đúng khoảng lặng của Home, rồi mới tắt hẳn.

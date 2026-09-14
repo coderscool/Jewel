@@ -166,18 +166,45 @@ namespace JewelPainter.UI.Views
         /// Ẩn cả popup lẫn HUD trước khi mở Home. Home phủ kín màn hình nhưng nút của
         /// HUD vẫn nhận được cú chạm nếu Canvas của nó nằm trên — tắt hẳn thì không phải
         /// đi đoán thứ tự Sort Order giữa các Canvas.
+        ///
+        /// Cùng màn che chuyển cảnh với nút Continue của popup thắng màn: hai đường về
+        /// Home mà mỗi đường một kiểu chuyển thì người chơi đọc ra là hai chỗ khác nhau
+        /// của game, dù đích đến y hệt.
         private void HandleHomeClicked()
         {
             if (_sound != null) _sound.Play(SoundKey.Direction);
 
-            // HideSilently: cú bấm này đã có tiếng Direction rồi, kêu thêm Cancel là hai
-            // tiếng chồng lên nhau trong cùng một khoảnh khắc.
-            HideSilently();
-
             // Hide vừa thả đồng hồ ra — giữ lại. Về Home là rời hẳn bàn chơi: booster sẽ
             // bị huỷ ở lần nạp màn kế tiếp, nên để nó đếm tiếp sau lưng màn hình Home chỉ
             // tổ đốt nốt mấy giây cuối vào chỗ không ai nhìn.
+            //
+            // Việc này chạy NGAY, không đợi màn che: nó là chuyện luật chơi, không phải
+            // chuyện hình ảnh, và người chơi đã rời bàn từ khoảnh khắc bấm nút.
             if (_freePaint != null) _freePaint.SetPaused(true);
+
+            var transition = _home != null ? _home.Transition : null;
+
+            if (transition != null)
+            {
+                // Khoá chạm ngay mà CHƯA ẩn: popup còn nguyên trên màn suốt lúc màn che
+                // quét vào, và không khoá thì bấm Home lần nữa sẽ chạy lại cả đoạn này.
+                CanvasGroup.interactable = false;
+                CanvasGroup.blocksRaycasts = false;
+
+                transition.Play(GoHome);
+                return;
+            }
+
+            GoHome();
+        }
+
+        /// Đổi sang Home. Tách ra vì nó phải chạy ở ĐÚNG MỘT khoảnh khắc — ngay lập tức
+        /// khi không có màn che, hoặc ở frame màn hình đục kín khi có.
+        private void GoHome()
+        {
+            // HideSilently: cú bấm này đã có tiếng Direction rồi, kêu thêm Cancel là hai
+            // tiếng chồng lên nhau trong cùng một khoảnh khắc.
+            HideSilently();
 
             if (_hud != null) _hud.SetVisible(false);
             if (_home != null) _home.Show();
