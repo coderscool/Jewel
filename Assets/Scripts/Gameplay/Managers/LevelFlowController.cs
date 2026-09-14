@@ -19,18 +19,20 @@ namespace JewelPainter.Gameplay.Managers
     /// màn chơi. LevelManager không cần biết điều gì khiến một màn kết thúc.
     public class LevelFlowController : MonoBehaviour, ILevelFlowService
     {
-        [Tooltip("Bao lâu kể từ lúc viên ngọc cuối đáp xuống thì hiện popup thắng màn, " +
-                 "tính bằng giây. Đây là con số TUYỆT ĐỐI, không cộng dồn với thời lượng " +
-                 "của WinCelebration.\n\n" +
-                 "Đặt ngắn hơn màn ăn mừng thì popup hiện đè lên lúc dải lấp lánh còn " +
-                 "đang quét — đôi khi đó lại là thứ bạn muốn.")]
-        [SerializeField] private float _popupDelaySeconds = 2f;
+        [Tooltip("Bao lâu KỂ TỪ LÚC WinCelebration.Play() chạy thì hiện popup thắng màn.\n\n" +
+                 "Ngắm theo TỔNG màn ăn mừng của WinCelebration: dải quét, rồi camera lùi ra " +
+                 "và khung tranh ập vào. Bằng tổng đó là popup vào đúng lúc khung vừa " +
+                 "đứng yên; nhỉnh hơn 0.1-0.2 giây là đẹp nhất.\n\n" +
+                 "LỚN HƠN HẲN tổng đó là một khoảng màn hình đứng chết, và đó là lỗi nhịp " +
+                 "dễ mắc nhất ở đây: đổi nhịp bên WinCelebration mà quên ô này. Chạy trong Editor " +
+                 "sẽ có cảnh báo kèm con số nên đặt.")]
+        [SerializeField] private float _popupDelaySeconds = 1.85f;
 
         [Tooltip("Chờ ngần này giây SAU KHI dải loé của màu cuối đã tắt hẳn, rồi mới mở " +
                  "màn ăn mừng (thu camera + dải quét chéo).\n\n" +
                  "Đây là nhịp nghỉ giữa hai màn diễn, không phải tổng thời gian chờ: đồng " +
                  "hồ chỉ bắt đầu chạy khi ColorCompleteSparkle báo đã xong.")]
-        [SerializeField] private float _winCelebrationDelaySeconds = 0.35f;
+        [SerializeField] private float _winCelebrationDelaySeconds = 0.25f;
 
         private ILevelService _levelService;
         private IPaintService _paintService;
@@ -45,6 +47,8 @@ namespace JewelPainter.Gameplay.Managers
         /// Màn đang thật sự được nạp. Từ khi Home cho chọn màn, con số này KHÔNG còn luôn
         /// bằng CurrentLevel — người chơi chọn chơi lại một màn cũ thì hai bên tách nhau.
         private int _loadedLevel = -1;
+
+        public event Action OnCelebrationStarted;
 
         public event Action OnLevelCleared;
 
@@ -257,11 +261,59 @@ namespace JewelPainter.Gameplay.Managers
                 yield return new WaitForSeconds(_winCelebrationDelaySeconds);
             }
 
+            // Dọn sân TRƯỚC khi màn diễn chạy, không phải sau: HUD và thanh màu phải
+            // biến mất ở đúng cái frame dải quét khởi động, không thì chúng nằm đè lên
+            // gần hai giây ăn mừng rồi mới chớp tắt lúc popup mở.
+            //
+            // Chỉ dọn khi CÓ popup theo sau. Lượt chơi lại cũng chạy màn ăn mừng nhưng
+            // không mở popup — dọn ở đó là cất luôn mọi đường bấm của người chơi.
+            if (announceAfter) OnCelebrationStarted?.Invoke();
+
             if (_winCelebration != null) _winCelebration.Play();
+
+            WarnIfPopupMistimed();
 
             if (!announceAfter) yield break;
 
             yield return AnnounceCleared();
+        }
+
+        /// Bắt lỗi nhịp mà mắt phải ngồi xem cả lượt thắng mới thấy: dải quét đã tắt mà
+        /// popup còn lâu mới vào, hoặc popup nhảy vào giữa lúc sóng đang chạy.
+        ///
+        /// Hai con số nằm ở hai Inspector khác nhau, nên chỉnh một bên rồi quên bên kia là
+        /// chuyện sẽ xảy ra. So ngay lúc chạy thì không ai phải nhớ.
+        ///
+        /// Ngưỡng 0.35 giây chứ không phải 0: chồng lấn nhẹ hoặc hở một nhịp thở đều là
+        /// lựa chọn hợp lệ, cảnh báo mọi sai lệch là cảnh báo mà ai cũng học cách phớt lờ.
+        private void WarnIfPopupMistimed()
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (_winCelebration == null) return;
+
+            var celebration = _winCelebration.CelebrationTotalSeconds;
+            var gap = _popupDelaySeconds - celebration;
+
+            if (gap > 0.35f)
+            {
+                Debug.LogWarning(
+                    $"{nameof(LevelFlowController)}: Popup Delay Seconds ({_popupDelaySeconds:0.##}s) " +
+                    $"dài hơn màn ăn mừng ({celebration:0.##}s) tới {gap:0.##}s — màn hình sẽ ĐỨNG CHẾT " +
+                    $"đúng bằng chừng đó trước khi popup vào. Đặt khoảng {celebration + 0.15f:0.##} là vừa.",
+                    this);
+
+                return;
+            }
+
+            if (gap < -0.35f)
+            {
+                Debug.LogWarning(
+                    $"{nameof(LevelFlowController)}: Popup Delay Seconds ({_popupDelaySeconds:0.##}s) " +
+                    $"ngắn hơn màn ăn mừng ({celebration:0.##}s) {-gap:0.##}s — popup che mất phần cuối " +
+                    $"màn ăn mừng. Cố ý thì bỏ qua, không thì đặt khoảng {celebration + 0.15f:0.##}.",
+                    this);
+            }
+#endif
         }
 
         private IEnumerator AnnounceCleared()

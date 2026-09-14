@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Board;
 using JewelPainter.Gameplay.Interfaces;
@@ -40,6 +41,17 @@ namespace JewelPainter.UI.Views
                  "Để trống thì ẩn chính object này — vẫn chạy, chỉ là xấu.")]
         [SerializeField] private GameObject _content;
 
+        [Tooltip("CanvasGroup để thanh màu MỜ DẦN đi lúc màn ăn mừng bắt đầu, thay vì tắt " +
+                 "phụt. Gán CanvasGroup đặt trên chính object ở ô trên. Để trống thì tắt " +
+                 "phụt như cũ.\n\n" +
+                 "Chỉ dùng cho đường ra của màn ăn mừng. Mọi chỗ ẩn thanh màu khác vẫn tắt " +
+                 "ngay, vì ở đó có màn hình khác phủ lên ngay lập tức.")]
+        [SerializeField] private CanvasGroup _celebrationFadeGroup;
+
+        [Tooltip("Thời gian thanh màu mờ đi. Nên NGẮN hơn Sweep Start Delay của " +
+                 "WinCelebration, để nó đi hẳn trước khi dải quét chạy tới.")]
+        [SerializeField] private float _celebrationFadeDuration = 0.25f;
+
         [Header("Cuộn tới ô màu vừa chọn")]
         [Tooltip("Thời gian cuộn thanh màu tới ô màu vừa được chọn. Để 0 là nhảy tới " +
                  "ngay không có chuyển động.")]
@@ -66,6 +78,9 @@ namespace JewelPainter.UI.Views
         private IPaintService _paintService;
         private ILevelService _levelService;
         private ILevelFlowService _levelFlow;
+
+        /// Lượt mờ đi của màn ăn mừng đang chạy.
+        private Tween _celebrationFade;
         private JewelFlyEffect _flyEffect;
         private ISoundService _sound;
 
@@ -101,14 +116,24 @@ namespace JewelPainter.UI.Views
             _paintService.OnColorFocusRequested += HandleColorFocusRequested;
             _paintService.OnFreePaintChanged += HandleFreePaintChanged;
 
-            if (_levelFlow != null) _levelFlow.OnLevelCleared += HandleLevelCleared;
+            if (_levelFlow != null)
+            {
+                _levelFlow.OnCelebrationStarted += HandleCelebrationStarted;
+                _levelFlow.OnLevelCleared += HandleLevelCleared;
+            }
         }
 
         private void OnDestroy()
         {
             if (_flyEffect != null) _flyEffect.OnJewelLanded -= HandleJewelLanded;
 
-            if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
+            KillCelebrationFade();
+
+            if (_levelFlow != null)
+            {
+                _levelFlow.OnCelebrationStarted -= HandleCelebrationStarted;
+                _levelFlow.OnLevelCleared -= HandleLevelCleared;
+            }
 
             if (_paintService == null) return;
 
@@ -119,7 +144,60 @@ namespace JewelPainter.UI.Views
             _paintService.OnFreePaintChanged -= HandleFreePaintChanged;
         }
 
+        /// Màn ăn mừng bắt đầu — thanh màu dọn đi ngay, không đợi popup.
+        ///
+        /// Cùng khuôn và cùng lý do với HudView: từ đây tới lúc popup mở là gần hai giây
+        /// dải quét và đóng khung, mà thanh màu thì nằm đè đúng mép dưới bức tranh.
+        private void HandleCelebrationStarted()
+        {
+            var target = _content != null ? _content : gameObject;
+            if (!target.activeSelf) return;
+
+            if (_celebrationFadeGroup == null || _celebrationFadeDuration <= 0f)
+            {
+                SetVisible(false);
+                return;
+            }
+
+            KillCelebrationFade();
+
+            // Khoá chạm NGAY, không đợi mờ xong: suốt quãng đang tan, thanh màu chỉ còn
+            // là hình ảnh.
+            _celebrationFadeGroup.interactable = false;
+            _celebrationFadeGroup.blocksRaycasts = false;
+
+            // DOVirtual.Float chứ KHÔNG phải CanvasGroup.DOFade — xem chú thích cùng chỗ
+            // ở PopupView.
+            _celebrationFade = DOVirtual
+                .Float(_celebrationFadeGroup.alpha, 0f, _celebrationFadeDuration, value =>
+                {
+                    if (_celebrationFadeGroup != null) _celebrationFadeGroup.alpha = value;
+                })
+                .SetUpdate(true)
+                .OnComplete(() => SetVisible(false));
+        }
+
         private void HandleLevelCleared() => SetVisible(false);
+
+        /// Trả CanvasGroup về trạng thái hiện đủ. Thiếu nó thì thanh màu của màn sau bật
+        /// lên với alpha vẫn đang là 0.
+        private void RestoreCelebrationFade()
+        {
+            KillCelebrationFade();
+
+            if (_celebrationFadeGroup == null) return;
+
+            _celebrationFadeGroup.alpha = 1f;
+            _celebrationFadeGroup.interactable = true;
+            _celebrationFadeGroup.blocksRaycasts = true;
+        }
+
+        private void KillCelebrationFade()
+        {
+            if (_celebrationFade != null && _celebrationFade.IsActive()) _celebrationFade.Kill();
+
+            _celebrationFade = null;
+        }
 
         /// Ẩn bằng SetActive chứ không đổi alpha: thanh tắt hẳn thì các ô màu cũng không
         /// còn nhận được cú chạm nào, khỏi phải nhớ khoá riêng từng ô.
@@ -129,6 +207,11 @@ namespace JewelPainter.UI.Views
         /// cách thanh màu tự bật lại được ở màn sau.
         private void SetVisible(bool visible)
         {
+            // Lượt mờ đang chạy dở mà không giết thì cái OnComplete của nó tắt luôn thanh
+            // màu vừa được bật lên cho màn sau.
+            if (visible) RestoreCelebrationFade();
+            else KillCelebrationFade();
+
             var target = _content != null ? _content : gameObject;
 
             if (target.activeSelf != visible) target.SetActive(visible);

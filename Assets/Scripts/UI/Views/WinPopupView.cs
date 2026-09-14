@@ -14,9 +14,13 @@ namespace JewelPainter.UI.Views
     /// Popup hiện ra khi tô xong bức tranh: băng chúc mừng, tranh vừa hoàn thành, tiền
     /// thưởng bay về icon tiền, rồi nút Continue đưa người chơi về Home.
     ///
-    /// Nhịp cố ý xếp nối đuôi nhau chứ không nổ cùng lúc: băng rơi xuống → tiền vãi ra
-    /// rồi bay lên → nút hiện. Mỗi thứ có một khoảnh khắc riêng, và nút chỉ xuất hiện
-    /// khi phần thưởng đã cộng xong nên không ai bấm mất hiệu ứng.
+    /// Nhịp xếp nối đuôi nhau chứ không nổ cùng lúc: băng rơi xuống → tiền vãi ra rồi
+    /// bay lên. Mỗi thứ có một khoảnh khắc riêng.
+    ///
+    /// Nút Continue là ngoại lệ cố ý: nó mọc lên ngay sau băng, SONG SONG với đợt coin.
+    /// Tiền đã vào ví ngay lúc popup mở, nên đợt coin chỉ là hình ảnh — bắt người chơi
+    /// ngồi đợi hơn một giây rưỡi mới được bấm là lấy đi quyền quyết định để đổi lại một
+    /// thứ họ đã có rồi. Xem ô Button Waits For Coins nếu muốn quay lại nếp cũ.
     public class WinPopupView : PopupView
     {
         [SerializeField] private Button _continueButton;
@@ -29,10 +33,19 @@ namespace JewelPainter.UI.Views
                  "Dương là rơi từ trên xuống.")]
         [SerializeField] private float _bannerDropDistance = 260f;
 
-        [SerializeField] private float _bannerDuration = 0.45f;
+        [SerializeField] private float _bannerDuration = 0.35f;
 
-        [Tooltip("Nút Continue phóng từ 0 lên 1. Chỉ hiện SAU khi tiền bay xong.")]
-        [SerializeField] private float _buttonDuration = 0.35f;
+        [Tooltip("Nút Continue phóng từ 0 lên 1.")]
+        [SerializeField] private float _buttonDuration = 0.3f;
+
+        [Tooltip("BỎ TICK (mặc định): nút mọc lên ngay sau khi băng đáp xuống, trong khi " +
+                 "coin vẫn đang bay. Đợt coin dài hơn một giây rưỡi, mà đó là hình ảnh " +
+                 "chứ không phải luật chơi — tiền đã cộng vào ví ngay lúc popup mở, bấm " +
+                 "sớm không mất đồng nào. Người sốt ruột đi tiếp được ngay, người thong " +
+                 "thả vẫn xem hết.\n\n" +
+                 "TICK: nút đợi coin bay xong hẳn. Chỉ nên dùng nếu bạn cố ý muốn người " +
+                 "chơi xem trọn đợt coin — đổi lại là hơn một giây không bấm được gì.")]
+        [SerializeField] private bool _buttonWaitsForCoins;
 
         [Tooltip("Pháo hoa ăn mừng NẰM TRONG chính prefab popup — kéo victory_1 vào đây. " +
                  "Để trống thì bỏ qua.\n\n" +
@@ -250,6 +263,11 @@ namespace JewelPainter.UI.Views
             if (canPlayCoins)
             {
                 _showSequence.AppendCallback(() => PlayCoinFly(reward, button));
+
+                // PlayCoinFly bắn rồi đi luôn, coin tự bay bằng tween của chúng. Nên cú
+                // Append ngay dưới đây chạy SONG SONG với đợt coin chứ không xếp sau nó.
+                if (!_buttonWaitsForCoins) AppendButtonPop(_showSequence, button);
+
                 return;
             }
 
@@ -283,6 +301,11 @@ namespace JewelPainter.UI.Views
                 onAllDone: () =>
                 {
                     SetCoinTotal(_displayedCoins + reward);
+
+                    // Nút đã mọc từ lúc băng đáp thì ở đây không còn việc gì. Dựng thêm
+                    // một Sequence nữa để phóng lại cái nút đang ở scale 1 là cho nó nảy
+                    // một phát vô cớ giữa lúc người chơi sắp bấm.
+                    if (!_buttonWaitsForCoins) return;
 
                     var pop = DOTween.Sequence().SetUpdate(true);
                     AppendButtonPop(pop, button);

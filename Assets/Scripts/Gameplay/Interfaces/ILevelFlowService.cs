@@ -9,6 +9,18 @@ namespace JewelPainter.Gameplay.Interfaces
     /// chơi, còn đây là DIỄN BIẾN — lúc nào coi như thắng, và ai quyết định đi tiếp.
     public interface ILevelFlowService
     {
+        /// Màn ăn mừng VỪA BẮT ĐẦU: dải quét sắp chạy, camera sắp thu về. Đây là lúc UI
+        /// của lượt chơi phải dọn đi để nhường màn hình cho bức tranh.
+        ///
+        /// Tách hẳn khỏi OnLevelCleared vì hai mốc cách nhau gần hai giây, và mỗi mốc
+        /// phục vụ một việc: cái này là "dọn sân", cái kia là "mở popup". Gộp chung thì
+        /// hoặc thanh màu nằm đè lên suốt màn ăn mừng, hoặc popup nhảy vào quá sớm.
+        ///
+        /// KHÔNG bắn ở lượt chơi lại một màn đã xong: lượt đó ăn mừng vẫn chạy nhưng
+        /// không có popup nào theo sau, nên dọn HUD đi là bỏ người chơi lại trước một bức
+        /// tranh xong xuôi mà không còn đường nào bấm tiếp.
+        event Action OnCelebrationStarted;
+
         /// Bức tranh đã tô xong, mọi hiệu ứng ăn mừng đã chạy hết, và đã chờ thêm một
         /// nhịp. Đây là lúc mở popup thắng màn.
         event Action OnLevelCleared;

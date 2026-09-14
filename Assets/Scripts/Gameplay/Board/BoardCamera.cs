@@ -201,10 +201,24 @@ namespace JewelPainter.Gameplay.Board
         ///
         /// KHÔNG huỷ được bằng chạm, khác nút gợi ý: người chơi giằng camera giữa chừng
         /// chỉ làm hỏng nhịp của màn ăn mừng, mà lúc này cũng chẳng còn gì để tô.
-        public void FrameWholeBoard(float duration)
+        public void FrameWholeBoard(float duration) => FrameWholeBoard(duration, 0f);
+
+        /// Cùng khung hình thắng màn, nhưng canh cho một hình chữ nhật RỘNG HƠN bảng
+        /// `extraCells` ô mỗi phía — chỗ cho khung tranh và nền lót đứng.
+        ///
+        /// Nhận số Ô chứ không nhận một hệ số zoom: bề dày khung vốn đã khai bằng ô bên
+        /// BoardFrame, nên chuyền thẳng con số đó sang là camera tự lùi đúng bằng chỗ cần,
+        /// ở MỌI cỡ bảng và mọi tỉ lệ màn. Một hệ số zoom thì phải canh tay, và canh đúng
+        /// cho bảng 39x52 là canh sai cho bảng 101x105 — cùng một hệ số nhưng khung tranh
+        /// dày như nhau lại chiếm phần rất khác nhau trên hai bức.
+        public void FrameWholeBoard(float duration, float extraCells)
         {
             var layout = _boardView != null ? _boardView.Layout : null;
             if (layout == null) return;
+
+            var padding = Mathf.Max(0f, extraCells) * 2f;
+            var width = layout.Width + padding;
+            var height = layout.Height + padding;
 
             // Cỡ zoom tính TỪ CHỖ TRỐNG popup chừa lại, không lấy _maxSize.
             //
@@ -212,10 +226,12 @@ namespace JewelPainter.Gameplay.Board
             // thanh màu ở dưới. Dùng lại nó ở đây là bắt một con số phục vụ hai bố cục
             // khác hẳn nhau, và bảng nào cao so với bề ngang sẽ thò xuống dưới cụm thưởng.
             var size = FitSize(
-                layout, BandHeight(_winMarginTop, _winMarginBottom), _winBoardWidthFraction);
+                width, height, BandHeight(_winMarginTop, _winMarginBottom), _winBoardWidthFraction);
 
+            // Đo theo hình chữ nhật ĐÃ CỘNG KHUNG, không theo riêng bảng: thứ không được
+            // phép lấn vào lề là cả cụm tranh-và-khung.
             _viewBandCenter = ResolveBandCenter(
-                _winMarginTop, _winMarginBottom, BoardScreenFraction(layout, size));
+                _winMarginTop, _winMarginBottom, size > 0f ? height / (2f * size) : 1f);
 
             _winFraming = true;
 
@@ -302,11 +318,18 @@ namespace JewelPainter.Gameplay.Board
         /// mà khung nhìn thì cao gấp rưỡi bề ngang.
         private float FitSize(BoardLayout layout, float heightFraction, float widthFraction)
         {
+            return FitSize(layout.Width, layout.Height, heightFraction, widthFraction);
+        }
+
+        /// Bản nhận kích thước trần, để khung hình thắng màn hỏi được cho một hình chữ
+        /// nhật LỚN HƠN bảng — bảng cộng khung tranh.
+        private float FitSize(float width, float height, float heightFraction, float widthFraction)
+        {
             var aspect = Mathf.Max(0.0001f, _camera.aspect);
 
             return Mathf.Max(
-                layout.Height / (2f * Mathf.Clamp(heightFraction, 0.2f, 1f)),
-                layout.Width / (2f * Mathf.Clamp(widthFraction, 0.2f, 1f) * aspect));
+                height / (2f * Mathf.Clamp(heightFraction, 0.2f, 1f)),
+                width / (2f * Mathf.Clamp(widthFraction, 0.2f, 1f) * aspect));
         }
 
         /// LevelConfig đặt được giới hạn zoom cho từng màn. Để 0 hoặc âm thì tự tính

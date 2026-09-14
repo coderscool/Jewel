@@ -280,7 +280,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -39, y: 0}
+  m_AnchoredPosition: {x: -65.6, y: 0}
   m_SizeDelta: {x: 300, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2269718571279710567
@@ -318,7 +318,7 @@ MonoBehaviour:
     m_BestFit: 0
     m_MinSize: 4
     m_MaxSize: 60
-    m_Alignment: 0
+    m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
@@ -359,7 +359,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 207, y: 3}
+  m_AnchoredPosition: {x: 145, y: -2}
   m_SizeDelta: {x: 200, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2471123236563728370
@@ -397,7 +397,7 @@ MonoBehaviour:
     m_BestFit: 0
     m_MinSize: 6
     m_MaxSize: 60
-    m_Alignment: 0
+    m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
     m_HorizontalOverflow: 0
@@ -744,10 +744,11 @@ MonoBehaviour:
   _continueButton: {fileID: 6292140269080619535}
   _banner: {fileID: 7990568676880066463}
   _bannerDropDistance: 400
-  _bannerDuration: 0.45
-  _buttonDuration: 0.35
+  _bannerDuration: 0.35
+  _buttonDuration: 0.3
+  _buttonWaitsForCoins: 0
   _victoryEffect: {fileID: 1685226915213135371}
-  _victoryDelay: 0
+  _victoryDelay: 0.15
   _coinFly: {fileID: 3929820654483011134}
   _coinFrom: {fileID: 7398378490528272137}
   _coinTarget: {fileID: 4003972085902882745}
@@ -770,14 +771,14 @@ MonoBehaviour:
   _coinPrefab: {fileID: 495451498040619650, guid: c53a91f08fd4d9a4c8473622cd6e366e, type: 3}
   _coinsParent: {fileID: 8205403677895585054}
   _coinCount: 7
-  _flyDuration: 0.6
-  _staggerDelay: 0.04
+  _flyDuration: 0.5
+  _staggerDelay: 0.05
   _arcHeight: 150
   _scatterRadius: 60
-  _dropDuration: 0.55
+  _dropDuration: 0.4
   _dropDistance: 300
   _dropSpreadX: 220
-  _holdAfterDrop: 0.25
+  _holdAfterDrop: 0.12
   _sortingLayerName: 
   _sortingOrder: 100
 --- !u!1 &8226595105856533581

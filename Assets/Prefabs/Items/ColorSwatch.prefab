@@ -679,7 +679,7 @@ MonoBehaviour:
   _button: {fileID: 524146253194388976}
   _textColor: {r: 0.3019608, g: 0.25882354, b: 0.18039216, a: 1}
   _remainingText: {fileID: 0}
-  _selectedHighlight: {fileID: 0}
+  _selectedHighlight: {fileID: 8062875540567040720}
   _selectedIcon: {fileID: 1177152995340187755}
   _progressRing: {fileID: 2996237662308833315}
   _riseTarget: {fileID: 2924967381642582445}

@@ -1,3 +1,4 @@
+using DG.Tweening;
 using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
@@ -130,6 +131,16 @@ namespace JewelPainter.UI.Views
         [Tooltip("Object bị ẩn khi thắng màn. Để TRỐNG thì ẩn chính object này — cách " +
                  "đó vẫn chạy đúng, chỉ là không tách được phần nào của HUD ở lại.")]
         [SerializeField] private GameObject _content;
+
+        [Tooltip("CanvasGroup để HUD MỜ DẦN đi lúc màn ăn mừng bắt đầu, thay vì tắt phụt. " +
+                 "Thường gán CanvasGroup đặt trên chính Content. Để trống thì tắt phụt như cũ.\n\n" +
+                 "Chỉ dùng cho đường ra của màn ăn mừng. Mọi chỗ ẩn HUD khác — vào Home, mở " +
+                 "Cài đặt — vẫn tắt ngay, vì ở đó có một màn hình khác phủ lên ngay lập tức.")]
+        [SerializeField] private CanvasGroup _celebrationFadeGroup;
+
+        [Tooltip("Thời gian HUD mờ đi. Nên NGẮN hơn Sweep Start Delay của WinCelebration, " +
+                 "để HUD đi hẳn trước khi dải quét chạy tới.")]
+        [SerializeField] private float _celebrationFadeDuration = 0.25f;
         private HomeScreenView _home;
 
         private ILevelService _levelService;
@@ -139,6 +150,9 @@ namespace JewelPainter.UI.Views
         private IFillColorService _fillColorService;
         private PlayerWallet _wallet;
         private ILevelFlowService _levelFlow;
+
+        /// Lượt mờ đi của màn ăn mừng đang chạy.
+        private Tween _celebrationFade;
         private IPopupService _popupService;
         private ISoundService _sound;
         private PlayerProgress _progress;
@@ -205,6 +219,7 @@ namespace JewelPainter.UI.Views
             // đầu tiên. Ở đây sự kiện là hệ quả trực tiếp của việc bấm cái nút mà HUD
             // đang giữ, nên HUD đã là object luôn sống đó rồi.
             _hintService.OnCreditsExhausted += HandleCreditsExhausted;
+            _levelFlow.OnCelebrationStarted += HandleCelebrationStarted;
             _levelFlow.OnLevelCleared += HandleLevelCleared;
 
             if (_freePaintService != null)
@@ -271,6 +286,8 @@ namespace JewelPainter.UI.Views
         /// Huỷ đăng ký để tránh gọi vào object đã bị huỷ.
         private void OnDestroy()
         {
+            KillCelebrationFade();
+
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
             if (_paintService != null) _paintService.OnCellPainted -= HandleCellPainted;
             if (_hintService != null)
@@ -298,7 +315,12 @@ namespace JewelPainter.UI.Views
 
             if (_wallet != null) _wallet.OnCoinsChanged -= SetCoins;
 
-            if (_levelFlow != null) _levelFlow.OnLevelCleared -= HandleLevelCleared;
+            if (_levelFlow != null)
+            {
+                _levelFlow.OnCelebrationStarted -= HandleCelebrationStarted;
+                _levelFlow.OnLevelCleared -= HandleLevelCleared;
+            }
+
             if (_fillColorButton != null) _fillColorButton.onClick.RemoveListener(HandleFillColorClicked);
             if (_freePaintButton != null) _freePaintButton.onClick.RemoveListener(HandleFreePaintClicked);
             if (_hintButton != null) _hintButton.onClick.RemoveListener(HandleHintClicked);
@@ -383,7 +405,63 @@ namespace JewelPainter.UI.Views
         /// nhưng thân hàm chỉ là một phép gán mà Unity tự bỏ qua khi giá trị không đổi.
         private void HandleCellPainted(Vector2Int cell, int paletteIndex) => RefreshResetAvailable();
 
+        /// Màn ăn mừng bắt đầu — HUD dọn đi ngay, không đợi popup.
+        ///
+        /// Đây mới là mốc đúng: từ đây tới lúc popup mở là gần hai giây dải quét và đóng
+        /// khung, mà cả đoạn đó bức tranh phải đứng một mình. HandleLevelCleared vẫn giữ
+        /// làm lưới an toàn cho những đường không đi qua màn ăn mừng — màn mở ra đã tô
+        /// kín sẵn chẳng hạn.
+        private void HandleCelebrationStarted()
+        {
+            var target = _content != null ? _content : gameObject;
+            if (!target.activeSelf) return;
+
+            if (_celebrationFadeGroup == null || _celebrationFadeDuration <= 0f)
+            {
+                SetVisible(false);
+                return;
+            }
+
+            KillCelebrationFade();
+
+            // Khoá chạm NGAY, không đợi mờ xong: suốt quãng đang tan, HUD chỉ còn là hình
+            // ảnh. Bấm trúng nút gợi ý lúc đó là giật ngang màn ăn mừng.
+            _celebrationFadeGroup.interactable = false;
+            _celebrationFadeGroup.blocksRaycasts = false;
+
+            // DOVirtual.Float chứ KHÔNG phải CanvasGroup.DOFade — DOFade nằm trong
+            // DOTweenModuleUI.cs, một file .cs rời mà asmdef JewelPainter.UI không với
+            // tới. Cùng cái bẫy đã ghi ở PopupView.
+            _celebrationFade = DOVirtual
+                .Float(_celebrationFadeGroup.alpha, 0f, _celebrationFadeDuration, value =>
+                {
+                    if (_celebrationFadeGroup != null) _celebrationFadeGroup.alpha = value;
+                })
+                .SetUpdate(true)
+                .OnComplete(() => SetVisible(false));
+        }
+
         private void HandleLevelCleared() => SetVisible(false);
+
+        /// Trả CanvasGroup về trạng thái hiện đủ. Thiếu nó thì HUD của màn sau bật lên
+        /// với alpha vẫn đang là 0 — object bật, chỗ đứng đúng, mà không ai thấy gì.
+        private void RestoreCelebrationFade()
+        {
+            KillCelebrationFade();
+
+            if (_celebrationFadeGroup == null) return;
+
+            _celebrationFadeGroup.alpha = 1f;
+            _celebrationFadeGroup.interactable = true;
+            _celebrationFadeGroup.blocksRaycasts = true;
+        }
+
+        private void KillCelebrationFade()
+        {
+            if (_celebrationFade != null && _celebrationFade.IsActive()) _celebrationFade.Kill();
+
+            _celebrationFade = null;
+        }
 
         /// Ẩn bằng SetActive chứ không đổi alpha: HUD tắt hẳn thì nút gợi ý cũng không
         /// còn nhận được cú chạm nào, khỏi phải nhớ khoá riêng từng nút.
@@ -394,6 +472,11 @@ namespace JewelPainter.UI.Views
         /// public vì popup Cài đặt phải ẩn HUD trước khi mở Home.
         public void SetVisible(bool visible)
         {
+            // Mọi đường vào đây đều chốt lại trạng thái NGAY. Lượt mờ đang chạy dở mà
+            // không giết thì cái OnComplete của nó tắt luôn HUD vừa được bật lên.
+            if (visible) RestoreCelebrationFade();
+            else KillCelebrationFade();
+
             var target = _content != null ? _content : gameObject;
 
             if (target.activeSelf != visible) target.SetActive(visible);
