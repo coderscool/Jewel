@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace JewelPainter.Bootstrap
 {
@@ -47,6 +48,45 @@ namespace JewelPainter.Bootstrap
             // Game tô màu: người chơi hay ngồi ngắm hoặc nghĩ lâu mà không chạm màn hình,
             // mặc định máy sẽ tự tắt màn giữa chừng.
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
+        }
+
+        /// Ngưỡng "thế nào là KÉO chứ không phải CHẠM", tính bằng pixel màn hình.
+        ///
+        /// Unity để cứng 10 pixel, và con số đó ra đời từ thời màn hình ~160 dpi. Trên
+        /// điện thoại 440 dpi thì 10 pixel chỉ là **0.6 milimét** — ngón tay không ai giữ
+        /// yên nổi trong ngần ấy. Hệ quả: rất nhiều cú chạm vào ô màu bị EventSystem xếp
+        /// thành cú kéo, ScrollRect nuốt mất, và Button không bao giờ nhận được
+        /// OnPointerClick. Người chơi thấy "bấm mà không ăn", bấm lại lần hai.
+        ///
+        /// Quy đổi theo dpi thì ngưỡng luôn tương đương một khoảng cách VẬT LÝ, và máy
+        /// nào cũng cần đúng một cái vẩy tay như nhau mới tính là kéo.
+        ///
+        /// Đánh đổi: ngưỡng cao thì thanh cuộn "ì" hơn một chút ở đầu nét kéo — phải đi
+        /// xa hơn mới bắt đầu trượt. Với thanh màu thì đổi thế là lời: chạm chọn màu là
+        /// thao tác chính, cuộn chỉ là phụ.
+        private const int BaseDragThresholdPixels = 10;
+
+        /// Chặn trên cho ngưỡng. Máy dpi rất cao mà cứ nhân thẳng thì phải kéo gần nửa
+        /// centimet mới trượt được, và lúc đó thanh cuộn mới là thứ hỏng.
+        private const int MaxDragThresholdPixels = 28;
+
+        /// AfterSceneLoad chứ không phải BeforeSceneLoad: EventSystem là một object TRONG
+        /// scene, trước mốc đó nó chưa tồn tại và EventSystem.current còn là null.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void ConfigureInput()
+        {
+            var eventSystem = EventSystem.current;
+            if (eventSystem == null) return;
+
+            // Screen.dpi trả 0 trên khá nhiều máy Android không khai báo — giữ nguyên mặc
+            // định còn hơn nhân với 0 rồi khoá cứng mọi cú kéo.
+            var dpi = Screen.dpi;
+            if (dpi <= 0f) return;
+
+            var scaled = Mathf.RoundToInt(BaseDragThresholdPixels * dpi / 160f);
+
+            eventSystem.pixelDragThreshold =
+                Mathf.Clamp(scaled, BaseDragThresholdPixels, MaxDragThresholdPixels);
         }
     }
 }
