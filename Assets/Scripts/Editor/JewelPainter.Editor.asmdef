@@ -4,6 +4,7 @@
     "references": [
         "JewelPainter.Core",
         "JewelPainter.Gameplay",
+        "JewelPainter.UI",
         "spine-unity"
     ],
     "includePlatforms": [

@@ -738,6 +738,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _canvasGroup: {fileID: 5579359025772363570}
+  _closeSound: 11
   _fadeInDuration: 0.15
   _fadeOutDuration: 0.15
   _continueButton: {fileID: 6292140269080619535}
@@ -899,9 +900,33 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 2887499388904459574}
     m_Modifications:
+    - target: {fileID: 425499298986206091, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 425499298986206091, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2988521767256295377, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2988521767256295377, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 4242027882829743705, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
       propertyPath: m_Name
       value: victory_1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4504099402378729818, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
+      propertyPath: m_Enabled
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4504099402378729818, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
+      propertyPath: m_SortingLayer
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6146969279052760296, guid: ab9a6d9d024b5be4fb19733c3c893266, type: 3}
       propertyPath: m_LocalScale.x
