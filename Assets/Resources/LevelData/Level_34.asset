@@ -17,6 +17,7 @@ MonoBehaviour:
   _gridData: {fileID: 11400000, guid: 1e042ec9d49f7b04cbe6eac460593fa4, type: 2}
   _timeLimitSeconds: 0
   _rewardCoins: 10
+  _collectionFit: 1
   _cameraMinSize: 9
   _cameraMaxSize: 0
   _fadeSwitchSize: 24

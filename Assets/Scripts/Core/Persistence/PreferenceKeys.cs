@@ -12,6 +12,10 @@ namespace JewelPainter.Core.Persistence
         public const string MusicEnabled = "music_enabled";
         public const string SoundEnabled = "sound_enabled";
 
+        /// Công tắc rung. Nằm cạnh hai công tắc kia vì người chơi gặp cả ba trong cùng
+        /// một bảng, nhưng nó do IVibrationService giữ chứ không phải ISoundService.
+        public const string VibrationEnabled = "vibration_enabled";
+
         /// Số lượt gợi ý miễn phí còn lại.
         public const string HintCredits = "hint_credits";
 

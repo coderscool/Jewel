@@ -80,6 +80,10 @@ namespace JewelPainter.Bootstrap
             builder.Register(_ => new RatePrompt(
                 _.Resolve<ISaveService>(), LevelsPerRatePrompt), Lifetime.Singleton);
 
+            // Rung — thuần C#, chỉ giữ một cái cờ nên không cần chỗ đứng trong scene.
+            // Container tự dựng qua constructor và tự đưa ISaveService vào.
+            builder.Register<IVibrationService, VibrationService>(Lifetime.Singleton);
+
             // MonoBehaviour có sẵn trong scene — Find một lần lúc khởi động, hợp lệ ở đây
             builder.RegisterComponentInHierarchy<SoundService>()
                    .AsImplementedInterfaces().AsSelf();

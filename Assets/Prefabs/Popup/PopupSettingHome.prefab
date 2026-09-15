@@ -492,10 +492,13 @@ MonoBehaviour:
   _blocksBackground: 1
   _musicToggle: {fileID: 7217888503466052317}
   _soundToggle: {fileID: 6647603827585162143}
+  _vibrationToggle: {fileID: 4075066492790449054}
   _musicOnIcon: {fileID: 0}
   _musicOffIcon: {fileID: 0}
   _soundOnIcon: {fileID: 0}
   _soundOffIcon: {fileID: 0}
+  _vibrationOnIcon: {fileID: 0}
+  _vibrationOffIcon: {fileID: 0}
   _homeButton: {fileID: 0}
   _closeButton: {fileID: 2268167414161546593}
 --- !u!1 &4927112904722657395

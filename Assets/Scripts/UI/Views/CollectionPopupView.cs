@@ -230,7 +230,8 @@ namespace JewelPainter.UI.Views
                     var config = _visible[i];
                     var item = GetItem(face, slot++);
 
-                    item.Bind(config.LevelId, config.TargetImage, _levelService.IsCompleted(config.LevelId));
+                    item.Bind(config.LevelId, config.TargetImage,
+                        _levelService.IsCompleted(config.LevelId), config.CollectionFit);
                     item.gameObject.SetActive(true);
                 }
 

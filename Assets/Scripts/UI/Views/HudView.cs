@@ -117,6 +117,10 @@ namespace JewelPainter.UI.Views
         [FormerlySerializedAs("_homeButton")]
         [SerializeField] private Button _settingsButton;
 
+        [Tooltip("Hướng dẫn cho người chơi mới. Có gán thì nút bánh răng KHÔNG ăn trong " +
+                 "lúc hướng dẫn đang hiện. Để trống thì nút chạy bình thường mọi lúc.")]
+        [SerializeField] private TutorialOverlayView _tutorial;
+
         [Header("Mở khoá booster")]
         [Tooltip("Bảng mốc mở khoá của từng booster. Để trống thì mọi booster mở sẵn từ " +
                  "màn 1 — HUD chạy đúng như trước khi có phần này.")]
@@ -130,17 +134,29 @@ namespace JewelPainter.UI.Views
                  "chơi gặp một cái nút bấm không ăn và không biết vì sao.")]
         [SerializeField] private GameObject _hintUnlockRoot;
 
-        [Tooltip("Chữ ghi màn mở khoá, ví dụ \"5\". Ngược với ô trên: object này chỉ HIỆN " +
-                 "khi đang khoá. Để trống thì không hiện số.")]
+        [Tooltip("Phần mặt ĐANG KHOÁ của nút gợi ý — kéo object Lock vào đây. Ngược chiều " +
+                 "hẳn với ô trên: chỉ hiện khi CHƯA tới mốc.\n\n" +
+                 "Để trống thì ổ khoá NẰM LẠI sau khi booster đã mở, vì không code nào tắt " +
+                 "nó đi. Trước đây ô này không tồn tại, và đó đúng là lỗi nó sinh ra để sửa.")]
+        [SerializeField] private GameObject _hintLockRoot;
+
+        [Tooltip("Chữ ghi màn mở khoá, ví dụ \"5\". Nằm trong cụm Lock. Để trống thì " +
+                 "không hiện số.")]
         [SerializeField] private Text _hintLockLevelText;
 
         [Tooltip("Phần mặt đã mở khoá của nút tô tự do. Cùng quy ước với nút gợi ý.")]
         [SerializeField] private GameObject _freePaintUnlockRoot;
 
+        [Tooltip("Phần mặt đang khoá của nút tô tự do. Cùng quy ước với nút gợi ý.")]
+        [SerializeField] private GameObject _freePaintLockRoot;
+
         [SerializeField] private Text _freePaintLockLevelText;
 
         [Tooltip("Phần mặt đã mở khoá của nút tô hết màu. Cùng quy ước với nút gợi ý.")]
         [SerializeField] private GameObject _fillColorUnlockRoot;
+
+        [Tooltip("Phần mặt đang khoá của nút tô hết màu. Cùng quy ước với nút gợi ý.")]
+        [SerializeField] private GameObject _fillColorLockRoot;
 
         [SerializeField] private Text _fillColorLockLevelText;
 
@@ -377,11 +393,12 @@ namespace JewelPainter.UI.Views
             _fillColorUnlocked = _boosterUnlock == null
                                  || _boosterUnlock.IsUnlocked(CreditPoolKind.FillColor, level);
 
-            ApplyLockVisual(CreditPoolKind.Hint, _hintUnlocked, _hintUnlockRoot, _hintLockLevelText);
+            ApplyLockVisual(CreditPoolKind.Hint, _hintUnlocked,
+                _hintUnlockRoot, _hintLockRoot, _hintLockLevelText);
             ApplyLockVisual(CreditPoolKind.FreePaint, _freePaintUnlocked,
-                _freePaintUnlockRoot, _freePaintLockLevelText);
+                _freePaintUnlockRoot, _freePaintLockRoot, _freePaintLockLevelText);
             ApplyLockVisual(CreditPoolKind.FillColor, _fillColorUnlocked,
-                _fillColorUnlockRoot, _fillColorLockLevelText);
+                _fillColorUnlockRoot, _fillColorLockRoot, _fillColorLockLevelText);
 
             // Dựng lại trạng thái bấm được từ nguồn thật. Không tự đặt interactable ở đây:
             // nút còn phụ thuộc vào việc service có cho dùng hay không, và chỉ service mới
@@ -430,15 +447,27 @@ namespace JewelPainter.UI.Views
             if (addIcon != null) addIcon.SetActive(unlocked && !hasCredits);
         }
 
-        /// Hai object ngược chiều nhau: phần mở khoá hiện khi ĐÃ mở, chữ số màn hiện khi
-        /// CHƯA. Mặt khoá không có ô riêng — nó là thứ nằm sẵn dưới phần mở khoá, lộ ra
-        /// khi phần đó tắt đi.
-        private void ApplyLockVisual(CreditPoolKind booster, bool unlocked, GameObject unlockRoot, Text levelText)
+        /// Hai cụm NGƯỢC CHIỀU nhau: mặt mở khoá hiện khi đã tới mốc, mặt khoá hiện khi
+        /// chưa. Cả hai đều phải được bật/tắt tường minh.
+        ///
+        /// Bản trước chỉ bật/tắt mặt MỞ KHOÁ, dựa trên giả định rằng mặt khoá là thứ nằm
+        /// sẵn phía dưới và tự lộ ra khi mặt kia tắt đi. Giả định đó sai với cách scene
+        /// đang dựng: Lock và UnLock là HAI object anh em cùng cấp, không cái nào che cái
+        /// nào. Nên tới màn mở khoá thì UnLock bật lên, còn ổ khoá vẫn nằm nguyên đó —
+        /// hai mặt chồng lên nhau trên cùng một cái nút.
+        ///
+        /// Để trống ô Lock Root thì hành vi y như bản cũ, không hỏng gì thêm; chỉ là ổ
+        /// khoá không ai tắt hộ.
+        private void ApplyLockVisual(CreditPoolKind booster, bool unlocked,
+            GameObject unlockRoot, GameObject lockRoot, Text levelText)
         {
             if (unlockRoot != null) unlockRoot.SetActive(unlocked);
+            if (lockRoot != null) lockRoot.SetActive(!unlocked);
 
             if (levelText == null) return;
 
+            // Vẫn bật/tắt riêng con chữ, dù nó nằm trong cụm Lock vừa tắt: ô Lock Root có
+            // thể để trống, và lúc đó đây là thứ duy nhất còn giấu được con số đi.
             levelText.gameObject.SetActive(!unlocked);
 
             // Chỉ ghi chữ khi đang khoá. Ghi cả lúc đã mở là dựng lưới chữ cho một dòng
@@ -705,6 +734,22 @@ namespace JewelPainter.UI.Views
         /// đưa họ đi chỗ khác — Play, Home, Continue.
         private void HandleSettingsClicked()
         {
+            // Đang hướng dẫn thì KHÔNG làm gì — không popup, và cũng không kêu.
+            //
+            // Cả màn hướng dẫn chỉ hỏi người chơi mới đúng một câu: chạm vào ô màu kia.
+            // Một bảng cài đặt mở đè lên câu hỏi đó là đưa cho họ mười thứ khác để đọc,
+            // ngay lúc họ còn chưa biết cái nút đầu tiên dùng để làm gì.
+            //
+            // Im hẳn chứ không kêu một tiếng: một tiếng động là một lời xác nhận, mà ở
+            // đây không có gì để xác nhận. Nút không phản hồi thì người chơi quay lại chỗ
+            // duy nhất đang động đậy — chính là ngón tay.
+            //
+            // Chặn Ở ĐÂY chứ không tắt interactable của nút: ổ khoá và nút xám là để nói
+            // "chưa tới lượt bạn". Quãng này dài chừng vài giây và kết thúc ngay khi họ
+            // chọn màu, nên làm nút xám đi rồi sáng lại chỉ là một nhấp nháy vô nghĩa
+            // giữa lúc cần họ nhìn chỗ khác.
+            if (_tutorial != null && _tutorial.IsShowing) return;
+
             if (_sound != null) _sound.Play(SoundKey.ButtonClick);
 
             _popupService.Show(PopupKey.Settings);

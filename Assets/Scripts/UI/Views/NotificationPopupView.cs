@@ -30,11 +30,11 @@ namespace JewelPainter.UI.Views
         /// Đang trong lượt mờ dần. Cần cờ này để Show biết mình vừa cắt ngang một cú tắt.
         private bool _isFadingOut;
 
-        /// KHÔNG chặn chạm xuống màn chơi, dù ô tick ở lớp cha mặc định là có.
+        /// KHÔNG bật tấm chặn chạm dùng chung của PopupManager.
         ///
-        /// Đây là popup duy nhất không phủ kín màn hình: nó nổi lên một góc rồi tự tắt
-        /// sau một giây. Mà thứ khiến nó xuất hiện lại chính là người chơi đang tô — cắt
-        /// tay họ một giây vì một câu nhắc do chính cú chạm đó gây ra là phạt hai lần.
+        /// Đây là một câu nhắc, không phải một câu hỏi: thứ khiến nó xuất hiện chính là
+        /// người chơi đang tô, nên cắt tay họ vì một lời nhắc do chính cú chạm đó gây ra
+        /// là phạt hai lần.
         ///
         /// Override trong code chứ không bỏ tick trong prefab: đây là sự thật về cấu trúc
         /// của popup này, không phải một lựa chọn. Một ô tick thì ai dựng lại prefab cũng
@@ -48,6 +48,30 @@ namespace JewelPainter.UI.Views
             // base.Show đặt lại alpha về 1, nên nhắc liên tiếp lúc đang mờ dần vẫn hiện
             // lại đầy đủ chứ không kế thừa độ mờ dở dang.
             base.Show();
+
+            // Và lời nhắc TỰ NÓ cũng không được ăn chạm.
+            //
+            // Đây là hai chuyện khác nhau: BlocksBackground ở trên chỉ tắt tấm chặn DÙNG
+            // CHUNG của PopupManager. Còn gốc của chính prefab này là một Image CĂNG KÍN
+            // MÀN HÌNH có Raycast Target bật — dải chữ nhìn thấy được chỉ là một object
+            // con nằm giữa. base.Show vừa đặt blocksRaycasts = true, nên suốt lúc lời
+            // nhắc còn trên màn, cả màn hình đó đang nhận raycast.
+            //
+            // Popup này KHÔNG CÓ gì để nhận: không nút, không ô nhập, nó tự tắt sau vài
+            // giây. Mọi cú chạm nó bắt được đều là cú chạm nó cướp của thứ khác.
+            //
+            // Cướp được của những ai thì còn tuỳ thứ tự sorting layer giữa các canvas —
+            // đúng loại thứ người ta đổi mà không bao giờ nghĩ tới file này. Tắt hẳn đi
+            // thì câu hỏi đó không cần trả lời nữa.
+            //
+            // Đặt trên CANVASGROUP chứ không đi tắt Raycast Target từng ảnh trong prefab:
+            // blocksRaycasts = false tắt raycast cho CẢ nhánh, nên thêm ảnh mới vào prefab
+            // sau này cũng không mở lại được cái lỗ đó.
+            if (CanvasGroup != null)
+            {
+                CanvasGroup.interactable = false;
+                CanvasGroup.blocksRaycasts = false;
+            }
 
             RestartAutoHide();
         }

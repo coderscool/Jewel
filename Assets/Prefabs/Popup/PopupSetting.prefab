@@ -261,12 +261,16 @@ MonoBehaviour:
   _closeSound: 11
   _fadeInDuration: 0.15
   _fadeOutDuration: 0.15
+  _blocksBackground: 1
   _musicToggle: {fileID: 7217888503466052317}
   _soundToggle: {fileID: 6647603827585162143}
+  _vibrationToggle: {fileID: 4075066492790449054}
   _musicOnIcon: {fileID: 0}
   _musicOffIcon: {fileID: 0}
   _soundOnIcon: {fileID: 0}
   _soundOffIcon: {fileID: 0}
+  _vibrationOnIcon: {fileID: 0}
+  _vibrationOffIcon: {fileID: 0}
   _homeButton: {fileID: 3121754910906547774}
   _closeButton: {fileID: 502634970901773788}
 --- !u!1 &4927112904722657395

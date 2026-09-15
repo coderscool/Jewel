@@ -6,16 +6,20 @@ using VContainer;
 
 namespace JewelPainter.UI.Views
 {
-    /// Bảng cài đặt: bật tắt nhạc, bật tắt âm thanh, và đường về Home.
+    /// Bảng cài đặt: bật tắt nhạc, tiếng động, rung, và đường về Home.
     ///
     /// MỘT class dùng cho hai prefab. Bản mở trong game gán nút Home, bản mở từ chính
     /// màn hình Home thì để trống ô đó — đang đứng ở Home rồi thì không có gì để về.
     /// Khác nhau chỉ có thế, không đáng tách thành hai class.
     ///
-    /// HAI BẢN LUÔN KHỚP NHAU mà không cần đồng bộ gì cả: cả hai đọc thẳng từ
-    /// ISoundService — một instance duy nhất cho cả game — ở MỖI lần Show. Không bản nào
-    /// giữ trạng thái riêng, nên không có gì để lệch. Tắt nhạc ở bảng trong game rồi mở
-    /// bảng ở Home là thấy ngay công tắc đã tắt.
+    /// HAI BẢN LUÔN KHỚP NHAU mà không cần đồng bộ gì cả: cả hai đọc thẳng từ service —
+    /// ISoundService cho nhạc và tiếng, IVibrationService cho rung, mỗi thứ một instance
+    /// duy nhất cho cả game — ở MỖI lần Show. Không bản nào giữ trạng thái riêng, nên
+    /// không có gì để lệch. Tắt nhạc ở bảng trong game rồi mở bảng ở Home là thấy ngay
+    /// công tắc đã tắt.
+    ///
+    /// Đó cũng là lý do công tắc rung phải đi qua một service chứ không tự nhớ trong
+    /// prefab: hai prefab thì thành hai trạng thái, và chúng lệch nhau ngay lần bấm đầu.
     public class SettingsPopupView : PopupView
     {
         [Header("Âm thanh")]
@@ -26,6 +30,12 @@ namespace JewelPainter.UI.Views
 
         [Tooltip("Toggle bật/tắt TIẾNG ĐỘNG — kéo tglSound vào đây.")]
         [SerializeField] private Toggle _soundToggle;
+
+        [Tooltip("Toggle bật/tắt RUNG — kéo tglVibration vào đây.\n\n" +
+                 "Công tắc đã chạy thật và có lưu, nhưng phần rung thì CHƯA NỐI: hàm " +
+                 "Vibrate() bên VibrationService còn để trống. Bật hay tắt lúc này chưa " +
+                 "đổi được gì trên máy.")]
+        [SerializeField] private Toggle _vibrationToggle;
 
         [Header("Icon đổi theo trạng thái — để trống cũng chạy")]
         [Tooltip("Hiện khi nhạc ĐANG BẬT. Chỉ cần khi bạn muốn đổi hẳn hình thay vì dùng " +
@@ -38,6 +48,9 @@ namespace JewelPainter.UI.Views
         [SerializeField] private GameObject _soundOnIcon;
         [SerializeField] private GameObject _soundOffIcon;
 
+        [SerializeField] private GameObject _vibrationOnIcon;
+        [SerializeField] private GameObject _vibrationOffIcon;
+
         [Header("Điều hướng")]
         [Tooltip("Về màn hình Home. ĐỂ TRỐNG ở bản popup mở từ chính Home.")]
         [SerializeField] private Button _homeButton;
@@ -45,15 +58,17 @@ namespace JewelPainter.UI.Views
         [SerializeField] private Button _closeButton;
 
         private ISoundService _sound;
+        private IVibrationService _vibration;
         private HomeScreenView _home;
         private HudView _hud;
         private IFreePaintService _freePaint;
 
         [Inject]
-        public void Construct(ISoundService sound, HomeScreenView home, HudView hud,
-            IFreePaintService freePaint)
+        public void Construct(ISoundService sound, IVibrationService vibration,
+            HomeScreenView home, HudView hud, IFreePaintService freePaint)
         {
             _sound = sound;
+            _vibration = vibration;
             _home = home;
             _hud = hud;
             _freePaint = freePaint;
@@ -63,6 +78,7 @@ namespace JewelPainter.UI.Views
         {
             if (_musicToggle != null) _musicToggle.onValueChanged.AddListener(HandleMusicToggled);
             if (_soundToggle != null) _soundToggle.onValueChanged.AddListener(HandleSoundToggled);
+            if (_vibrationToggle != null) _vibrationToggle.onValueChanged.AddListener(HandleVibrationToggled);
             if (_homeButton != null) _homeButton.onClick.AddListener(HandleHomeClicked);
             if (_closeButton != null) _closeButton.onClick.AddListener(Hide);
         }
@@ -71,6 +87,7 @@ namespace JewelPainter.UI.Views
         {
             if (_musicToggle != null) _musicToggle.onValueChanged.RemoveListener(HandleMusicToggled);
             if (_soundToggle != null) _soundToggle.onValueChanged.RemoveListener(HandleSoundToggled);
+            if (_vibrationToggle != null) _vibrationToggle.onValueChanged.RemoveListener(HandleVibrationToggled);
             if (_homeButton != null) _homeButton.onClick.RemoveListener(HandleHomeClicked);
             if (_closeButton != null) _closeButton.onClick.RemoveListener(Hide);
         }
@@ -132,6 +149,20 @@ namespace JewelPainter.UI.Views
             RefreshIcons();
         }
 
+        private void HandleVibrationToggled(bool isOn)
+        {
+            if (_vibration == null) return;
+
+            // Vẫn kêu một tiếng Direction như hai công tắc kia: người chơi cần một lời
+            // xác nhận rằng cú bấm đã ăn, mà công tắc này thì chưa rung được để tự xác
+            // nhận. Ngay cả khi phần rung đã nối xong thì một cú rung báo "đã TẮT rung"
+            // cũng là chuyện vô lý, nên tiếng vẫn phải ở đây.
+            _sound?.Play(SoundKey.Direction);
+
+            _vibration.SetEnabled(isOn);
+            RefreshIcons();
+        }
+
         /// Kéo hai cái Toggle về đúng trạng thái thật, rồi mới tới phần icon.
         ///
         /// SetIsOnWithoutNotify chứ KHÔNG gán isOn.
@@ -144,9 +175,11 @@ namespace JewelPainter.UI.Views
         {
             var music = _sound != null && _sound.IsMusicEnabled;
             var sound = _sound != null && _sound.IsSoundEnabled;
+            var vibration = _vibration != null && _vibration.IsEnabled;
 
             if (_musicToggle != null) _musicToggle.SetIsOnWithoutNotify(music);
             if (_soundToggle != null) _soundToggle.SetIsOnWithoutNotify(sound);
+            if (_vibrationToggle != null) _vibrationToggle.SetIsOnWithoutNotify(vibration);
 
             RefreshIcons();
         }
@@ -155,12 +188,16 @@ namespace JewelPainter.UI.Views
         {
             var music = _sound != null && _sound.IsMusicEnabled;
             var sound = _sound != null && _sound.IsSoundEnabled;
+            var vibration = _vibration != null && _vibration.IsEnabled;
 
             if (_musicOnIcon != null) _musicOnIcon.SetActive(music);
             if (_musicOffIcon != null) _musicOffIcon.SetActive(!music);
 
             if (_soundOnIcon != null) _soundOnIcon.SetActive(sound);
             if (_soundOffIcon != null) _soundOffIcon.SetActive(!sound);
+
+            if (_vibrationOnIcon != null) _vibrationOnIcon.SetActive(vibration);
+            if (_vibrationOffIcon != null) _vibrationOffIcon.SetActive(!vibration);
         }
 
         /// Ẩn cả popup lẫn HUD trước khi mở Home. Home phủ kín màn hình nhưng nút của

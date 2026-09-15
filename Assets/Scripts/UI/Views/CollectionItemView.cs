@@ -1,3 +1,4 @@
+using JewelPainter.Gameplay.Config;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -40,10 +41,19 @@ namespace JewelPainter.UI.Views
                  "đi chứ không rút màu ra được.")]
         [SerializeField] private Material _lockedMaterial;
 
+        [Tooltip("Màn nào chọn INSET thì tranh thu vào cả bốn phía chừng này pixel.\n\n" +
+                 "Con số của GIAO DIỆN, không phải của từng màn: lề thở phải bằng nhau " +
+                 "trên mọi ô, không thì cả trang bộ sưu tập trông lỗ chỗ. Từng màn chỉ " +
+                 "chọn CÓ hay KHÔNG chừa lề, ở ô Collection Fit bên LevelConfig.")]
+        [SerializeField] private float _insetPixels = 20f;
+
         private Material _unlockedMaterial;
         private bool _hasCachedMaterial;
 
-        public void Bind(int levelId, Sprite artwork, bool unlocked)
+        /// Ô Artwork có căng kín ô cha không. Đo một lần ở lần Bind đầu.
+        private bool _hasWarnedAnchors;
+
+        public void Bind(int levelId, Sprite artwork, bool unlocked, CollectionArtworkFit fit)
         {
             CacheUnlockedMaterial();
 
@@ -68,6 +78,8 @@ namespace JewelPainter.UI.Views
                 // bỏ qua preserveAspect. Prefab hiện đang để Simple.
                 _artwork.preserveAspect = true;
 
+                ApplyFit(fit);
+
                 if (_lockedMaterial != null)
                 {
                     _artwork.material = unlocked ? _unlockedMaterial : _lockedMaterial;
@@ -75,6 +87,57 @@ namespace JewelPainter.UI.Views
             }
 
             if (_lockIcon != null) _lockIcon.SetActive(!unlocked);
+        }
+
+        /// Thu ô Artwork vào bốn phía, hoặc trả nó về ăn kín ô cha.
+        ///
+        /// Thu bằng RECT chứ không bằng scale: preserveAspect luôn co tranh cho lọt vào
+        /// cái rect nó đang có, nên thu rect lại là tranh tự nhỏ theo mà vẫn giữ nguyên tỉ
+        /// lệ. Thu bằng localScale thì được đúng cỡ đó nhưng vùng nhận chạm và vùng bị
+        /// Mask cắt vẫn là rect cũ — hai thứ lệch nhau, và cái lệch đó chỉ lộ ra ở ô nào
+        /// có tranh vuông.
+        ///
+        /// Đặt lại ở MỖI lần Bind, kể cả khi Full: các ô được tái dùng qua pool, nên một ô
+        /// vừa hiện màn Inset có thể lượt sau mang màn Full. Không trả về thì lề 20px của
+        /// màn trước dính lại trên một bức đáng lẽ ăn sát mép.
+        private void ApplyFit(CollectionArtworkFit fit)
+        {
+            if (_artwork == null) return;
+
+            var rect = _artwork.rectTransform;
+
+            WarnIfNotStretched(rect);
+
+            var inset = fit == CollectionArtworkFit.Inset ? Mathf.Max(0f, _insetPixels) : 0f;
+
+            rect.offsetMin = new Vector2(inset, inset);
+            rect.offsetMax = new Vector2(-inset, -inset);
+        }
+
+        /// Ô Artwork phải neo CĂNG KÍN ô cha thì offsetMin/offsetMax mới có nghĩa là lề.
+        ///
+        /// Neo vào một điểm thì hai giá trị đó là vị trí và kích thước, nên đặt lề 20px sẽ
+        /// dịch tranh đi và bóp nó lại theo một kiểu chẳng ai định — mà vẫn không báo lỗi.
+        /// Báo đúng một lần cho mỗi ô, và chỉ trong Editor: đây là lỗi dựng prefab, sửa
+        /// một lần là xong, không đáng đổ log vào bản phát hành.
+        private void WarnIfNotStretched(RectTransform rect)
+        {
+#if UNITY_EDITOR
+            if (_hasWarnedAnchors) return;
+
+            var stretched = Mathf.Approximately(rect.anchorMin.x, 0f)
+                            && Mathf.Approximately(rect.anchorMin.y, 0f)
+                            && Mathf.Approximately(rect.anchorMax.x, 1f)
+                            && Mathf.Approximately(rect.anchorMax.y, 1f);
+
+            if (stretched) return;
+
+            _hasWarnedAnchors = true;
+
+            Debug.LogWarning($"{nameof(CollectionItemView)}: ô Artwork chưa neo căng kín ô " +
+                             "cha (Anchor Min 0,0 — Anchor Max 1,1), nên phần chừa lề của " +
+                             "kiểu INSET sẽ dịch tranh đi thay vì thu nó lại.", this);
+#endif
         }
 
         /// Ghi lại material gốc ở lần Bind ĐẦU TIÊN. Đọc muộn hơn là đọc nhầm

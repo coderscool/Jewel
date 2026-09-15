@@ -17,6 +17,16 @@ namespace JewelPainter.Gameplay.Config
                  "và bắn hiệu ứng tiền bay.")]
         [SerializeField] private int _rewardCoins = 10;
 
+        [Tooltip("Tranh của màn này nằm thế nào trong ô bộ sưu tập.\n\n" +
+                 "FULL: ăn sát mép ô.\n" +
+                 "INSET: thu vào cả bốn phía một quãng, lấy lề thở. Quãng bao nhiêu thì " +
+                 "đặt ở CollectionItemView — nó là con số của giao diện, không phải của " +
+                 "từng màn.\n\n" +
+                 "Cả hai kiểu đều giữ đúng tỉ lệ tranh, không bao giờ bóp méo. Đặt ở đây " +
+                 "chứ không ở LevelGridData vì tool sinh lưới tạo asset MỚI mỗi lần chạy " +
+                 "— ô chọn nằm bên đó sẽ mất lặng lẽ sau mỗi lần sinh lại.")]
+        [SerializeField] private CollectionArtworkFit _collectionFit = CollectionArtworkFit.Inset;
+
         [Header("Camera")]
         [Tooltip("Mức phóng sát nhất, tính bằng orthographicSize. Một ô rộng một world unit " +
                  "nên giá trị 4 là thấy 8 ô theo chiều dọc. Để 0 thì tự tính (thấy 5 ô).")]
@@ -35,6 +45,8 @@ namespace JewelPainter.Gameplay.Config
         public LevelGridData GridData => _gridData;
         public int TimeLimitSeconds => _timeLimitSeconds;
         public int RewardCoins => _rewardCoins;
+
+        public CollectionArtworkFit CollectionFit => _collectionFit;
 
         /// 0 hoặc âm nghĩa là để BoardCamera tự tính.
         public float CameraMinSize => _cameraMinSize;
