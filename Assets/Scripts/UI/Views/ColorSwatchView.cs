@@ -124,7 +124,7 @@ namespace JewelPainter.UI.Views
                  "Đây là thứ duy nhất chỉnh tốc độ — cú thu nhỏ và dấu tick chia nhau đúng " +
                  "khoảng thời gian này theo tỉ lệ, nên kéo dài ra là cả hai cùng chậm lại " +
                  "và vẫn khớp nhau.")]
-        [SerializeField] private float _completeDuration = 0.85f;
+        [SerializeField] private float _completeDuration = 0.65f;
 
         [Tooltip("Cú thu nhỏ chiếm bao nhiêu PHẦN của cả màn diễn, thang 0..1. 0.4 nghĩa " +
                  "là ô co lại và biến mất trong 40% đầu, phần còn lại là sân khấu của " +
@@ -140,6 +140,20 @@ namespace JewelPainter.UI.Views
                  "chuyện rời rạc nối đuôi.")]
         [Range(0f, 0.9f)]
         [SerializeField] private float _tickDelay = 0.3f;
+
+        [Tooltip("Báo cho bên ngoài 'xong rồi' ở mốc nào của màn diễn, tính theo phần của " +
+                 "Complete Duration.\n\n" +
+                 "1 là đợi diễn hết mới báo — và đó là lý do nhịp cũ ì: thanh màu đứng im " +
+                 "nhìn ô đã thu về cỡ 0 diễn nốt phần đuôi, rồi mới bắt đầu khép khe hở. " +
+                 "Hai việc nối đuôi nhau thành hai bước rời.\n\n" +
+                 "0.75 cho thanh bắt đầu trượt trong lúc dấu tick còn đang tan — mắt đọc ra " +
+                 "MỘT chuyển động liền mạch thay vì hai.\n\n" +
+                 "CHÚ Ý cú loé: nó chạy theo đồng hồ riêng và có thể dài hơn Complete " +
+                 "Duration. Ô này bị tắt khi thanh khép xong, nên cú loé phải lọt vào trong " +
+                 "(Complete Duration x ô này) + Collapse Duration của thanh màu, không thì " +
+                 "nó bị cắt cụt. Loé dài quá thì nâng Burst Speed chứ đừng nâng ô này.")]
+        [Range(0.2f, 1f)]
+        [SerializeField] private float _handoffPortion = 0.8f;
 
         [Tooltip("Cỡ dấu tick lúc bắt đầu và lúc kết thúc, so với cỡ dựng trong prefab.")]
         [SerializeField] private float _tickStartScale = 0.4f;
@@ -514,6 +528,11 @@ namespace JewelPainter.UI.Views
 
             var elapsed = 0f;
 
+            // Mốc báo ra ngoài. Tách khỏi mốc kết thúc vòng lặp vì hai câu hỏi khác nhau:
+            // "thanh màu được phép khép chưa" và "cú loé đã chạy hết chưa".
+            var handoff = duration * Mathf.Clamp01(_handoffPortion);
+            var handedOff = false;
+
             while (elapsed < total)
             {
                 elapsed += Time.unscaledDeltaTime;
@@ -599,6 +618,16 @@ namespace JewelPainter.UI.Views
                     }
                 }
 
+                if (!handedOff && elapsed >= handoff)
+                {
+                    handedOff = true;
+
+                    // Báo TRƯỚC khi diễn xong. Từ đây thanh màu khép khe hở song song với
+                    // phần đuôi của màn diễn — dấu tick tan đi trong lúc ô đã bắt đầu
+                    // trượt. Bên gọi vẫn là bên quyết định lúc nào TẮT ô này.
+                    onFinished?.Invoke();
+                }
+
                 yield return null;
             }
 
@@ -617,7 +646,11 @@ namespace JewelPainter.UI.Views
             //
             // Việc dọn dẹp thuộc về ResetCompleteVisuals, chạy ở Bind — tức là ngay trước
             // lần ô này được dùng lại, và lúc đó nó đang tắt nên không ai thấy gì.
-            onFinished?.Invoke();
+            //
+            // Chỉ báo ở đây nếu vòng lặp chưa kịp báo — Handoff Portion để 1, hoặc màn
+            // diễn ngắn tới mức một frame đã chạy qua cả hai mốc. Báo hai lần thì thanh
+            // màu khép hai lượt chồng lên nhau.
+            if (!handedOff) onFinished?.Invoke();
         }
 
         /// Bật cú loé và ép nó về đúng trạng thái NHÌN THẤY ĐƯỢC.

@@ -216,6 +216,20 @@ namespace JewelPainter.Gameplay.Board
                 return true;
             }
 
+            // Tranh đã tô kín thì không còn ô nào để gợi ý, và cũng không bao giờ có lại
+            // trong lượt này.
+            //
+            // Thoát ở ĐÂY chứ không để vòng quét tự tìm ra là rỗng: vòng quét duyệt mọi ô
+            // trong tầm nhìn, mà mỗi lần camera nhích một pixel là một lượt quét mới. Màn
+            // ăn mừng thì camera động suốt gần hai giây — thu về toàn cảnh, rồi lùi ra
+            // đóng khung — nên bảng 101x105 phải quét hơn mười nghìn ô mỗi frame để kết
+            // luận đúng một điều: không có gì cả.
+            if (_paintService.IsComplete)
+            {
+                ReleaseAll();
+                return true;
+            }
+
             // Booster tô tự do: đánh dấu MỌI ô chưa tô, bất kể màu đang chọn — và bất kể
             // có chọn màu nào hay chưa, vì lúc này tô không cần màu.
             var freePaint = _paintService.FreePaintActive;

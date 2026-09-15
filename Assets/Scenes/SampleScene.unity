@@ -2534,6 +2534,7 @@ MonoBehaviour:
   _enterDelay: 0.25
   _enterDuration: 0.25
   _screenTransition: {fileID: 1857027238}
+  _celebrateDelayAfterTransition: 0.2
   _celebrateFromRect: {fileID: 1819305914}
   _coinsText: {fileID: 88326308}
   _playButton: {fileID: 1819305915}
@@ -9658,9 +9659,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _burstPool: {fileID: 1491911202}
   _cameraDuration: 1.1
-  _sweepDuration: 1.5
+  _sweepDuration: 1
   _sweepStartDelay: 0.15
-  _sparklesPerDiagonal: 32
+  _sparklesPerDiagonal: 48
   _maxSpawnPerFrame: 0
   _boardFrame: {fileID: 1716060989}
   _frameDelay: 0.1
@@ -9698,9 +9699,9 @@ MonoBehaviour:
   _clip: {fileID: 11400000, guid: 12b8a5cfe50218144a1955ab00c659c3, type: 2}
   _prefab: {fileID: 28050608099827096, guid: d55081002c92ea3419b742c0e0ea1507, type: 3}
   _root: {fileID: 1491911199}
-  _prewarmCount: 1200
-  _maxConcurrent: 1200
-  _speed: 1
+  _prewarmCount: 2800
+  _maxConcurrent: 2800
+  _speed: 2
   _randomRotation: 0
 --- !u!1 &1511668454
 GameObject:
@@ -10647,8 +10648,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8088af09caf60814cb2861f7ed2b5595, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _popupDelaySeconds: 2
-  _winCelebrationDelaySeconds: 0.35
+  _popupDelaySeconds: 1.85
+  _winCelebrationDelaySeconds: 0.25
 --- !u!4 &1620359275
 Transform:
   m_ObjectHideFlags: 0

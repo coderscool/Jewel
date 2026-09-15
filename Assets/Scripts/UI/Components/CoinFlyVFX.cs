@@ -62,6 +62,14 @@ namespace JewelPainter.UI.Components
         private readonly List<Tween> _pending = new();
         private readonly List<RectTransform> _flying = new();
 
+        /// Coin rảnh, chờ lượt sau.
+        ///
+        /// Trước đây mỗi lượt Instantiate bảy đồng rồi Destroy sạch. Bảy object không
+        /// nhiều, nhưng chúng sinh ra và chết đi ĐÚNG vào khoảnh khắc popup thắng màn mở
+        /// ra — cùng frame với cú mờ vào, băng rơi xuống và pháo hoa. Mọi thứ trong game
+        /// đều tránh sinh/huỷ object lúc đang diễn, chỗ này là chỗ duy nhất còn sót.
+        private readonly Stack<RectTransform> _pool = new();
+
         /// Số coin bắn ra mỗi lần Play. Bên gọi dùng để chia đều số tiền cho từng coin,
         /// cho con số trên HUD tăng đúng nhịp coin bay tới.
         public int CoinCount => Mathf.Max(1, _coinCount);
@@ -77,7 +85,6 @@ namespace JewelPainter.UI.Components
                 return;
             }
 
-            ApplySorting();
             StopAll();
 
             var remaining = CoinCount;
@@ -111,7 +118,7 @@ namespace JewelPainter.UI.Components
                 if (coin == null) continue;
 
                 DOTween.Kill(coin);
-                Destroy(coin.gameObject);
+                Release(coin);
             }
 
             _flying.Clear();
@@ -120,6 +127,61 @@ namespace JewelPainter.UI.Components
         private void OnDisable() => StopAll();
 
         private void OnDestroy() => StopAll();
+
+        /// Dựng sẵn cả nắm coin và chốt thứ tự vẽ NGAY khi popup được tạo.
+        ///
+        /// Cả hai việc đều nặng theo kiểu không ai ngờ: Instantiate thì rõ rồi, còn
+        /// ApplySorting lại ADD một Canvas vào cây UI — mà thêm Canvas là cắt cây làm đôi
+        /// và bắt cả hai nửa dựng lại mesh. Để chúng ở lần Play đầu tiên là dồn hết vào
+        /// đúng frame popup mở ra.
+        ///
+        /// Popup do PopupManager tạo ở lần mở ĐẦU TIÊN, nên lần thắng đầu vẫn phải trả
+        /// giá này. Từ lần thứ hai trở đi thì không còn gì để trả.
+        private void Awake()
+        {
+            ApplySorting();
+            Prewarm();
+        }
+
+        private void Prewarm()
+        {
+            if (_coinPrefab == null || _coinsParent == null) return;
+
+            while (_pool.Count < CoinCount) _pool.Push(CreateCoin());
+        }
+
+        private RectTransform CreateCoin()
+        {
+            var coin = Instantiate(_coinPrefab, _coinsParent);
+
+            // SetNativeSize đọc pixel thật của sprite kèm Pixels Per Unit, khỏi phải khai
+            // kích thước bằng tay ở prefab.
+            //
+            // Gọi MỘT LẦN lúc dựng chứ không mỗi lần bắn: nó đổi sizeDelta, mà đổi
+            // sizeDelta là đánh dấu Graphic bẩn và bắt dựng lại mesh. Sprite thì không bao
+            // giờ đổi, nên bảy lần dựng lại mỗi lượt đều là dựng lại y hệt nhau.
+            var image = coin.GetComponent<Image>();
+            if (image != null && image.sprite != null) image.SetNativeSize();
+
+            coin.gameObject.SetActive(false);
+            return coin;
+        }
+
+        private RectTransform Rent()
+        {
+            var coin = _pool.Count > 0 ? _pool.Pop() : CreateCoin();
+
+            coin.gameObject.SetActive(true);
+            return coin;
+        }
+
+        private void Release(RectTransform coin)
+        {
+            if (coin == null) return;
+
+            coin.gameObject.SetActive(false);
+            _pool.Push(coin);
+        }
 
         /// UI vẽ theo thứ tự Canvas, còn particle và Spine vẽ theo Sorting Layer — hai hệ
         /// khác nhau, không so sánh trực tiếp được. Gắn một Canvas CON với overrideSorting
@@ -148,14 +210,8 @@ namespace JewelPainter.UI.Components
                 return;
             }
 
-            var coin = Instantiate(_coinPrefab, _coinsParent);
-            coin.gameObject.SetActive(true);
+            var coin = Rent();
             _flying.Add(coin);
-
-            // SetNativeSize đọc pixel thật của sprite kèm Pixels Per Unit, khỏi phải khai
-            // kích thước bằng tay ở prefab.
-            var image = coin.GetComponent<Image>();
-            if (image != null && image.sprite != null) image.SetNativeSize();
 
             var startPos = WorldToLocal(from.position) + UnityEngine.Random.insideUnitCircle * _scatterRadius;
             var endPos = WorldToLocal(to.position);
@@ -193,7 +249,7 @@ namespace JewelPainter.UI.Components
             {
                 _flying.Remove(coin);
 
-                if (coin != null) Destroy(coin.gameObject);
+                Release(coin);
 
                 onArrive?.Invoke();
             });

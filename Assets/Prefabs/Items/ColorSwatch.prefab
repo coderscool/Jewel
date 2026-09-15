@@ -695,16 +695,17 @@ MonoBehaviour:
   _jewelRise: 120
   _jewelPortion: 0.5
   _completeTick: {fileID: 4685968528197845439}
-  _completeDuration: 0.8
+  _completeDuration: 0.5
   _shrinkPortion: 0.4
   _tickDelay: 0.3
+  _handoffPortion: 0.75
   _tickStartScale: 0.4
   _tickEndScale: 1.6
   _tickFadeStart: 0.45
   _completeBurst: {fileID: 7301884455120010444}
   _completeBurstClip: {fileID: 11400000, guid: 0caaec8a599e68a41a7e62f8b5ca8774, type: 2}
   _burstDelay: 0
-  _burstSpeed: 1
+  _burstSpeed: 2
 --- !u!1 &7691773739944047400
 GameObject:
   m_ObjectHideFlags: 0

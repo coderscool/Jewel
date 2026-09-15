@@ -444,6 +444,17 @@ namespace JewelPainter.Gameplay.Board
                 return true;
             }
 
+            // Tô kín thì mọi ô đều IsDone, nên vòng quét bên dưới chạy hết cả tầm nhìn
+            // để rồi bỏ qua từng ô một. Hỏi một câu ở đây rẻ hơn hàng nghìn lần hỏi ở đó.
+            //
+            // Không chỉ có lúc vừa thắng: người chơi mở lại một màn đã xong để ngắm tranh
+            // cũng rơi vào đúng cảnh này, và lúc đó họ còn kéo zoom thoải mái.
+            if (_paintService != null && _paintService.IsComplete)
+            {
+                ReleaseAll();
+                return true;
+            }
+
             var layout = _boardView.Layout;
             var grid = _boardView.Grid;
             var colors = _boardView.Colors;
