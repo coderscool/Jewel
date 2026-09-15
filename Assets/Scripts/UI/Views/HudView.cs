@@ -38,6 +38,13 @@ namespace JewelPainter.UI.Views
                  "xem quảng cáo, mà một số 0 nằm cạnh lời mời chỉ gây nhiễu.")]
         [SerializeField] private GameObject _hintCreditsBadge;
 
+        [Tooltip("Dấu + mời thêm lượt, hiện khi booster ĐÃ MỞ KHOÁ mà HẾT lượt — ngược " +
+                 "chiều với huy hiệu số ở trên.\n\n" +
+                 "Để trống cũng chạy. Nhưng ĐỪNG tự bật object này sẵn trong scene rồi bỏ " +
+                 "trống ô này: không code nào tắt nó đi, nên nó nằm đè lên cả lúc còn lượt " +
+                 "lẫn lúc chưa mở khoá.")]
+        [SerializeField] private GameObject _hintAddIcon;
+
         [Header("Booster tô tự do")]
         [Tooltip("Nút bật booster: trong ít giây, MỌI ô chưa tô đều hiện dấu gợi ý và " +
                  "chạm vào ô nào cũng tô được ô đó (ra đúng màu của ô, không phải màu " +
@@ -51,6 +58,13 @@ namespace JewelPainter.UI.Views
         [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — cùng lý do như huy hiệu của " +
                  "nút gợi ý.")]
         [SerializeField] private GameObject _freePaintCreditsBadge;
+
+        [Tooltip("Dấu + mời thêm lượt, hiện khi booster ĐÃ MỞ KHOÁ mà HẾT lượt — ngược " +
+                 "chiều với huy hiệu số ở trên.\n\n" +
+                 "Để trống cũng chạy. Nhưng ĐỪNG tự bật object này sẵn trong scene rồi bỏ " +
+                 "trống ô này: không code nào tắt nó đi, nên nó nằm đè lên cả lúc còn lượt " +
+                 "lẫn lúc chưa mở khoá.")]
+        [SerializeField] private GameObject _freePaintAddIcon;
 
         [Tooltip("Object bọc CẢ khung đồng hồ — kéo fr_time vào đây. Chỉ mình nó được " +
                  "bật/tắt theo booster.\n\n" +
@@ -79,6 +93,13 @@ namespace JewelPainter.UI.Views
         [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — cùng lý do như huy hiệu của " +
                  "nút gợi ý.")]
         [SerializeField] private GameObject _fillColorCreditsBadge;
+
+        [Tooltip("Dấu + mời thêm lượt, hiện khi booster ĐÃ MỞ KHOÁ mà HẾT lượt — ngược " +
+                 "chiều với huy hiệu số ở trên.\n\n" +
+                 "Để trống cũng chạy. Nhưng ĐỪNG tự bật object này sẵn trong scene rồi bỏ " +
+                 "trống ô này: không code nào tắt nó đi, nên nó nằm đè lên cả lúc còn lượt " +
+                 "lẫn lúc chưa mở khoá.")]
+        [SerializeField] private GameObject _fillColorAddIcon;
 
         [Tooltip("Vòng/thanh chạy đầy dần theo tiến độ đợt tô, thang 0..1. Image phải để " +
                  "Image Type = Filled. Chỉ hiện trong lúc đang tô. Để trống thì bỏ qua.")]
@@ -369,11 +390,44 @@ namespace JewelPainter.UI.Views
             if (_freePaintService != null) SetFreePaintAvailable(_freePaintService.CanUse);
             if (_fillColorService != null) SetFillColorAvailable(_fillColorService.CanUse);
 
-            // Huy hiệu số lượt cũng phải theo: một con số 3 nằm cạnh ổ khoá chỉ gây nhiễu.
-            // Cùng lý do đã ghi ở chỗ huy hiệu tự ẩn khi hết lượt.
-            if (_hintCreditsBadge != null && !_hintUnlocked) _hintCreditsBadge.SetActive(false);
-            if (_freePaintCreditsBadge != null && !_freePaintUnlocked) _freePaintCreditsBadge.SetActive(false);
-            if (_fillColorCreditsBadge != null && !_fillColorUnlocked) _fillColorCreditsBadge.SetActive(false);
+            // Huy hiệu số lượt và dấu + cũng phải theo — và phải theo cả HAI CHIỀU.
+            //
+            // Đây là chỗ đã hỏng một lần. Bản trước chỉ có ba dòng `if (!_hintUnlocked)
+            // ... 0, false`, tức là chỉ biết TẮT. Lúc còn khoá thì đúng, nhưng tới đúng
+            // màn mở khoá thì không dòng nào bật huy hiệu lên lại: SetXxxAvailable ở trên
+            // chỉ đụng tới interactable, còn SetXxxCredits thì chỉ chạy khi số lượt ĐỔI —
+            // mà số lượt ngồi yên ở mức được tặng từ lần chạy đầu. Kết quả: mở khoá xong
+            // nút vẫn trống trơn, không số cũng không dấu +, cho tới lần tiêu lượt đầu.
+            //
+            // Nên gọi thẳng SetXxxCredits với số lượt THẬT: nó dựng lại cả cặp huy
+            // hiệu/dấu + theo cờ _xxxUnlocked vừa tính, và tiện thể đồng bộ luôn con số
+            // in trên nút. Service để trống thì rơi về nhánh 0/false, y như cũ.
+            if (_hintService != null) SetHintCredits(_hintService.RemainingCredits);
+            else ApplyCreditVisual(_hintCreditsBadge, _hintAddIcon, 0, false);
+
+            if (_freePaintService != null) SetFreePaintCredits(_freePaintService.RemainingCredits);
+            else ApplyCreditVisual(_freePaintCreditsBadge, _freePaintAddIcon, 0, false);
+
+            if (_fillColorService != null) SetFillColorCredits(_fillColorService.RemainingCredits);
+            else ApplyCreditVisual(_fillColorCreditsBadge, _fillColorAddIcon, 0, false);
+        }
+
+        /// Huy hiệu số lượt và dấu + là MỘT cặp ngược chiều, không phải hai thứ rời.
+        ///
+        /// Còn lượt thì hiện con số; hết lượt thì hiện dấu + mời thêm lượt; chưa mở khoá
+        /// thì tắt cả hai — lúc đó nút đang đeo ổ khoá, mà một dấu + cạnh ổ khoá là mời
+        /// mua một thứ chưa bán.
+        ///
+        /// Gom vào một hàm vì đây là chỗ RẤT dễ hỏng lệch: ba booster, ba cặp object, và
+        /// lỗi chỉ lộ ra ở đúng một trạng thái. Trước đây dấu + không có ô nào trong
+        /// Inspector nên không code nào tắt nó được — nó bật sẵn trong scene và nằm đè lên
+        /// cả lúc còn lượt lẫn lúc chưa mở khoá.
+        private static void ApplyCreditVisual(GameObject badge, GameObject addIcon, int remaining, bool unlocked)
+        {
+            var hasCredits = remaining > 0;
+
+            if (badge != null) badge.SetActive(unlocked && hasCredits);
+            if (addIcon != null) addIcon.SetActive(unlocked && !hasCredits);
         }
 
         /// Hai object ngược chiều nhau: phần mở khoá hiện khi ĐÃ mở, chữ số màn hiện khi
@@ -590,7 +644,7 @@ namespace JewelPainter.UI.Views
 
         private void SetFreePaintCredits(int remaining)
         {
-            if (_freePaintCreditsBadge != null) _freePaintCreditsBadge.SetActive(remaining > 0 && _freePaintUnlocked);
+            ApplyCreditVisual(_freePaintCreditsBadge, _freePaintAddIcon, remaining, _freePaintUnlocked);
 
             if (_freePaintCreditsText == null) return;
             if (remaining == _displayedFreePaintCredits) return;
@@ -608,7 +662,7 @@ namespace JewelPainter.UI.Views
 
         private void SetFillColorCredits(int remaining)
         {
-            if (_fillColorCreditsBadge != null) _fillColorCreditsBadge.SetActive(remaining > 0 && _fillColorUnlocked);
+            ApplyCreditVisual(_fillColorCreditsBadge, _fillColorAddIcon, remaining, _fillColorUnlocked);
 
             if (_fillColorCreditsText == null) return;
             if (remaining == _displayedFillColorCredits) return;
@@ -672,7 +726,7 @@ namespace JewelPainter.UI.Views
         /// Chỉ SetText khi con số thật sự đổi — cùng lý do đã ghi ở SetLevel.
         private void SetHintCredits(int remaining)
         {
-            if (_hintCreditsBadge != null) _hintCreditsBadge.SetActive(remaining > 0 && _hintUnlocked);
+            ApplyCreditVisual(_hintCreditsBadge, _hintAddIcon, remaining, _hintUnlocked);
 
             if (_hintCreditsText == null) return;
             if (remaining == _displayedCredits) return;

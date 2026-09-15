@@ -19,11 +19,15 @@ namespace JewelPainter.UI.Managers
         [SerializeField] private PopupConfig _config;
         [SerializeField] private Transform _root;
 
-        [Tooltip("Tấm nền mờ phía sau popup. Tự bật khi có popup nào đang mở mà popup đó " +
-                 "làm tối nền — nghĩa là mọi popup TRỪ lời nhắc.\n\n" +
+        [Tooltip("Tấm CHẶN CHẠM phủ kín màn hình, nằm sau popup. Tự bật khi có popup nào " +
+                 "đang mở có tick Blocks Background.\n\n" +
+                 "Image của nó phải để Raycast Target BẬT — đó là toàn bộ công dụng. Còn " +
+                 "tối hay không là ALPHA của nó: để 0 thì nó chặn chạm mà không che gì, " +
+                 "để 0.85 thì thành lớp tối kiểu cũ.\n\n" +
                  "Đặt nó làm con ĐẦU TIÊN của Root: popup sinh ra sau nên đứng sau nó " +
                  "trong danh sách con, và UI vẽ theo đúng thứ tự đó.\n\n" +
-                 "Để trống thì bỏ qua, mọi thứ chạy như cũ.")]
+                 "Để trống thì bỏ qua — nhưng lúc đó chạm sẽ lọt xuống bức tranh phía sau " +
+                 "mọi popup.")]
         [SerializeField] private GameObject _backdrop;
 
         private readonly Dictionary<PopupKey, PopupView> _prefabs = new();
@@ -103,8 +107,9 @@ namespace JewelPainter.UI.Managers
         ///
         /// Popup tự đóng bằng nút đóng của chính nó — nó gọi thẳng PopupView.Hide chứ
         /// không đi qua manager. Một bộ đếm ở đây sẽ không bao giờ nghe được cú đóng đó,
-        /// và tấm nền mờ kẹt lại trên màn hình. Vài popup thì vòng lặp này không đáng gì,
-        /// mà nó đúng trong mọi đường đóng — kể cả những đường thêm sau này.
+        /// và tấm chặn kẹt lại trên màn hình — kẹt ở đây nghĩa là người chơi không tô
+        /// được nữa mà không hiểu vì sao. Vài popup thì vòng lặp này không đáng gì, mà nó
+        /// đúng trong mọi đường đóng — kể cả những đường thêm sau này.
         private void LateUpdate()
         {
             if (_backdrop == null) return;
@@ -113,7 +118,7 @@ namespace JewelPainter.UI.Managers
 
             foreach (var popup in _instances.Values)
             {
-                if (!popup.IsVisible || !popup.DimsBackground) continue;
+                if (!popup.IsVisible || !popup.BlocksBackground) continue;
 
                 needed = true;
                 break;

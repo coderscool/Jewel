@@ -30,10 +30,16 @@ namespace JewelPainter.UI.Views
         /// Đang trong lượt mờ dần. Cần cờ này để Show biết mình vừa cắt ngang một cú tắt.
         private bool _isFadingOut;
 
-        /// Lời nhắc KHÔNG làm tối nền. Nó chỉ ghé qua vài giây rồi tự tắt, mà người chơi
-        /// vẫn đang tô dở — tối cả màn hình cho một câu nhắc là chặn tay họ giữa chừng
-        /// vì một thứ không đòi hỏi gì.
-        public override bool DimsBackground => false;
+        /// KHÔNG chặn chạm xuống màn chơi, dù ô tick ở lớp cha mặc định là có.
+        ///
+        /// Đây là popup duy nhất không phủ kín màn hình: nó nổi lên một góc rồi tự tắt
+        /// sau một giây. Mà thứ khiến nó xuất hiện lại chính là người chơi đang tô — cắt
+        /// tay họ một giây vì một câu nhắc do chính cú chạm đó gây ra là phạt hai lần.
+        ///
+        /// Override trong code chứ không bỏ tick trong prefab: đây là sự thật về cấu trúc
+        /// của popup này, không phải một lựa chọn. Một ô tick thì ai dựng lại prefab cũng
+        /// có thể quên, và lúc quên thì cả game khoá cứng mỗi lần hiện lời nhắc.
+        public override bool BlocksBackground => false;
 
         public override void Show()
         {
@@ -44,6 +50,26 @@ namespace JewelPainter.UI.Views
             base.Show();
 
             RestartAutoHide();
+        }
+
+        /// Huỷ lượt đếm tự tắt của lần hiện ĐANG CHẠY: popup nằm lại cho tới khi có ai
+        /// gọi Hide.
+        ///
+        /// Gọi NGAY SAU Show — nó không tự hiện popup, chỉ gỡ cái hẹn giờ mà Show vừa
+        /// đặt. Tách ra thành một lời gọi thứ hai thay vì thêm một biến thể Show, vì
+        /// "nằm lại bao lâu" là chuyện của NGƯỜI GỌI chứ không phải thuộc tính của
+        /// popup: cùng một lời nhắc, lúc người chơi lỡ tay thì một giây là đủ, còn lúc
+        /// nó đứng cạnh ngón tay hướng dẫn thì phải ở lại tới khi ngón tay rút đi.
+        ///
+        /// Không có cờ nào được giữ lại: lần Show kế tiếp lại đặt hẹn giờ như thường,
+        /// nên không có trạng thái dính lại làm một lời nhắc bình thường bỗng nằm mãi.
+        public void KeepOpenUntilHidden()
+        {
+            // Lượt đếm vừa được Show đặt là coroutine DUY NHẤT đang chạy trên object này
+            // ở thời điểm này — Show đã dừng sạch mọi thứ trước đó.
+            StopAllCoroutines();
+
+            _isFadingOut = false;
         }
 
         /// Dùng khi muốn đổi ảnh trước lúc hiện. Gọi hàm này THAY CHO Show, không phải

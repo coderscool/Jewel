@@ -31,6 +31,14 @@ namespace JewelPainter.UI.Views
     /// phải rơi ra, mà popup thì sống suốt phiên chơi.
     public class CollectionPopupView : PopupView
     {
+        /// KHÔNG bật tấm chặn chạm dùng chung của PopupManager.
+        ///
+        /// Không phải vì không cần chặn, mà vì popup này TỰ chặn: gốc của nó căng kín màn
+        /// hình và nền của nó là một Image ăn chạm, nên không cú chạm nào xuống tới được
+        /// phía dưới. Thêm một tấm chặn nữa ở sau lưng chỉ là một Image phủ kín màn hình
+        /// nằm chờ mà không chặn thêm được gì.
+        public override bool BlocksBackground => false;
+
         [SerializeField] private CollectionItemView _itemPrefab;
 
         [SerializeField] private Button _closeButton;

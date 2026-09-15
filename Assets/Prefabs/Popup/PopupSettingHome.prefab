@@ -489,6 +489,7 @@ MonoBehaviour:
   _closeSound: 11
   _fadeInDuration: 0.15
   _fadeOutDuration: 0.15
+  _blocksBackground: 1
   _musicToggle: {fileID: 7217888503466052317}
   _soundToggle: {fileID: 6647603827585162143}
   _musicOnIcon: {fileID: 0}
@@ -647,7 +648,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 119bb5fbcc86fef40a2ea494c42eaa72, type: 3}
+  m_Sprite: {fileID: 4371284998892539728, guid: 6707d6f7bcb67d74bb63e1103e7eb317, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

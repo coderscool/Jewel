@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using DG.Tweening;
 using JewelPainter.Gameplay.Domain;
@@ -72,9 +73,19 @@ namespace JewelPainter.UI.Views
         private ColorPaletteBar _paletteBar;
         private TutorialState _tutorialState;
 
-        /// Hướng dẫn đang nằm trên màn hình. Lời nhắc "chưa chọn màu" đọc cờ này để im
-        /// lặng — hai thứ nói cùng một điều, chồng lên nhau chỉ thành ồn.
+        /// Hướng dẫn đang nằm trên màn hình.
         public bool IsShowing => _isShowing;
+
+        /// Bắn mỗi khi hướng dẫn hiện ra hoặc tắt đi, kèm trạng thái MỚI.
+        ///
+        /// Có sự kiện chứ không chỉ để mỗi cờ IsShowing vì bên kia cần biết đúng KHOẢNH
+        /// KHẮC tắt, không phải biết trạng thái hiện thời. Lời nhắc "chưa chọn màu" nằm
+        /// cùng lúc với ngón tay và phải rút đi cùng nó — hỏi cờ mỗi frame thì cũng ra
+        /// kết quả ấy, nhưng là một vòng Update chạy suốt màn chơi chỉ để chờ một biến
+        /// cố xảy ra đúng một lần.
+        ///
+        /// Ai đăng ký thì nhớ gỡ trong OnDestroy của mình: lớp này sống lâu hơn popup.
+        public event Action<bool> OnShowingChanged;
 
         private bool _isShowing;
         private bool _isDisabled;
@@ -358,11 +369,20 @@ namespace JewelPainter.UI.Views
 
         private void SetVisible(bool visible)
         {
+            var changed = _isShowing != visible;
+
             _isShowing = visible;
 
-            if (_content == null) return;
+            if (_content != null && _content.activeSelf != visible) _content.SetActive(visible);
 
-            if (_content.activeSelf != visible) _content.SetActive(visible);
+            // Chỉ bắn ở đúng khoảnh khắc CHUYỂN trạng thái. Hide() được gọi ở rất nhiều
+            // đường — mỗi lần bảng dựng xong, mỗi lần chọn màu — và phần lớn trong số đó
+            // là tắt một thứ vốn đã tắt.
+            //
+            // Phần đồng bộ _content ở trên thì KHÔNG nằm trong nhánh này: lần gọi đầu
+            // tiên, từ Init, là "tắt một thứ đang tắt" theo cờ nhưng lại là lần duy nhất
+            // tắt cụm hướng dẫn mà người dựng scene để bật sẵn trong prefab.
+            if (changed) OnShowingChanged?.Invoke(visible);
         }
     }
 }

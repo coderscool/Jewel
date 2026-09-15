@@ -81,15 +81,22 @@ namespace JewelPainter.UI.Views
         [Tooltip("Object hiện thay cho nút khi đã hết màn, ví dụ dòng 'Hết màn rồi'.")]
         [SerializeField] private GameObject _lastLevelNotice;
 
+        /// KHÔNG bật tấm chặn chạm dùng chung của PopupManager.
+        ///
+        /// Popup này chỉ là một dải giữa màn hình, nên bỏ tấm chặn nghĩa là bức tranh phía
+        /// sau vẫn ăn chạm. Chấp nhận được, vì ở đúng khoảnh khắc này bức tranh đã tô
+        /// XONG: không còn ô nào chưa tô để một cú chạm lạc làm hỏng, và HUD lẫn thanh màu
+        /// đều đã ẩn từ lúc bắt đầu ăn mừng.
+        ///
+        /// Đổi lại là thứ đáng giá hơn: tấm chặn nằm giữa popup và bức tranh, nên mọi thứ
+        /// nó làm — kể cả chỉ là một lớp phủ alpha thấp — đều rơi thẳng lên phần thưởng
+        /// người chơi vừa bỏ công ra lấy.
+        public override bool BlocksBackground => false;
+
         private ILevelService _levelService;
         private ILevelFlowService _levelFlow;
         private PlayerWallet _wallet;
         private HomeScreenView _home;
-
-        /// Popup thắng màn KHÔNG làm tối nền: cả màn ăn mừng nằm ở bức tranh phía sau —
-        /// dải lấp lánh quét qua, camera thu về giữa. Phủ một lớp tối lên đó là che mất
-        /// đúng phần thưởng mà popup này sinh ra để chúc mừng.
-        public override bool DimsBackground => false;
 
         private Sequence _showSequence;
         private Vector2 _bannerHomePosition;
@@ -399,32 +406,6 @@ namespace JewelPainter.UI.Views
             CanvasGroup.interactable = false;
             CanvasGroup.blocksRaycasts = false;
 
-            var transition = _home.Transition;
-
-            // Có màn che thì cú đổi màn hình chui vào giữa hai nửa của nó: quét vào che
-            // kín → đổi → quét ra. Người chơi không nhìn thấy frame nào của lúc Home dựng
-            // lại danh sách, và cũng không có cảnh hai màn hình chồng lên nhau.
-            //
-            // Không lo bấm hai lần: chạm đã bị khoá ở trên, và tấm che còn tự bật
-            // raycastTarget của nó để nuốt mọi cú chạm lọt qua.
-            if (transition != null)
-            {
-                transition.Play(GoHome);
-                return;
-            }
-
-            GoHome();
-
-            StartCoroutine(FadeOutBeforeHomeEnters());
-        }
-
-        /// Đổi sang Home. Tách ra thành hàm riêng vì nó là thứ phải chạy ở ĐÚNG MỘT
-        /// khoảnh khắc — ngay lập tức khi không có màn che, hoặc ở frame màn hình đục kín
-        /// khi có. Cùng một việc, hai thời điểm.
-        private void GoHome()
-        {
-            if (_home == null) return;
-
             // Tiến trình đã nhích từ lúc tô xong, ở đây chỉ còn việc điều hướng.
             //
             // ShowCelebrating tự gọi Show bên trong, nên KHÔNG được gọi Show thêm lần nữa
@@ -438,11 +419,7 @@ namespace JewelPainter.UI.Views
             if (clearedLevel >= 0) _home.ShowCelebrating(clearedLevel);
             else _home.Show();
 
-            // Ẩn NGAY khi có màn che. EnterDelaySeconds trả 0 trong trường hợp đó nên
-            // FadeOutBeforeHomeEnters cũng tắt ngay, nhưng gọi thẳng ở đây thì không phải
-            // đợi thêm một coroutine nữa mới xong — mà frame này là frame duy nhất người
-            // chơi không nhìn thấy gì.
-            if (_home.Transition != null) HideSilently();
+            StartCoroutine(FadeOutBeforeHomeEnters());
         }
 
         /// Tan dần về 0 trong đúng khoảng lặng của Home, rồi mới tắt hẳn.

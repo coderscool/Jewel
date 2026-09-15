@@ -34,8 +34,16 @@ namespace JewelPainter.UI.Definitions
         /// Mở đúng một lần cho mỗi booster, ở lần vào màn đầu tiên sau khi tiến trình
         /// chạm mốc. BoosterUnlockConfig quyết định booster nào gọi popup nào — ba con số
         /// dưới đây không bị code nào tra thẳng.
+        ///
+        /// Tên đặt theo PREFAB mà PopupConfig đang trỏ tới, không theo booster: bảng mốc
+        /// mới là chỗ nối booster với popup, và nối thế nào thì tuỳ bản cân bằng. Đặt tên
+        /// theo booster thì chỉ cần đổi một dòng trong asset là cái tên ở đây nói sai,
+        /// mà nói sai một cách rất khó phát hiện — nó vẫn biên dịch được.
+        ///
+        /// "Magic wand" trong tên prefab là booster TÔ HẾT MÀU (FillColor) — cùng cái nút
+        /// phát SoundKey.MagicWand. Không phải booster tô tự do.
         BoosterUnlockHint = 11,
-        BoosterUnlockFreePaint = 12,
-        BoosterUnlockFillColor = 13,
+        BoosterUnlockMagicWand = 12,
+        BoosterUnlockPaint = 13,
     }
 }

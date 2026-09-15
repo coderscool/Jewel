@@ -38,13 +38,37 @@ namespace JewelPainter.UI.Views
 
         public bool IsVisible => _isShown;
 
-        /// Popup này có làm tối nền phía sau không.
+        /// Popup này có CHẶN chạm xuống phần phía sau nó không.
         ///
-        /// Mặc định CÓ, vì phần lớn popup đòi người chơi dừng lại quyết định một việc —
-        /// làm tối nền là cách nói "chỗ khác đợi đã". Popup nào chỉ ghé qua báo một tiếng
-        /// rồi tự tắt thì override về false: làm tối cả màn hình cho một câu nhắc thoáng
-        /// qua khiến nó nặng nề hơn hẳn thứ nó đáng có.
-        public virtual bool DimsBackground => true;
+        /// Mặc định CÓ, và đó là mặc định an toàn: một popup đang mở mà người chơi vẫn
+        /// quẹt trúng bức tranh phía sau là tô nhầm — một cú chạm không cố ý làm hỏng ô
+        /// màu, và không có gì báo cho họ biết điều đó vừa xảy ra.
+        ///
+        /// Ô này KHÔNG phải ô "làm tối nền". Trước đây nó tên là _dimsBackground và bị
+        /// hiểu là chuyện thẩm mỹ, nên khi cả game bỏ lớp tối thì mọi popup cùng bỏ tick
+        /// — và tấm chặn chạm biến mất theo, vì nó chính là tấm nền đó. Hai việc phải
+        /// tách ra: ô này quyết định CHẶN, còn tối hay không là alpha của chính tấm chặn
+        /// bên PopupManager (game này để 0 — nền sau popup là bức tranh đang tô, thứ đẹp
+        /// nhất trên màn hình, phủ tối lên nó là đánh đổi sai chiều).
+        ///
+        /// Tên mới cố ý KHÔNG dùng [FormerlySerializedAs]: giá trị cũ của mọi prefab đều
+        /// là false, giữ lại là giữ đúng cái lỗi này. Bỏ hẳn tên cũ thì prefab nào cũng
+        /// nhận mặc định true.
+        ///
+        /// Property để virtual, không phải để chiều ý ai: popup nào KHÔNG phủ kín màn
+        /// hình thì việc nó không chặn chạm là SỰ THẬT VỀ CẤU TRÚC của nó, không phải
+        /// một lựa chọn trong Inspector. Lời nhắc dạng toast là đúng ca đó — nó nổi lên
+        /// một góc, người chơi vẫn phải tô tiếp bên dưới. Để nó phụ thuộc vào một ô tick
+        /// nghĩa là ai đó dựng lại prefab, quên tick, và cả game khoá cứng vì một câu
+        /// nhắc dài một giây. Chặn hay không của những popup như thế thuộc về class.
+        [Tooltip("Chặn chạm xuống màn chơi phía sau khi popup này đang mở.\n\n" +
+                 "Mặc định BẬT. Bỏ tick cho popup KHÔNG phủ kín màn hình — lời nhắc dạng " +
+                 "toast chẳng hạn — vì nó vẫn phải cho người chơi tô tiếp.\n\n" +
+                 "Đây không phải ô làm tối nền: tối hay không là do alpha của tấm chặn " +
+                 "bên PopupManager.")]
+        [SerializeField] private bool _blocksBackground = true;
+
+        public virtual bool BlocksBackground => _blocksBackground;
 
         protected CanvasGroup CanvasGroup => _canvasGroup;
 

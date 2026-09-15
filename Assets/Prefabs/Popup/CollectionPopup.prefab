@@ -1039,7 +1039,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 87, y: -89}
+  m_AnchoredPosition: {x: 83, y: -93}
   m_SizeDelta: {x: 125, y: 127}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &8110006803206651847
@@ -1649,6 +1649,7 @@ MonoBehaviour:
   _closeSound: 11
   _fadeInDuration: 0.15
   _fadeOutDuration: 0.15
+  _blocksBackground: 1
   _itemPrefab: {fileID: 5750218201218521080, guid: c3535f050f69342408b7b3c3902ccd32, type: 3}
   _closeButton: {fileID: 1150471627767382503}
   _progressText: {fileID: 7980321834566603433}

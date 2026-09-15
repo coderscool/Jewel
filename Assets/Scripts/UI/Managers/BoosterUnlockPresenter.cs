@@ -31,9 +31,12 @@ namespace JewelPainter.UI.Managers
         private readonly PlayerProgress _progress;
         private readonly ISaveService _save;
 
-        /// Những booster đã tới mốc mà chưa kịp báo. Xếp hàng chứ không báo gộp: hai
-        /// booster mở cùng một màn thì người chơi phải đọc được cả hai, mà một popup chỉ
-        /// kể được một cái.
+        /// Những booster đã tới mốc mà chưa kịp báo.
+        ///
+        /// Hàng chờ chứ không phải một cờ: mỗi booster mở ở một mốc riêng, và mỗi cái
+        /// phải có khoảnh khắc riêng của nó. Vẫn cần hàng chờ kể cả khi ba mốc cách xa
+        /// nhau — người chơi bỏ game ở màn 2 rồi quay lại khi đã có tiến trình màn 12 thì
+        /// cả ba tới mốc cùng một lúc, và chúng phải nối đuôi nhau chứ không chồng lên.
         private readonly Queue<CreditPoolKind> _pending = new();
 
         private float _quietElapsed;
@@ -108,9 +111,9 @@ namespace JewelPainter.UI.Managers
             // một lỗi cấu hình im lặng biến thành một vòng lặp mỗi frame.
             MarkShown(booster);
 
-            // Mỗi booster một popup riêng, và BẢNG MỐC nói cái nào gọi cái nào. Presenter
-            // không tra tên popup theo booster: thêm booster thứ tư thì chỉ phải thêm một
-            // dòng vào asset, không phải mở file này ra sửa.
+            // BẢNG MỐC nói booster nào gọi popup nào. Presenter không tra tên popup theo
+            // booster: thêm booster thứ tư thì chỉ phải thêm một dòng vào asset, không
+            // phải mở file này ra sửa.
             var key = _config.UnlockPopupFor(booster);
 
             // None là mở khoá im lặng — nút chỉ đơn giản hết ổ khoá. Vẫn đã ghi cờ ở trên
