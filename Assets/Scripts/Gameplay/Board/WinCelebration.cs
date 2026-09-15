@@ -1,6 +1,7 @@
 using System.Collections;
 using JewelPainter.Gameplay.Domain;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace JewelPainter.Gameplay.Board
 {
@@ -81,25 +82,30 @@ namespace JewelPainter.Gameplay.Board
                  "frame cuối và tạo ra cú khựng ngay lúc đáng lẽ đẹp nhất.")]
         [SerializeField] private int _maxSpawnPerFrame;
 
-        [Header("Đóng khung tranh")]
-        [Tooltip("Khung tranh hiện ra sau khi dải quét tắt. Để trống thì bỏ hẳn màn này — " +
-                 "camera dừng ở khung hình thắng màn như cũ.")]
-        [SerializeField] private BoardFrame _boardFrame;
-
-        [Tooltip("Chờ ngần này giây SAU KHI dải quét tắt rồi mới lùi camera và đóng khung.\n\n" +
+        [Header("Nhịp lắng sau khi quét")]
+        [Tooltip("Chờ ngần này giây SAU KHI dải quét tắt rồi mới lùi camera.\n\n" +
                  "Một nhịp thở, không phải một quãng chờ: hai màn diễn dính liền nhau thì " +
                  "mắt đọc thành một, mà hở quá thì thành hai cảnh rời.")]
-        [SerializeField] private float _frameDelay = 0.1f;
+        [FormerlySerializedAs("_frameDelay")]
+        [SerializeField] private float _settleDelay = 0.1f;
 
-        [Tooltip("Chừa thêm bao nhiêu Ô NỮA quanh khung tranh, ngoài phần khung đã chiếm.\n\n" +
-                 "KHÔNG phải chỗ cho khung: chỗ đó camera tự hỏi BoardFrame rồi lùi đúng " +
-                 "bằng chừng ấy, ở mọi cỡ bảng. Ô này chỉ là lề thở để khung không dính sát " +
-                 "mép màn hình.\n\n" +
-                 "Nâng bề dày khung bên BoardFrame thì KHÔNG phải sửa ô này theo.")]
-        [SerializeField] private float _frameBreathingCells = 1f;
+        [Tooltip("Thời gian camera lùi ra và nhấc tranh lên. Để 0 là BỎ HẲN màn diễn thứ " +
+                 "hai — camera dừng luôn ở khung hình thắng màn.")]
+        [FormerlySerializedAs("_frameCameraDuration")]
+        [SerializeField] private float _settleDuration = 0.45f;
 
-        [Tooltip("Thời gian camera lùi ra lấy chỗ cho khung.")]
-        [SerializeField] private float _frameCameraDuration = 0.45f;
+        [Tooltip("Camera lùi ra thêm chừng này Ô mỗi phía, làm bức tranh nhỏ lại.\n\n" +
+                 "Tính bằng ô chứ không bằng hệ số zoom: cùng một hệ số cho ra phần lề rất " +
+                 "khác nhau giữa bảng 39x52 và bảng 101x105, còn số ô thì đúng ở mọi cỡ.")]
+        [SerializeField] private float _settleExtraCells = 2.5f;
+
+        [Tooltip("Đồng thời nhấc bức tranh lên chừng này PHẦN chiều cao màn hình. 0.06 là " +
+                 "6% chiều cao màn.\n\n" +
+                 "Tính theo màn hình chứ không theo ô vì đây là quyết định bố cục: chừa " +
+                 "chỗ phía dưới cho cụm thưởng sắp hiện. Thứ phải đúng là khoảng cách mắt " +
+                 "nhìn thấy, không phải số ô.\n\n" +
+                 "Số âm thì tranh đi xuống.")]
+        [SerializeField] private float _settleRiseFraction = 0.06f;
 
 
         private BoardView _boardView;
@@ -132,9 +138,9 @@ namespace JewelPainter.Gameplay.Board
             {
                 var total = Mathf.Max(0f, _sweepStartDelay) + Mathf.Max(0f, _sweepDuration);
 
-                if (_boardFrame == null) return total;
+                if (!HasSettleStage) return total;
 
-                return total + Mathf.Max(0f, _frameDelay) + Mathf.Max(0f, _frameCameraDuration);
+                return total + Mathf.Max(0f, _settleDelay) + _settleDuration;
             }
         }
 
@@ -159,8 +165,6 @@ namespace JewelPainter.Gameplay.Board
             _nextDiagonal = 0;
             _droppedSlots = 0;
 
-            if (_boardFrame != null) _boardFrame.HideInstantly();
-
             if (_burstPool == null) return;
 
             _burstPool.ReleaseAll();
@@ -173,9 +177,8 @@ namespace JewelPainter.Gameplay.Board
             if (_boardView == null || _boardView.Grid == null) return;
 
             // Dọn dư âm của lượt trước: chơi lại một màn thì Play() chạy lần nữa mà không
-            // qua HandleBoardRebuilt, và cái khung cũ vẫn đang treo trên màn.
+            // qua HandleBoardRebuilt, và nhịp lắng của lượt cũ có thể còn đang chạy.
             StopAllCoroutines();
-            if (_boardFrame != null) _boardFrame.HideInstantly();
 
             if (_boardCamera != null) _boardCamera.FrameWholeBoard(_cameraDuration);
 
@@ -245,39 +248,39 @@ namespace JewelPainter.Gameplay.Board
             _isSweeping = false;
             ReportDroppedSlots(lastDiagonal);
 
-            BeginFrameStage();
+            BeginSettleStage();
         }
 
-        /// Màn diễn thứ hai: camera lùi thêm một nấc và khung tranh ập vào.
+        /// Màn diễn thứ hai có chạy không.
+        ///
+        /// Một con số 0 ở ô thời gian là cách tắt: không cần thêm một ô tick nữa cho cùng
+        /// một quyết định, và "lùi camera trong 0 giây" vốn đã chẳng có gì để xem.
+        private bool HasSettleStage => _settleDuration > 0f;
+
+        /// Màn diễn thứ hai: bức tranh lùi lại một nấc và dâng lên một chút.
         ///
         /// Nối vào ĐUÔI dải quét chứ không hẹn giờ song song từ lúc Play(). Dải quét có
         /// thể kết thúc muộn hơn Sweep Duration một hai frame, và một cái hẹn giờ riêng sẽ
         /// lệch đúng ngần đó — ít, nhưng đây là chỗ hai chuyển động phải khớp nhau.
-        private void BeginFrameStage()
+        private void BeginSettleStage()
         {
-            if (_boardFrame == null) return;
+            if (!HasSettleStage) return;
 
-            StartCoroutine(FrameRoutine());
+            StartCoroutine(SettleRoutine());
         }
 
-        private IEnumerator FrameRoutine()
+        private IEnumerator SettleRoutine()
         {
-            if (_frameDelay > 0f) yield return new WaitForSeconds(_frameDelay);
+            if (_settleDelay > 0f) yield return new WaitForSeconds(_settleDelay);
 
-            var layout = _boardView != null ? _boardView.Layout : null;
-            if (layout == null) yield break;
+            if (_boardCamera == null) yield break;
 
-            // Camera lùi và khung hiện CÙNG LÚC, không xếp hàng. Khung đứng yên trong
-            // world còn khung nhìn thì rộng ra, nên thứ người chơi thấy là bức tranh tự
-            // thu nhỏ lại vừa khít vào trong khung — đó mới là cảnh đóng khung. Cho khung
-            // hiện sau khi camera đã lùi xong thì nó chỉ là một cái viền được dán thêm.
-            if (_boardCamera != null)
-            {
-                _boardCamera.FrameWholeBoard(
-                    _frameCameraDuration, _boardFrame.OuterPaddingCells + _frameBreathingCells);
-            }
-
-            _boardFrame.Show(layout.WorldBounds);
+            // Thu nhỏ và dâng lên là MỘT chuyển động, do một lời gọi duy nhất lo: cả hai
+            // đều chỉ là camera đi tới một khung hình khác, và camera nội suy một lần thì
+            // hai thành phần không thể lệch pha nhau. Tách thành hai tween song song là tự
+            // mở ra khả năng chúng đi lệch nhịp — mà mắt đọc ra ngay, thành một cú trôi
+            // chéo thay vì một bức tranh đang lùi lại.
+            _boardCamera.FrameWholeBoard(_settleDuration, _settleExtraCells, _settleRiseFraction);
         }
 
         /// Báo ra khi dải quét bị thủng vì kho đầy, kèm đủ số để sửa ngay mà không phải

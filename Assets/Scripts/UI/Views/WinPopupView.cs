@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using DG.Tweening;
 using JewelPainter.Core.Services;
@@ -38,14 +39,6 @@ namespace JewelPainter.UI.Views
         [Tooltip("Nút Continue phóng từ 0 lên 1.")]
         [SerializeField] private float _buttonDuration = 0.3f;
 
-        [Tooltip("BỎ TICK (mặc định): nút mọc lên ngay sau khi băng đáp xuống, trong khi " +
-                 "coin vẫn đang bay. Đợt coin dài hơn một giây rưỡi, mà đó là hình ảnh " +
-                 "chứ không phải luật chơi — tiền đã cộng vào ví ngay lúc popup mở, bấm " +
-                 "sớm không mất đồng nào. Người sốt ruột đi tiếp được ngay, người thong " +
-                 "thả vẫn xem hết.\n\n" +
-                 "TICK: nút đợi coin bay xong hẳn. Chỉ nên dùng nếu bạn cố ý muốn người " +
-                 "chơi xem trọn đợt coin — đổi lại là hơn một giây không bấm được gì.")]
-        [SerializeField] private bool _buttonWaitsForCoins;
 
         [Tooltip("Pháo hoa ăn mừng NẰM TRONG chính prefab popup — kéo victory_1 vào đây. " +
                  "Để trống thì bỏ qua.\n\n" +
@@ -74,6 +67,21 @@ namespace JewelPainter.UI.Views
 
         [Tooltip("Tổng tiền hiện ở góc trên. Tăng dần theo từng coin bay tới.")]
         [SerializeField] private Text _coinTotalText;
+
+        [Tooltip("Nán lại ngần này giây sau khi đồng cuối cùng đáp xuống, rồi mới quét về " +
+                 "Home.\n\n" +
+                 "Con số tổng tiền nhảy đúng ở đồng cuối. Quét ngay lúc đó là người chơi " +
+                 "thấy nó đổi rồi mất luôn, không kịp đọc — mà cái họ vừa bỏ cả màn ra lấy " +
+                 "chính là con số đó.")]
+        [SerializeField] private float _coinTailSeconds = 0.2f;
+
+        [Tooltip("Chờ đợt coin lâu nhất ngần này giây rồi đi tiếp bất kể xong hay chưa.\n\n" +
+                 "Lưới an toàn, không phải một nhịp để chỉnh. Từ khi đợt coin nằm TRÊN " +
+                 "đường về Home, một cú bay không bao giờ báo xong sẽ nhốt người chơi lại " +
+                 "trong popup — nút đã khoá, và không còn đường nào khác ra. Thà bỏ dở " +
+                 "hiệu ứng còn hơn bỏ dở người chơi.\n\n" +
+                 "Đặt dài hơn hẳn thời gian một đợt coin thật.")]
+        [SerializeField] private float _coinMaxWaitSeconds = 4f;
 
         [Header("Tuỳ chọn — để trống cũng chạy")]
         [SerializeField] private TMP_Text _levelText;
@@ -105,6 +113,14 @@ namespace JewelPainter.UI.Views
         /// Tổng tiền đang hiện trên màn. Đếm riêng thay vì đọc ví, vì lúc coin đang bay
         /// thì ví đã cộng xong rồi — con số phải đi theo coin, không đi theo ví.
         private int _displayedCoins;
+
+        /// Phần thưởng của lượt thắng này, chốt lại ở Show.
+        ///
+        /// Đợt coin giờ bay lúc bấm Continue, mà RewardForCurrentLevel() đọc màn ĐANG nạp
+        /// — tới lúc đó nó có thể đã là màn khác. Hỏi lại ở Continue là bay đúng số đồng
+        /// nhưng cộng sai con số, và sai một cách rất im lặng: ví thì đúng vì đã cộng từ
+        /// lúc mở, chỉ mỗi con số chạy trên màn là lệch.
+        private int _pendingReward;
 
         [Inject]
         public void Construct(
@@ -144,6 +160,8 @@ namespace JewelPainter.UI.Views
             var isLastLevel = _levelFlow != null && _levelFlow.IsLastLevel;
             var reward = RewardForCurrentLevel();
 
+            _pendingReward = reward;
+
             // ClearedLevel chứ không phải CurrentLevel: tiến trình đã nhích sang màn kế
             // ngay lúc tô xong, nên CurrentLevel giờ là màn SAU màn vừa thắng.
             if (_levelText != null && _levelFlow != null && _levelFlow.ClearedLevel >= 0)
@@ -163,7 +181,7 @@ namespace JewelPainter.UI.Views
 
             PlayVictoryEffect();
 
-            PlayShowSequence(reward);
+            PlayShowSequence();
         }
 
         /// Bắn pháo hoa nằm sẵn trong popup.
@@ -236,7 +254,9 @@ namespace JewelPainter.UI.Views
             base.Hide();
         }
 
-        private void PlayShowSequence(int reward)
+        /// Băng rơi xuống rồi nút mọc lên. KHÔNG còn đợt coin ở đây — nó đã dời sang cú
+        /// bấm Continue.
+        private void PlayShowSequence()
         {
             KillSequence();
 
@@ -260,30 +280,13 @@ namespace JewelPainter.UI.Views
                 _showSequence.Append(MoveBannerHome());
             }
 
-            // Thiếu bất cứ mảnh nào của phần tiền thì bỏ qua thẳng sang nút. Nút PHẢI
-            // hiện trong mọi trường hợp — nó là đường duy nhất ra khỏi popup này.
-            var canPlayCoins = reward > 0
-                               && _coinFly != null
-                               && _coinFrom != null
-                               && _coinTarget != null;
-
-            if (canPlayCoins)
-            {
-                _showSequence.AppendCallback(() => PlayCoinFly(reward, button));
-
-                // PlayCoinFly bắn rồi đi luôn, coin tự bay bằng tween của chúng. Nên cú
-                // Append ngay dưới đây chạy SONG SONG với đợt coin chứ không xếp sau nó.
-                if (!_buttonWaitsForCoins) AppendButtonPop(_showSequence, button);
-
-                return;
-            }
-
+            // Nút PHẢI hiện trong mọi trường hợp — nó là đường duy nhất ra khỏi popup này.
             AppendButtonPop(_showSequence, button);
         }
 
         /// Chia đều phần thưởng cho từng coin, phần lẻ dồn vào coin cuối — cộng thiếu một
         /// đồng vì làm tròn thì con số cuối cùng trên màn không khớp với ví.
-        private void PlayCoinFly(int reward, Transform button)
+        private void PlayCoinFly(int reward, Action onAllDone)
         {
             var coinCount = _coinFly.CoinCount;
             var arrived = 0;
@@ -307,17 +310,11 @@ namespace JewelPainter.UI.Views
                 },
                 onAllDone: () =>
                 {
+                    // Chốt lại con số, không tin vào phép chia ở trên: phần lẻ do làm tròn
+                    // có thể để tổng thiếu hoặc thừa một đồng so với ví.
                     SetCoinTotal(_displayedCoins + reward);
 
-                    // Nút đã mọc từ lúc băng đáp thì ở đây không còn việc gì. Dựng thêm
-                    // một Sequence nữa để phóng lại cái nút đang ở scale 1 là cho nó nảy
-                    // một phát vô cớ giữa lúc người chơi sắp bấm.
-                    if (!_buttonWaitsForCoins) return;
-
-                    var pop = DOTween.Sequence().SetUpdate(true);
-                    AppendButtonPop(pop, button);
-
-                    _showSequence = pop;
+                    onAllDone?.Invoke();
                 });
         }
 
@@ -393,18 +390,86 @@ namespace JewelPainter.UI.Views
         {
             if (Sound != null) Sound.Play(SoundKey.Direction);
 
+            // Khoá chạm NGAY mà không ẩn. Popup còn nguyên trên màn suốt đợt coin và suốt
+            // lúc màn che quét vào; không khoá thì bấm Continue lần nữa sẽ chạy lại cả
+            // đoạn này, và lần thứ hai bắn thêm một đợt coin nữa.
+            CanvasGroup.interactable = false;
+            CanvasGroup.blocksRaycasts = false;
+
+            StartCoroutine(ContinueRoutine());
+        }
+
+        /// Đường ra khỏi popup: coin bay xong rồi mới quét về Home.
+        ///
+        /// Đợt coin nằm ở ĐÂY chứ không ở lúc popup mở, và đó là một lựa chọn về sự chú ý.
+        /// Lúc popup vừa hiện, người chơi còn đang đọc băng, đọc số màn, nhìn pháo hoa —
+        /// một đợt coin chen vào giữa đám đó là thứ thứ tư cùng đòi được nhìn. Còn ở đây
+        /// thì màn hình đã đứng yên và người chơi vừa chủ động bấm, nên đợt coin là thứ
+        /// DUY NHẤT đang chuyển động: nó trả lời đúng cái câu "tôi được gì" mà cú bấm vừa
+        /// đặt ra.
+        ///
+        /// Đổi lại là đường về Home dài thêm chừng một giây rưỡi. Chấp nhận được vì đây là
+        /// lần duy nhất trong cả màn chơi người chơi phải đợi, và họ đợi để xem phần
+        /// thưởng của chính mình.
+        private IEnumerator ContinueRoutine()
+        {
+            yield return CoinFlyRoutine();
+
+            var transition = _home != null ? _home.Transition : null;
+
+            if (transition != null)
+            {
+                // Màn che sống trên một object KHÁC, nên nó vẫn chạy tiếp sau khi popup
+                // này tắt. GoHome rơi đúng vào frame màn hình đục kín.
+                transition.Play(GoHome);
+                yield break;
+            }
+
+            GoHome();
+        }
+
+        /// Bắn đợt coin rồi đợi nó đáp hết. Thoát ngay nếu không có gì để bay.
+        private IEnumerator CoinFlyRoutine()
+        {
+            var canPlayCoins = _pendingReward > 0
+                               && _coinFly != null
+                               && _coinFrom != null
+                               && _coinTarget != null;
+
+            if (!canPlayCoins) yield break;
+
+            var done = false;
+
+            PlayCoinFly(_pendingReward, () => done = true);
+
+            // Có hạn giờ chứ không đợi mãi. onAllDone là lời hứa của một đám tween, mà
+            // tween thì bị huỷ được — đổi scene, StopAll, một exception trong callback.
+            // Không có hạn giờ thì một lời hứa lỡ dở biến thành người chơi ngồi nhìn cái
+            // popup đã khoá nút, không còn đường nào ra.
+            var elapsed = 0f;
+            var limit = Mathf.Max(0.1f, _coinMaxWaitSeconds);
+
+            while (!done && elapsed < limit)
+            {
+                // Thời gian KHÔNG theo timeScale: game đang bị chính popup này dừng lại.
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            if (_coinTailSeconds > 0f) yield return new WaitForSecondsRealtime(_coinTailSeconds);
+        }
+
+        /// Đổi sang Home. Tách ra vì nó phải chạy ở ĐÚNG MỘT khoảnh khắc — ngay lập tức
+        /// khi không có màn che, hoặc ở frame màn hình đục kín khi có.
+        private void GoHome()
+        {
             if (_home == null)
             {
-                // HideSilently ở cả hai đường ra: popup này không bao giờ bị "huỷ", nó chỉ
+                // HideSilently ở mọi đường ra: popup này không bao giờ bị "huỷ", nó chỉ
                 // được đi tiếp. Cú bấm đã có tiếng Direction rồi.
                 HideSilently();
                 return;
             }
-
-            // Khoá chạm NGAY mà không ẩn. Popup vẫn còn trên màn suốt lúc Home đi vào,
-            // nên không khoá thì bấm Continue lần nữa sẽ chạy lại cả đoạn này.
-            CanvasGroup.interactable = false;
-            CanvasGroup.blocksRaycasts = false;
 
             // Tiến trình đã nhích từ lúc tô xong, ở đây chỉ còn việc điều hướng.
             //

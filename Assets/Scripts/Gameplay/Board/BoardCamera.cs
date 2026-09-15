@@ -203,15 +203,29 @@ namespace JewelPainter.Gameplay.Board
         /// chỉ làm hỏng nhịp của màn ăn mừng, mà lúc này cũng chẳng còn gì để tô.
         public void FrameWholeBoard(float duration) => FrameWholeBoard(duration, 0f);
 
-        /// Cùng khung hình thắng màn, nhưng canh cho một hình chữ nhật RỘNG HƠN bảng
-        /// `extraCells` ô mỗi phía — chỗ cho khung tranh và nền lót đứng.
-        ///
-        /// Nhận số Ô chứ không nhận một hệ số zoom: bề dày khung vốn đã khai bằng ô bên
-        /// BoardFrame, nên chuyền thẳng con số đó sang là camera tự lùi đúng bằng chỗ cần,
-        /// ở MỌI cỡ bảng và mọi tỉ lệ màn. Một hệ số zoom thì phải canh tay, và canh đúng
-        /// cho bảng 39x52 là canh sai cho bảng 101x105 — cùng một hệ số nhưng khung tranh
-        /// dày như nhau lại chiếm phần rất khác nhau trên hai bức.
         public void FrameWholeBoard(float duration, float extraCells)
+        {
+            FrameWholeBoard(duration, extraCells, 0f);
+        }
+
+        /// Cùng khung hình thắng màn, nhưng canh cho một hình chữ nhật RỘNG HƠN bảng
+        /// `extraCells` ô mỗi phía, rồi nhấc cả bức tranh lên `riseFraction` phần chiều
+        /// cao màn hình.
+        ///
+        /// `extraCells` nhận số Ô chứ không nhận một hệ số zoom: một hệ số thì phải canh
+        /// tay, và canh đúng cho bảng 39x52 là canh sai cho bảng 101x105 — cùng một hệ số
+        /// nhưng phần lề chừa ra lại chiếm phần rất khác nhau trên hai bức. Tính bằng ô
+        /// thì camera tự lùi đúng bằng chừng ấy ở mọi cỡ bảng và mọi tỉ lệ màn.
+        ///
+        /// `riseFraction` thì ngược lại, phải tính theo MÀN HÌNH: nó là một quyết định bố
+        /// cục — chừa chỗ phía dưới cho cụm thưởng — nên thứ nó phải đúng là khoảng cách
+        /// mắt nhìn thấy, không phải số ô. Dương là tranh đi LÊN.
+        ///
+        /// Phần nhấc này cộng SAU khi đã giải xong ràng buộc lề, và cố ý được phép lấn
+        /// qua lề trên: hai cái lề là ràng buộc của lúc CHƠI, khi HUD còn ở trên đầu và
+        /// thanh màu còn ở dưới chân. Tới đoạn ăn mừng thì cả hai đã ẩn, và thứ duy nhất
+        /// sắp chiếm chỗ là popup thắng màn ở phía dưới.
+        public void FrameWholeBoard(float duration, float extraCells, float riseFraction)
         {
             var layout = _boardView != null ? _boardView.Layout : null;
             if (layout == null) return;
@@ -228,10 +242,14 @@ namespace JewelPainter.Gameplay.Board
             var size = FitSize(
                 width, height, BandHeight(_winMarginTop, _winMarginBottom), _winBoardWidthFraction);
 
-            // Đo theo hình chữ nhật ĐÃ CỘNG KHUNG, không theo riêng bảng: thứ không được
-            // phép lấn vào lề là cả cụm tranh-và-khung.
-            _viewBandCenter = ResolveBandCenter(
-                _winMarginTop, _winMarginBottom, size > 0f ? height / (2f * size) : 1f);
+            // Đo theo hình chữ nhật ĐÃ CỘNG LỀ, không theo riêng bảng: thứ không được
+            // phép lấn vào lề màn hình là cả cụm tranh-và-lề-chừa.
+            //
+            // Kẹp 0..1 chứ không kẹp theo lề: nhấc quá tay thì tranh chạy ra khỏi màn,
+            // còn lấn vào lề thì được phép — xem chú thích trên đầu hàm.
+            _viewBandCenter = Mathf.Clamp01(
+                ResolveBandCenter(_winMarginTop, _winMarginBottom, size > 0f ? height / (2f * size) : 1f)
+                + riseFraction);
 
             _winFraming = true;
 
