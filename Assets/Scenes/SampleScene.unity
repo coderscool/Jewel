@@ -12533,9 +12533,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _overlay: {fileID: 1857027239}
-  _coverDuration: 0.35
-  _revealDuration: 0.4
-  _holdSeconds: 0.08
+  _coverDuration: 0.6
+  _revealDuration: 0.65
+  _holdSeconds: 0.15
   _coverEase: 5
   _revealEase: 6
 --- !u!114 &1857027239
@@ -13438,8 +13438,8 @@ MonoBehaviour:
   _holdToPickSeconds: 0.8
   _holdMoveTolerancePixels: 24
   _snapToNearestPaintable: 1
-  _snapRadiusPixels: 32
-  _snapBeginRadiusPixels: 24
+  _snapRadiusPixels: 44
+  _snapBeginRadiusPixels: 40
 --- !u!1 &2020949231
 GameObject:
   m_ObjectHideFlags: 0

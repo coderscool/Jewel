@@ -69,14 +69,14 @@ namespace JewelPainter.Gameplay.Board
                  "sát thì bán kính chỉ còn một phần tư ô và phép hút gần như tự tắt.\n\n" +
                  "32 là điểm khởi đầu. Màn hình càng nhiều điểm ảnh càng nên nới ra — sai " +
                  "số của đầu ngón là vài milimét, mà một milimét trên máy 400 dpi là ~16 px.")]
-        [SerializeField] private float _snapRadiusPixels = 32f;
+        [SerializeField] private float _snapRadiusPixels = 44f;
 
         [Tooltip("Bán kính hút LÚC ĐẶT TAY XUỐNG, tức lúc quyết nét này là tô hay kéo camera.\n\n" +
                  "Hẹp hơn bán kính khi tô, và đó là chủ ý: nét bắt đầu gần một ô tô được sẽ " +
                  "thành nét TÔ, nên để rộng quá thì ở vùng dày ô gợi ý người chơi không còn " +
                  "kéo bảng bằng một ngón được nữa. Hai ngón thì vẫn luôn là kéo và zoom.\n\n" +
                  "Để 0 là bắt chạm trúng mới bắt đầu tô được, nhưng khi đã tô thì vẫn hút.")]
-        [SerializeField] private float _snapBeginRadiusPixels = 24f;
+        [SerializeField] private float _snapBeginRadiusPixels = 40f;
 
         private IPaintService _paintService;
         private Vector2Int _lastCell = NoCell;
