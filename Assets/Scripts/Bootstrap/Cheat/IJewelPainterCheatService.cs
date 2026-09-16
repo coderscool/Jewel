@@ -49,6 +49,16 @@ namespace JewelPainter.Bootstrap.Cheat
 
         /// Cộng lượt tô hết màu.
         void AddFillColorCredits(int amount);
+
+        /// HUD đang bị GIẤU đi hay không.
+        bool IsHudHidden { get; }
+
+        /// Giấu HUD đi mà KHÔNG khoá nó: nút vẫn ăn chạm, chỉ là không nhìn thấy.
+        ///
+        /// Để chụp ảnh và quay màn hình bức tranh cho sạch, nhưng vẫn bấm được booster
+        /// ngay trong lúc quay. Tắt hẳn HUD thì phải bật lại mới bấm được, mà bật lại là
+        /// nó nhảy vào khuôn hình đúng lúc không muốn.
+        void SetHudHidden(bool hidden);
     }
 }
 #endif

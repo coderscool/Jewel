@@ -237,7 +237,7 @@ namespace JewelPainter.Bootstrap
 #if CHEAT_ENABLED
             Cheat.CheatInstaller.Install(
                 _levelService, _paintService, _paintProgressStore, _progress, _wallet, _hintCredits,
-                _freePaintCredits, _fillColorCredits);
+                _freePaintCredits, _fillColorCredits, _hud);
 #endif
 
             // Nạp màn là việc CUỐI CÙNG của lượt nối dây, và nó không dựng bàn ngay trong

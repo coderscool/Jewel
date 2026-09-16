@@ -29,7 +29,12 @@ namespace JewelPainter.Bootstrap.Cheat
         private Button _addHints;
         private Button _addFreePaint;
         private Button _addFillColor;
+        private Button _toggleHud;
         private Text _stats;
+
+        /// Nhãn nút giấu HUD ở lần vẽ gần nhất. Cùng lý do với mấy con số dưới đây: gán
+        /// Text.text là dựng lại lưới chữ, đừng làm mỗi frame cho một chữ đứng yên.
+        private bool _lastHudHidden;
 
         /// Giá trị đã VẼ lần gần nhất. Có nó thì OnUpdate chỉ chạm Text.text khi số thật
         /// sự đổi — gán text mỗi frame là dựng lại lưới chữ mỗi frame, đúng thứ làm tụt
@@ -60,6 +65,8 @@ namespace JewelPainter.Bootstrap.Cheat
             _addFillColor = CheatUi.Button(
                 section, $"+{FillColorGrant} tô hết màu", new Color(0.40f, 0.75f, 0.45f));
 
+            _toggleHud = CheatUi.Button(section, HudLabel(false), new Color(0.45f, 0.45f, 0.50f));
+
             _paintSmall.onClick.AddListener(OnPaintSmall);
             _paintLarge.onClick.AddListener(OnPaintLarge);
             _paintColor.onClick.AddListener(OnPaintColor);
@@ -67,6 +74,7 @@ namespace JewelPainter.Bootstrap.Cheat
             _addHints.onClick.AddListener(OnAddHints);
             _addFreePaint.onClick.AddListener(OnAddFreePaint);
             _addFillColor.onClick.AddListener(OnAddFillColor);
+            _toggleHud.onClick.AddListener(OnToggleHud);
 
             _stats = CheatUi.Label(section, "Còn — ô · Gợi ý —", 24);
         }
@@ -76,6 +84,7 @@ namespace JewelPainter.Bootstrap.Cheat
             _game = services?.Get<IJewelPainterCheatService>();
 
             ApplyInteractable();
+            RefreshHudLabel();
             ForceRefreshText();
         }
 
@@ -88,6 +97,7 @@ namespace JewelPainter.Bootstrap.Cheat
             if (_addHints != null) _addHints.onClick.RemoveListener(OnAddHints);
             if (_addFreePaint != null) _addFreePaint.onClick.RemoveListener(OnAddFreePaint);
             if (_addFillColor != null) _addFillColor.onClick.RemoveListener(OnAddFillColor);
+            if (_toggleHud != null) _toggleHud.onClick.RemoveListener(OnToggleHud);
         }
 
         public override void OnUpdate()
@@ -99,6 +109,11 @@ namespace JewelPainter.Bootstrap.Cheat
                 _lastFilling = _game.IsFilling;
                 ApplyInteractable();
             }
+
+            // Theo dõi cả chiều NGƯỢC LẠI, không chỉ cập nhật lúc bấm: game tự trả HUD về
+            // hiện sau mỗi màn, và nếu nhãn chỉ đổi lúc bấm thì nó sẽ nói "Hiện HUD" trong
+            // khi HUD đang hiện sẵn — bấm một phát nữa mới về đúng.
+            if (_game.IsHudHidden != _lastHudHidden) RefreshHudLabel();
 
             if (_game.RemainingCells == _lastRemaining && _game.HintCredits == _lastHints) return;
 
@@ -113,6 +128,32 @@ namespace JewelPainter.Bootstrap.Cheat
         private void OnAddFreePaint() => _game?.AddFreePaintCredits(FreePaintGrant);
         private void OnAddFillColor() => _game?.AddFillColorCredits(FillColorGrant);
 
+        /// Giấu HUD đi mà vẫn bấm được nó — xem IJewelPainterCheatService.SetHudHidden.
+        ///
+        /// Panel cheat nằm trên canvas riêng của kit nên KHÔNG bị giấu theo. Muốn khuôn
+        /// hình sạch hẳn thì đóng panel lại; nút của HUD vẫn ở đúng chỗ cũ và vẫn ăn chạm,
+        /// chỉ là phải bấm bằng trí nhớ.
+        private void OnToggleHud()
+        {
+            if (_game == null) return;
+
+            _game.SetHudHidden(!_game.IsHudHidden);
+
+            RefreshHudLabel();
+        }
+
+        private void RefreshHudLabel()
+        {
+            _lastHudHidden = _game != null && _game.IsHudHidden;
+
+            if (_toggleHud == null) return;
+
+            var label = _toggleHud.GetComponentInChildren<Text>();
+            if (label != null) label.text = HudLabel(_lastHudHidden);
+        }
+
+        private static string HudLabel(bool hidden) => hidden ? "Hiện HUD" : "Giấu HUD";
+
         /// Nút "Dừng tô" chỉ bấm được khi thật sự đang tô — nút bấm được mà không làm gì
         /// là lời nói dối nhỏ mà người test phải mất một lúc mới nhận ra.
         private void ApplyInteractable()
@@ -125,6 +166,7 @@ namespace JewelPainter.Bootstrap.Cheat
             if (_addHints != null) _addHints.interactable = has;
             if (_addFreePaint != null) _addFreePaint.interactable = has;
             if (_addFillColor != null) _addFillColor.interactable = has;
+            if (_toggleHud != null) _toggleHud.interactable = has;
             if (_stop != null) _stop.interactable = has && _game.IsFilling;
         }
 

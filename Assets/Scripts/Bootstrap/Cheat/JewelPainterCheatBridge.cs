@@ -6,6 +6,7 @@ using JewelPainter.Gameplay.Config;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
+using JewelPainter.UI.Views;
 using UnityEngine;
 
 namespace JewelPainter.Bootstrap.Cheat
@@ -48,6 +49,10 @@ namespace JewelPainter.Bootstrap.Cheat
         private readonly FillColorCredits _fillColorCredits;
         private readonly CheatRunner _runner;
 
+        /// CanvasGroup của cả HUD. Lấy một lần lúc dựng, không hỏi lại mỗi lần bấm —
+        /// HudView sống suốt phiên chơi nên nó không đi đâu cả.
+        private readonly CanvasGroup _hudGroup;
+
         private readonly HashSet<string> _warnings = new();
 
         private Coroutine _fill;
@@ -61,6 +66,7 @@ namespace JewelPainter.Bootstrap.Cheat
             HintCredits hintCredits,
             FreePaintCredits freePaintCredits,
             FillColorCredits fillColorCredits,
+            HudView hud,
             CheatRunner runner)
         {
             _levelService = levelService;
@@ -72,6 +78,18 @@ namespace JewelPainter.Bootstrap.Cheat
             _freePaintCredits = freePaintCredits;
             _fillColorCredits = fillColorCredits;
             _runner = runner;
+
+            // GetComponent chứ không bắt HudView mở thêm một property: chuyện giấu HUD để
+            // quay phim là nhu cầu của CHEAT, không phải của game. Nhét một cửa vào lớp
+            // production để phục vụ nó là để lại một thứ không ai dùng trong bản phát
+            // hành — mà file này thì biến mất sạch khi bỏ define.
+            if (hud != null) _hudGroup = hud.GetComponent<CanvasGroup>();
+
+            if (_hudGroup == null)
+            {
+                Debug.LogWarning("[Cheat] Không thấy CanvasGroup trên HudView — nút giấu HUD " +
+                                 "sẽ xám đi. Thêm CanvasGroup vào object Canvas-HUD.");
+            }
         }
 
         // ────────────────────────────── ILevelCheatService ──────────────────────────────
@@ -244,6 +262,32 @@ namespace JewelPainter.Bootstrap.Cheat
         public void AddFreePaintCredits(int amount) => _freePaintCredits?.Grant(amount);
 
         public void AddFillColorCredits(int amount) => _fillColorCredits?.Grant(amount);
+
+        /// Đọc thẳng từ alpha chứ không giữ một cờ riêng.
+        ///
+        /// Alpha là trạng thái THẬT, còn một cái cờ chỉ là trí nhớ của lớp này về nó. Hai
+        /// thứ đó lệch nhau ngay lần đầu game tự đụng vào alpha — mà game có đụng thật:
+        /// HUD mờ đi khi bắt đầu ăn mừng, rồi được trả về 1 ở màn sau. Đọc từ nguồn thì
+        /// nút trên panel luôn nói đúng thứ đang xảy ra, kể cả sau những lần đó.
+        public bool IsHudHidden => _hudGroup != null && _hudGroup.alpha <= 0.001f;
+
+        /// Chỉ đụng ALPHA, không đụng interactable/blocksRaycasts — đó là toàn bộ mẹo.
+        ///
+        /// Unity không dùng alpha để bắn raycast, nên một CanvasGroup alpha 0 vẫn nhận
+        /// chạm đầy đủ: HUD biến mất khỏi khuôn hình mà nút vẫn bấm được đúng chỗ cũ.
+        /// SetActive(false) hay Canvas.enabled = false đều hỏng chỗ này — chúng cắt luôn
+        /// đường raycast.
+        ///
+        /// KHÔNG chống lại game: HUD mờ đi lúc thắng màn và được trả về alpha 1 ở màn
+        /// sau, nên qua màn là HUD hiện lại. Đó là hành vi đúng của game, và một cái cheat
+        /// đi giành quyền ghi alpha với nó sẽ thành ra một con ma khó lần hơn nhiều so với
+        /// việc bấm lại nút này.
+        public void SetHudHidden(bool hidden)
+        {
+            if (_hudGroup == null) return;
+
+            _hudGroup.alpha = hidden ? 0f : 1f;
+        }
 
         // ─────────────────────────────────── nội bộ ────────────────────────────────────
 

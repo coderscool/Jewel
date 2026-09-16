@@ -4,6 +4,7 @@ using CoreModules.CheatKit.Ports;
 using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using JewelPainter.Gameplay.Managers;
+using JewelPainter.UI.Views;
 using UnityEngine;
 
 namespace JewelPainter.Bootstrap.Cheat
@@ -26,7 +27,8 @@ namespace JewelPainter.Bootstrap.Cheat
             PlayerWallet wallet,
             HintCredits hintCredits,
             FreePaintCredits freePaintCredits,
-            FillColorCredits fillColorCredits)
+            FillColorCredits fillColorCredits,
+            HudView hud)
         {
             // Có sẵn panel trong scene thì dùng, không thì dựng lúc chạy. Đường no-prefab
             // là mặc định ở đây: panel cheat không nên nằm trong scene thật, vì bản build
@@ -41,7 +43,7 @@ namespace JewelPainter.Bootstrap.Cheat
 
             var bridge = new JewelPainterCheatBridge(
                 levelService, paintService, paintStore, progress, wallet, hintCredits, freePaintCredits,
-                fillColorCredits, CheatRunner.Create());
+                fillColorCredits, hud, CheatRunner.Create());
 
             // Gắn module đặc thù TRƯỚC khi bind: Bind quét toàn bộ ICheatBindable đang có
             // dưới panel, nên module thêm sau sẽ không bao giờ nhận được service.
