@@ -117,10 +117,6 @@ namespace JewelPainter.UI.Views
         [FormerlySerializedAs("_homeButton")]
         [SerializeField] private Button _settingsButton;
 
-        [Tooltip("Hướng dẫn cho người chơi mới. Có gán thì nút bánh răng KHÔNG ăn trong " +
-                 "lúc hướng dẫn đang hiện. Để trống thì nút chạy bình thường mọi lúc.")]
-        [SerializeField] private TutorialOverlayView _tutorial;
-
         [Header("Mở khoá booster")]
         [Tooltip("Bảng mốc mở khoá của từng booster. Để trống thì mọi booster mở sẵn từ " +
                  "màn 1 — HUD chạy đúng như trước khi có phần này.")]
@@ -192,6 +188,9 @@ namespace JewelPainter.UI.Views
         private Tween _celebrationFade;
         private IPopupService _popupService;
         private ISoundService _sound;
+
+        /// Chỉ đọc một câu: nhịp hướng dẫn hiện tại có khoá thao tác không.
+        private TutorialState _tutorialState;
         private PlayerProgress _progress;
 
         /// Ba booster đang mở khoá hay chưa, tính lại mỗi lần vào màn.
@@ -227,9 +226,11 @@ namespace JewelPainter.UI.Views
             PlayerWallet wallet,
             HomeScreenView home,
             ISoundService sound,
-            PlayerProgress progress)
+            PlayerProgress progress,
+            TutorialState tutorialState)
         {
             _progress = progress;
+            _tutorialState = tutorialState;
 
             _levelService = levelService;
             _paintService = paintService;
@@ -734,7 +735,15 @@ namespace JewelPainter.UI.Views
         /// đưa họ đi chỗ khác — Play, Home, Continue.
         private void HandleSettingsClicked()
         {
-            // Đang hướng dẫn thì KHÔNG làm gì — không popup, và cũng không kêu.
+            // Hướng dẫn đang chạy ở BẤT KỲ nhịp nào thì không làm gì — không popup, không kêu.
+            //
+            // Đây là ngoại lệ có chủ ý của nhịp cuối: nhịp đó thả hết khoá thao tác CHƠI —
+            // tô, kéo, zoom, cuộn thanh màu — nhưng bánh răng không phải một thao tác
+            // chơi. Đường duy nhất trong popup đó là nút về Home, tức là bỏ dở luôn màn
+            // hướng dẫn, và người chơi mới bấm vào nó gần như chắc chắn là bấm nhầm.
+            //
+            // Nên ở đây hỏi IsRunning chứ không hỏi LocksInput: hai câu hỏi khác nhau, và
+            // cái nút này thuộc về câu thứ nhất.
             //
             // Cả màn hướng dẫn chỉ hỏi người chơi mới đúng một câu: chạm vào ô màu kia.
             // Một bảng cài đặt mở đè lên câu hỏi đó là đưa cho họ mười thứ khác để đọc,
@@ -748,7 +757,7 @@ namespace JewelPainter.UI.Views
             // "chưa tới lượt bạn". Quãng này dài chừng vài giây và kết thúc ngay khi họ
             // chọn màu, nên làm nút xám đi rồi sáng lại chỉ là một nhấp nháy vô nghĩa
             // giữa lúc cần họ nhìn chỗ khác.
-            if (_tutorial != null && _tutorial.IsShowing) return;
+            if (_tutorialState != null && _tutorialState.IsRunning) return;
 
             if (_sound != null) _sound.Play(SoundKey.ButtonClick);
 

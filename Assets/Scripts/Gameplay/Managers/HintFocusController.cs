@@ -144,17 +144,66 @@ namespace JewelPainter.Gameplay.Managers
 
             var remaining = _paintService.RemainingFor(paletteIndex);
 
-            // RemainingFor chính là số ô chưa tô của màu này, nên bốc số trong khoảng đó
-            // là chắc chắn trúng — không phải quét lưới hai lần để đếm trước.
+            // Nút gợi ý bốc NGẪU NHIÊN: bấm hai lần liên tiếp mà cứ bay về cùng một chỗ
+            // thì lần thứ hai đọc ra như nút hỏng. RemainingFor chính là số ô chưa tô của
+            // màu này, nên bốc trong khoảng đó là chắc chắn trúng.
             var ordinal = UnityEngine.Random.Range(0, remaining);
 
-            if (!_paintService.TryGetUnpaintedCell(paletteIndex, ordinal, out var cell)) return false;
+            return FocusOnCellOf(paletteIndex, ordinal, playMarker: true, out _);
+        }
+
+        public bool FocusHintWithoutSpending(out Vector2Int cell)
+        {
+            cell = default;
+
+            if (_paintService == null || _boardCamera == null) return false;
+
+            var paletteIndex = _paintService.SelectedPaletteIndex;
+
+            // Chỉ nhận MÀU ĐANG CHỌN, không gọi ResolveHintColor.
+            //
+            // ResolveHintColor có quyền nhảy sang màu khác khi màu đang chọn đã hết ô —
+            // hợp lý cho nút gợi ý, nhưng sai hẳn ở đây: đường vào duy nhất của hàm này là
+            // ngay sau khi người chơi tự tay chọn một màu. Đổi màu hộ họ ở đúng giây đó là
+            // phủ nhận thao tác họ vừa học được.
+            if (paletteIndex < 0) return false;
+
+            if (_paintService.RemainingFor(paletteIndex) <= 0) return false;
+
+            // Hướng dẫn thì KHÔNG bốc ngẫu nhiên: luôn là ô gợi ý ĐẦU TIÊN.
+            //
+            // Ordinal 0 là ô trên cùng bên trái trong số những ô chưa tô của màu này —
+            // TryGetUnpainted quét theo hàng từ trên xuống. Cố định như vậy để ai cũng
+            // gặp đúng một màn hướng dẫn: quay lại clip, chụp ảnh, hay dò một lỗi người
+            // chơi báo, tất cả đều dựng lại được y hệt. Một cú bốc ngẫu nhiên ở đây không
+            // đổi gì cho người chơi mà lấy mất toàn bộ điều đó.
+            return FocusOnCellOf(paletteIndex, ordinal: 0, playMarker: false, out cell);
+        }
+
+        /// Đưa camera tới ô chưa tô thứ `ordinal` của màu này, và thả dấu gợi ý nếu được
+        /// yêu cầu.
+        ///
+        /// Dùng chung cho cả lần gợi ý có trừ lượt lẫn lần miễn phí của hướng dẫn: hai
+        /// đường vào khác nhau ở chỗ ĐƯỢC PHÉP hay không, còn thứ người chơi nhìn thấy
+        /// phải giống hệt nhau. Chép tay lần hai là mở đường cho hai cú bay khác nhịp.
+        ///
+        /// CHỌN ô nào thì để bên gọi quyết, không giấu một phép random vào trong đây: hai
+        /// đường vào cần hai cách chọn khác hẳn nhau, và lý do của mỗi cách chỉ đọc được
+        /// ở chỗ gọi. Một hàm tên là "bốc ngẫu nhiên" mà có đường vào không muốn ngẫu
+        /// nhiên thì cái tên bắt đầu nói dối.
+        private bool FocusOnCellOf(int paletteIndex, int ordinal, bool playMarker, out Vector2Int cell)
+        {
+            cell = default;
+
+            if (_paintService.RemainingFor(paletteIndex) <= 0) return false;
+
+            if (!_paintService.TryGetUnpaintedCell(paletteIndex, ordinal, out cell)) return false;
 
             _boardCamera.FocusOn(cell);
 
             // Hiệu ứng tự chờ camera bay tới nơi rồi mới thả icon — nó có ô Start Delay
             // riêng, không đợi tín hiệu từ camera.
-            if (_markerEffect != null) _markerEffect.Play(cell);
+            if (playMarker && _markerEffect != null) _markerEffect.Play(cell);
 
             return true;
         }

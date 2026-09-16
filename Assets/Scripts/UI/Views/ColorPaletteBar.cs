@@ -1,8 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
 using JewelPainter.Core.Services;
 using JewelPainter.Gameplay.Board;
+using JewelPainter.Gameplay.Domain;
 using JewelPainter.Gameplay.Interfaces;
 using UnityEngine;
 using UnityEngine.UI;
@@ -84,6 +86,20 @@ namespace JewelPainter.UI.Views
         private JewelFlyEffect _flyEffect;
         private ISoundService _sound;
 
+        [Tooltip("Màn hướng dẫn dạy ô màu THỨ MẤY trên thanh, đếm từ 0 trong số những ô " +
+                 "đang hiện.\n\n" +
+                 "0 = ô ngoài cùng bên trái, 1 = ô kế tiếp, và cứ thế.\n\n" +
+                 "Ngón tay chỉ vào ô này, và trong lúc hướng dẫn cũng chỉ mình ô này bấm " +
+                 "được. MỘT con số cho cả hai việc — tách làm hai thì sớm muộn ngón tay " +
+                 "chỉ một ô còn ô bấm được lại là ô khác.\n\n" +
+                 "Thanh ít màu hơn số này thì khoá tự gỡ: thà hướng dẫn hơi lỏng còn hơn " +
+                 "một màn không ai qua được.")]
+        [Min(0)]
+        [SerializeField] private int _tutorialSwatchOrder = 1;
+
+        /// Hướng dẫn có đang chạy không. Để trống thì thanh màu chạy bình thường mọi lúc.
+        private TutorialState _tutorialState;
+
         /// Đang xử lý cú chạm vào một ô màu trên thanh. Xem HandleSwatchClicked.
         private bool _selectingFromSwatch;
 
@@ -97,13 +113,19 @@ namespace JewelPainter.UI.Views
         /// flyEffect được phép null — để trống thì ô màu tắt ngay lúc tô xong như bản cũ,
         /// nghĩa là tắt trong khi mấy viên cuối còn đang bay.
         public void Init(IPaintService paintService, ILevelService levelService, ILevelFlowService levelFlow,
-            JewelFlyEffect flyEffect, ISoundService sound)
+            JewelFlyEffect flyEffect, ISoundService sound, TutorialState tutorialState)
         {
             _paintService = paintService;
             _levelService = levelService;
             _levelFlow = levelFlow;
             _flyEffect = flyEffect;
             _sound = sound;
+            _tutorialState = tutorialState;
+
+            // Nghe để bật lại trục cuộn đúng lúc hướng dẫn kết thúc. Không có nó thì khoá
+            // nằm lại cho tới lần dựng bố cục kế tiếp — mà lần đó chỉ tới khi một màu được
+            // tô xong, tức là người chơi mất quyền kéo thanh suốt cả màu đầu tiên.
+            if (_tutorialState != null) _tutorialState.OnStageChanged += HandleTutorialStageChanged;
 
             // Nghe lúc ĐÁP chứ không phải lúc bấm: viên ngọc cuối cùng phải nằm vào tranh
             // rồi ô màu mới được thu lại. Nghe OnCellPainted thì ô biến mất trong khi vài
@@ -125,6 +147,8 @@ namespace JewelPainter.UI.Views
 
         private void OnDestroy()
         {
+            if (_tutorialState != null) _tutorialState.OnStageChanged -= HandleTutorialStageChanged;
+
             if (_flyEffect != null) _flyEffect.OnJewelLanded -= HandleJewelLanded;
 
             KillCelebrationFade();
@@ -353,7 +377,10 @@ namespace JewelPainter.UI.Views
             // trong biên — và khi content NHỎ HƠN khung nhìn, phép kẹp đó dí nó vào một
             // mép. Căn giữa xong sẽ bị nó đẩy về lại ngay frame sau. Tắt trục ngang thì
             // phép kẹp không đụng tới trục đó nữa.
-            _scrollRect.horizontal = !fitsInViewport;
+            // AND với khoá hướng dẫn: đang hướng dẫn thì trục ngang tắt hẳn, bất kể thanh
+            // có dài hơn khung nhìn hay không. Không có vế này thì mỗi lần bố cục được
+            // dựng lại là phép kéo mở lại, còn khoá thì lặng lẽ biến mất.
+            _scrollRect.horizontal = !fitsInViewport && !IsTutorialRunning;
 
             if (!fitsInViewport)
             {
@@ -422,7 +449,7 @@ namespace JewelPainter.UI.Views
             var swatch = FindSwatch(paletteIndex);
             if (swatch == null) return;
 
-            swatch.PlayComplete(() => StartCoroutine(CollapseRoutine(swatch)));
+            swatch.PlayComplete(() => StartCoroutine(CollapseRoutine(swatch, paletteIndex)));
         }
 
         /// Khép dần khe hở của ô vừa xong, rồi mới tắt nó và sắp lại thanh.
@@ -433,7 +460,7 @@ namespace JewelPainter.UI.Views
         /// 0 vẫn ngốn 140 pixel khoảng hở. Dừng ở 0 thì lúc tắt ô đi, thanh vẫn giật đúng
         /// 140 pixel — chỉ là giật muộn hơn. Đi tới -spacing thì tổng bề rộng lúc đó đã
         /// bằng đúng tổng sau khi ô biến mất, và cú tắt không dịch một pixel nào.
-        private IEnumerator CollapseRoutine(ColorSwatchView swatch)
+        private IEnumerator CollapseRoutine(ColorSwatchView swatch, int paletteIndex)
         {
             var duration = Mathf.Max(0f, _collapseDuration);
             var from = swatch.LayoutBaseWidth;
@@ -470,6 +497,10 @@ namespace JewelPainter.UI.Views
             Canvas.ForceUpdateCanvases();
 
             ApplyBarAlignment(scrollToStart: false);
+
+            // Bắn ở ĐÂY, sau cả cú loé mừng màu xong lẫn cú khép ô — đây mới là khoảnh
+            // khắc "màu đó đã xong hẳn" theo nghĩa người chơi nhìn thấy.
+            OnSwatchRemoved?.Invoke(paletteIndex);
         }
 
         /// Spacing của Horizontal Layout Group đang xếp các ô màu. 0 khi không có.
@@ -511,6 +542,22 @@ namespace JewelPainter.UI.Views
         /// nó đi vào từ BoardInput, ngoài phạm vi cái cờ.
         private void HandleSwatchClicked(int paletteIndex)
         {
+            // Đang hướng dẫn thì CHỈ ô màu đầu tiên được chọn — đúng ô ngón tay đang chỉ.
+            //
+            // Im lặng bỏ qua chứ không làm xám mấy ô kia: ô màu xám trên thanh đã có nghĩa
+            // sẵn rồi (màu đã tô xong), và mượn lại cái nghĩa đó để nói "chưa tới lượt"
+            // là dạy người mới một điều sai ngay ở màn dạy họ đọc thanh màu.
+            if (IsTutorialRunning)
+            {
+                var allowed = TutorialSwatchPaletteIndex;
+
+                // allowed < 0 nghĩa là thanh không có đủ ô cho thứ tự đã đặt. Lúc đó BỎ
+                // khoá thay vì chặn hết: khoá một cái không tồn tại là khoá tất cả, và
+                // người chơi kẹt lại ở màn hướng dẫn không có đường nào ra.
+                if (allowed >= 0 && paletteIndex != allowed) return;
+            }
+
+
             _selectingFromSwatch = true;
 
             try
@@ -636,25 +683,82 @@ namespace JewelPainter.UI.Views
             _focusScroll = null;
         }
 
-        /// Ô màu ĐẦU TIÊN đang hiện trên thanh, hoặc null khi thanh còn trống.
+        /// Ô màu mà hướng dẫn đang nói tới, hoặc null khi thanh không có đủ ô.
         ///
         /// Trả về RectTransform chứ không phải toạ độ: hướng dẫn cần bám theo nó khi bố
         /// cục đổi, mà một điểm chụp sẵn thì không bám được.
-        public RectTransform FirstSwatchRect
+        public RectTransform TutorialSwatchRect
         {
             get
             {
-                foreach (var swatch in _swatches)
-                {
-                    if (swatch == null) continue;
-                    if (!swatch.gameObject.activeSelf) continue;
+                var swatch = VisibleSwatchAt(_tutorialSwatchOrder);
 
-                    return (RectTransform)swatch.transform;
-                }
-
-                return null;
+                return swatch != null ? (RectTransform)swatch.transform : null;
             }
         }
+
+        /// Ô màu của một màu đã tô xong vừa BIẾN MẤT hẳn khỏi thanh.
+        ///
+        /// Muộn hơn hẳn "màu này hết ô chưa tô": giữa hai mốc đó còn cú loé mừng trên ô
+        /// màu rồi cú khép bề rộng. Màn hướng dẫn đợi đúng mốc này, vì thứ nó chờ là cả
+        /// chuỗi ĐÃ DIỄN XONG chứ không phải một con số vừa về 0.
+        ///
+        /// Ai đăng ký nhớ gỡ trong OnDestroy của mình.
+        public event Action<int> OnSwatchRemoved;
+
+        /// Chỉ số bảng màu của đúng cái ô trên. -1 khi thanh không có đủ ô.
+        ///
+        /// KHÔNG suy ra từ thứ tự: những màu đã tô xong bị thu lại và tắt đi, nên ô thứ
+        /// hai còn thấy được không nhất thiết mang chỉ số 1. Ở màn hướng dẫn thì chưa màu
+        /// nào xong nên hai con số trùng nhau, nhưng viết cứng nó sẽ sai lặng lẽ ngay lần
+        /// đầu ai đó bật hướng dẫn ở một màn chơi dở.
+        public int TutorialSwatchPaletteIndex
+        {
+            get
+            {
+                var swatch = VisibleSwatchAt(_tutorialSwatchOrder);
+
+                return swatch != null ? swatch.PaletteIndex : -1;
+            }
+        }
+
+        /// Ô thứ `order` trong số những ô ĐANG HIỆN, đếm từ 0. null khi không đủ ô.
+        ///
+        /// Duyệt lại mỗi lần hỏi chứ không cache: chỉ được hỏi lúc đặt ngón tay và ở mỗi
+        /// cú bấm ô màu trong lúc hướng dẫn, mà danh sách dài nhất cũng vài chục phần tử.
+        /// Cache thì phải nhớ dọn ở mọi lần thanh dựng lại — đắt hơn hẳn thứ nó tiết kiệm.
+        private ColorSwatchView VisibleSwatchAt(int order)
+        {
+            if (order < 0) return null;
+
+            var seen = 0;
+
+            foreach (var swatch in _swatches)
+            {
+                if (swatch == null) continue;
+                if (!swatch.gameObject.activeSelf) continue;
+
+                if (seen == order) return swatch;
+
+                seen++;
+            }
+
+            return null;
+        }
+
+        /// Hỏi LocksInput, KHÔNG hỏi IsRunning: nhịp cuối vẫn đang chạy nhưng đã thả hết
+        /// khoá, và thanh màu phải cuộn lại được ngay từ nhịp đó.
+        private bool IsTutorialRunning => _tutorialState != null && _tutorialState.LocksInput;
+
+        /// Dựng lại trạng thái cuộn khi hướng dẫn bật/tắt.
+        ///
+        /// Gọi ApplyBarAlignment chứ không tự đặt _scrollRect.horizontal: chỉ mình nó biết
+        /// thanh có dài hơn khung nhìn hay không, mà đó mới là vế còn lại của phép AND.
+        /// Đặt tay ở đây là mở cuộn cho cả những màn chỉ có bốn năm màu.
+        ///
+        /// scrollToStart: false — không giật thanh về mép trái. Người chơi vừa chọn xong
+        /// màu, giật thanh ngay lúc đó là kéo mọi ô khác ra khỏi chỗ mắt họ vừa nhìn thấy.
+        private void HandleTutorialStageChanged(TutorialStage stage) => ApplyBarAlignment(false);
 
         public bool TryGetOriginWorldPosition(int paletteIndex, out Vector3 world)
         {

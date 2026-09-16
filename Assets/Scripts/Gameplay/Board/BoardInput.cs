@@ -79,6 +79,11 @@ namespace JewelPainter.Gameplay.Board
         [SerializeField] private float _snapBeginRadiusPixels = 40f;
 
         private IPaintService _paintService;
+
+        /// Chỉ đọc đúng một cờ: hướng dẫn có đang chạy không. Để trống thì bảng chạy bình
+        /// thường mọi lúc — đúng hành vi trước khi có phần này.
+        private TutorialState _tutorialState;
+
         private Vector2Int _lastCell = NoCell;
 
         private Vector2Int _holdCell = NoCell;
@@ -105,10 +110,11 @@ namespace JewelPainter.Gameplay.Board
         /// BoardCamera đọc cái này để biết có được kéo hay không.
         public StrokeOwner CurrentStroke { get; private set; } = StrokeOwner.None;
 
-        public void Init(BoardView boardView, IPaintService paintService)
+        public void Init(BoardView boardView, IPaintService paintService, TutorialState tutorialState)
         {
             _boardView = boardView;
             _paintService = paintService;
+            _tutorialState = tutorialState;
         }
 
         private void Update()
@@ -225,6 +231,25 @@ namespace JewelPainter.Gameplay.Board
 
         private StrokeOwner DecideOwner(Vector2 screenPosition)
         {
+            // Nhịp 1 của hướng dẫn: BẢNG ĐỨNG YÊN — không kéo, không zoom, không tô.
+            //
+            // Lúc này màn hướng dẫn chỉ hỏi đúng một câu: chạm vào ô màu kia. Kéo bảng đi
+            // chỗ khác là câu trả lời cho một câu hỏi chưa ai đặt ra, và tệ nhất là nó kéo
+            // luôn ô màu mà ngón tay đang chỉ ra khỏi chỗ ngón tay đang chỉ.
+            //
+            // None chứ không phải Camera: None khoá cả nét, nên cũng không có lời nhắc
+            // "hãy chọn màu" nào được ghi nhận — lời nhắc đó đang nằm sẵn trên màn hình
+            // suốt quãng này rồi.
+            //
+            // Đọc TutorialState (Domain) chứ không đọc TutorialOverlayView: lớp này thuộc
+            // Gameplay, không được nhìn lên UI.
+            var stage = _tutorialState != null ? _tutorialState.Stage : TutorialStage.None;
+
+            if (stage == TutorialStage.PickColor) return StrokeOwner.None;
+
+            // Nhịp cuối KHÔNG khoá gì: ngón tay lúc đó chỉ còn là một lời mời, và bảng
+            // phải kéo/zoom được bình thường. Nó rơi thẳng xuống đường dưới đây.
+
             // Chạm trúng thanh màu thì khoá cả nét: không tô, mà cũng không kéo camera.
             if (IsPointerOverUI()) return StrokeOwner.None;
 
@@ -240,6 +265,17 @@ namespace JewelPainter.Gameplay.Board
             {
                 return StrokeOwner.Paint;
             }
+
+            // Nhịp 2: TÔ ĐƯỢC, nhưng vẫn chưa kéo/zoom được.
+            //
+            // Đây mới là chỗ khác biệt thật giữa hai nhịp. Tô chính là thứ đang được dạy
+            // nên phải mở, còn kéo bảng thì vẫn kéo mất mấy ô mà ngón tay hướng dẫn đang
+            // trượt qua — và ở nhịp này ngón tay đang trượt theo TOẠ ĐỘ MÀN HÌNH chốt từ
+            // lúc bắt đầu, nên bảng trôi đi là nó chỉ sai chỗ ngay lập tức.
+            //
+            // Rơi xuống None chứ không xuống Camera: chạm hụt ra ngoài vùng tô được thì
+            // nét đó không làm gì cả.
+            if (stage == TutorialStage.PaintCells) return StrokeOwner.None;
 
             // Chưa chọn màu nào thì MỌI cú chạm ngoài UI đều đáng nhắc — kể cả chạm ra
             // ngoài bức tranh, vào ô rỗng, hay vào ô đã tô.

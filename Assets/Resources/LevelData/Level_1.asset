@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Level_1
   m_EditorClassIdentifier: 
   _levelId: 1
-  _targetImage: {fileID: 21300000, guid: ead69c4751f336d42b4c27d9f6a97dd6, type: 3}
-  _gridData: {fileID: 11400000, guid: 1d728d6be7274024d82b815c2553f990, type: 2}
+  _targetImage: {fileID: 21300000, guid: e3665bf88f9ea914ea933ea8d9093aec, type: 3}
+  _gridData: {fileID: 11400000, guid: 2ea9931676a8d644c8805170c69a2939, type: 2}
   _timeLimitSeconds: 0
   _rewardCoins: 10
   _collectionFit: 1

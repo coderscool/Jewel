@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace JewelPainter.Gameplay.Interfaces
 {
@@ -22,6 +23,26 @@ namespace JewelPainter.Gameplay.Interfaces
 
         /// false khi không dùng được — bên gọi không cần tự kiểm tra trước.
         bool UseHint();
+
+        /// Y HỆT một lần gợi ý, nhưng KHÔNG trừ lượt và không bao giờ đổi màu đang chọn:
+        /// camera phóng sát rồi bay tới một ô chưa tô của màu đó, dấu gợi ý rơi xuống.
+        ///
+        /// Có mặt cho màn hướng dẫn. Người chơi mới vừa chọn màu đầu tiên trong đời và
+        /// đang nhìn một bảng toàn ô trống giống hệt nhau — cú bay này trả lời đúng câu
+        /// hỏi kế tiếp của họ, "giờ tô vào đâu". Bắt họ trả một lượt gợi ý cho câu đó là
+        /// thu tiền vé của người còn chưa biết mình đang ở đâu.
+        ///
+        /// Tách hẳn khỏi UseHint thay vì thêm một tham số bool: "có trừ lượt không" là
+        /// câu hỏi mà mọi chỗ gọi UseHint đều phải trả lời lại, và chỉ cần một chỗ trả
+        /// lời sai là người chơi mất lượt mà không hiểu vì sao.
+        ///
+        /// KHÔNG thả dấu gợi ý: ở màn hướng dẫn, chỗ cần tô được chỉ bằng chính ngón tay
+        /// trượt qua mấy ô đó. Hai thứ cùng lúc là hai cái cùng đòi được nhìn.
+        ///
+        /// Trả ra ô đã bay tới, để bên gọi dựng đường đi cho ngón tay từ đó.
+        ///
+        /// false khi chưa chọn màu, màu đang chọn đã tô hết, hoặc thiếu camera.
+        bool FocusHintWithoutSpending(out Vector2Int cell);
 
         /// Bắn khi số lượt đổi, để chỗ hiển thị không phải hỏi lại mỗi frame.
         event Action<int> OnCreditsChanged;

@@ -157,7 +157,7 @@ namespace JewelPainter.Bootstrap
 
             // BoardInput quyết định mỗi nét kéo là tô hay di chuyển; camera đọc lại
             // quyết định đó nên phải Init sau nó.
-            _boardInput.Init(_boardView, _paintService);
+            _boardInput.Init(_boardView, _paintService, _tutorialState);
             _boardCamera.Init(_boardView, _levelService, _boardInput);
 
             // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
@@ -181,16 +181,18 @@ namespace JewelPainter.Bootstrap
 
             _hud.Init(
                 _levelService, _paintService, _hintFocus, _freePaint, _fillColor, _levelFlow,
-                _popupService, _wallet, _home, _sound, _progress);
+                _popupService, _wallet, _home, _sound, _progress, _tutorialState);
 
             // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
             // Cũng nhận JewelFlyEffect: ô màu chỉ được thu lại khi viên ngọc CUỐI CÙNG
             // của màu đó đã đáp xuống tranh, không phải lúc ô cuối được bấm.
-            _paletteBar.Init(_paintService, _levelService, _levelFlow, _jewelFlyEffect, _sound);
+            _paletteBar.Init(_paintService, _levelService, _levelFlow, _jewelFlyEffect, _sound,
+                _tutorialState);
 
             // Hướng dẫn Init SAU PaletteBar: cả hai nghe OnBoardReady, mà ngón tay chỉ
             // biết đứng ở đâu sau khi thanh màu đã dựng xong các ô.
-            _tutorial.Init(_levelService, _paintService, _paletteBar, _tutorialState);
+            _tutorial.Init(_levelService, _paintService, _paletteBar, _tutorialState, _hintFocus,
+                _boardView, _boardCamera);
 
             // JewelFlyEffect quyết định lúc nào một ô coi như "xong": nó đổi màu ô,
             // gỡ marker gợi ý và cho hiện ngọc. Hai lớp dưới đều chờ tín hiệu của nó.
@@ -210,7 +212,7 @@ namespace JewelPainter.Bootstrap
 
             // Init sau LevelFlow: nó đăng ký nghe sự kiện thắng màn của LevelFlow.
             _winPopupPresenter.Init(_levelFlow, _popupService);
-            _notificationPresenter.Init(_paintService, _popupService);
+            _notificationPresenter.Init(_paintService, _popupService, _tutorialState);
 
             // Home dựng sẵn nhưng không tự mở — nút Home trong popup Cài đặt mới mở nó.
             _home.Init(_levelService, _popupService, _paintProgressStore, _wallet, _boardView, _sound);

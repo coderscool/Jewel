@@ -196,6 +196,28 @@ namespace JewelPainter.Gameplay.Board
             BeginMove(new Vector2(center.x, center.y), _minSize, _focusDuration, true);
         }
 
+        /// Bay về đúng khung hình LÚC VÀO MÀN: tâm bảng, mức kéo xa nhất, lề của lúc chơi.
+        ///
+        /// Khác FrameWholeBoard ở cặp lề: hàm kia ngắm cho màn ăn mừng, khi HUD và thanh
+        /// màu đã ẩn và popup thắng màn sắp chiếm chỗ phía dưới. Ở đây thì cả hai vẫn còn
+        /// trên màn, nên phải dùng đúng cặp lề mà HandleBoardRebuilt dùng — không thì
+        /// bức tranh thụt xuống dưới thanh màu.
+        ///
+        /// HUỶ ĐƯỢC bằng chạm: đây là một cú đưa về chỗ cũ, không phải một màn diễn.
+        /// Người chơi muốn kéo đi ngay thì cho họ kéo.
+        public void ResetFraming(float duration)
+        {
+            var layout = _boardView != null ? _boardView.Layout : null;
+            if (layout == null) return;
+
+            _winFraming = false;
+
+            _viewBandCenter = ResolveBandCenter(
+                _playMarginTop, _playMarginBottom, BoardScreenFraction(layout, _maxSize));
+
+            BeginMove(new Vector2(0f, ViewCenterY(_maxSize)), _maxSize, duration, true);
+        }
+
         /// Đưa camera về toàn cảnh: tâm bảng, mức kéo xa nhất. Đoạn ăn mừng lúc thắng
         /// màn gọi hàm này.
         ///
