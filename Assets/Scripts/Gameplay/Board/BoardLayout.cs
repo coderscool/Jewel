@@ -3,11 +3,7 @@ using UnityEngine;
 
 namespace JewelPainter.Gameplay.Board
 {
-    /// Toán toạ độ của bảng. Thuần C# — không MonoBehaviour, không camera, không texture.
-    ///
-    /// Bảng căn giữa gốc toạ độ, mỗi ô rộng đúng một world unit.
-    /// Quy ước: ô (0, 0) nằm ở góc TRÊN BÊN TRÁI, khớp với PixelGrid.
-    /// World có +y hướng lên, nên cellY tăng thì world y giảm.
+    /// Toán toạ độ của bảng.
     public class BoardLayout
     {
         public BoardLayout(int width, int height)
@@ -24,8 +20,7 @@ namespace JewelPainter.Gameplay.Board
 
         public Bounds WorldBounds => new Bounds(Vector3.zero, new Vector3(Width, Height, 0f));
 
-        /// Một ô cao đúng một world unit; camera orthographic thấy 2 * size world unit
-        /// theo chiều dọc. Dùng chung cho mọi quyết định phụ thuộc mức zoom.
+        /// Chiều cao một ô tính bằng pixel màn hình.
         public static float CellScreenPixels(float screenHeight, float orthographicSize)
         {
             if (orthographicSize <= 0f) return 0f;
@@ -41,7 +36,7 @@ namespace JewelPainter.Gameplay.Board
             return new Vector2(worldX, worldY);
         }
 
-        /// false nếu điểm nằm ngoài bảng. cell vẫn được gán để bên gọi xem được nó lệch đâu.
+        /// Đổi toạ độ world sang ô; false nếu nằm ngoài bảng.
         public bool TryWorldToCell(Vector2 world, out Vector2Int cell)
         {
             var x = Mathf.FloorToInt(world.x + Width / 2f);
@@ -52,14 +47,12 @@ namespace JewelPainter.Gameplay.Board
             return x >= 0 && x < Width && y >= 0 && y < Height;
         }
 
-        /// Giao của tầm nhìn với bảng, đã kẹp trong biên. Trả hình chữ nhật rỗng
-        /// nếu tầm nhìn nằm hẳn ngoài bảng.
+        /// Giao của tầm nhìn với bảng, đã kẹp trong biên.
         public RectInt VisibleCells(Rect viewportWorldRect)
         {
             var minX = Mathf.FloorToInt(viewportWorldRect.xMin + Width / 2f);
             var maxX = Mathf.CeilToInt(viewportWorldRect.xMax + Width / 2f);
 
-            // world y lớn ứng với cell y nhỏ, nên hai đầu đảo nhau
             var minY = Mathf.FloorToInt(Height / 2f - viewportWorldRect.yMax);
             var maxY = Mathf.CeilToInt(Height / 2f - viewportWorldRect.yMin);
 

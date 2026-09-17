@@ -6,8 +6,7 @@ using UnityEngine;
 
 namespace JewelPainter.UI.Data
 {
-    /// Dictionary KHÔNG serialize được trong Unity.
-    /// Khai bằng List&lt;Entry&gt; rồi build Dictionary ở runtime (xem PopupManager.Awake).
+    /// Bảng ánh xạ PopupKey sang prefab popup.
     [CreateAssetMenu(fileName = "PopupConfig", menuName = "JewelPainter/UI/Popup Config")]
     public class PopupConfig : ScriptableObject
     {

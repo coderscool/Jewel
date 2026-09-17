@@ -9,8 +9,7 @@ namespace JewelPainter.UI.Interfaces
         void Hide(PopupKey key);
         void HideAll();
 
-        /// Có popup nào đang mở không. Dùng để biết màn hình đã sạch chưa trước khi chen
-        /// một popup không do người chơi yêu cầu.
+        /// Có popup nào đang mở không.
         bool IsAnyVisible();
     }
 }

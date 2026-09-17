@@ -12,169 +12,110 @@ using UnityEngine.UI;
 
 namespace JewelPainter.UI.Views
 {
-    /// View thuần trình bày: nghe ILevelService, đổ chữ ra màn hình.
-    /// Chỉ SetText khi giá trị thật sự đổi — SetText mỗi frame sinh rác GC.
-    ///
-    /// Nút gợi ý ở đây chỉ làm hai việc: bấm thì gọi IHintService, và tự bật/tắt theo
-    /// tín hiệu của nó. Tìm ô nào, đưa camera đi đâu là chuyện của Gameplay.
-    ///
-    /// Cả HUD tự ẩn khi thắng màn và hiện lại khi màn mới bắt đầu, để popup thắng màn
-    /// đứng một mình trên bức tranh vừa hoàn thành.
+    /// Hiển thị HUD của màn chơi.
     public class HudView : MonoBehaviour
     {
-        [Tooltip("Số tiền đang có. Để trống thì HUD không hiện tiền.\n\n" +
-                 "PHẢI gán ô này thì con số mới sống: không có nó, cái nhãn trong scene cứ " +
-                 "đứng nguyên ở chuỗi bạn gõ lúc dựng giao diện, và nó trông y hệt một con " +
-                 "số thật — chỉ là không bao giờ đổi.")]
+        [Tooltip("Số tiền đang có.")]
         [SerializeField] private Text _coinsText;
 
-        [Tooltip("Nút gợi ý. Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
+        [Tooltip("Nút gợi ý.")]
         [SerializeField] private Button _hintButton;
 
-        [Tooltip("Số lượt gợi ý miễn phí còn lại. Để trống thì không hiện số.")]
+        [Tooltip("Số lượt gợi ý miễn phí còn lại.")]
         [SerializeField] private TMP_Text _hintCreditsText;
 
-        [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — lúc đó nút chuyển sang mời " +
-                 "xem quảng cáo, mà một số 0 nằm cạnh lời mời chỉ gây nhiễu.")]
+        [Tooltip("Huy hiệu bọc con số.")]
         [SerializeField] private GameObject _hintCreditsBadge;
 
-        [Tooltip("Dấu + mời thêm lượt, hiện khi booster ĐÃ MỞ KHOÁ mà HẾT lượt — ngược " +
-                 "chiều với huy hiệu số ở trên.\n\n" +
-                 "Để trống cũng chạy. Nhưng ĐỪNG tự bật object này sẵn trong scene rồi bỏ " +
-                 "trống ô này: không code nào tắt nó đi, nên nó nằm đè lên cả lúc còn lượt " +
-                 "lẫn lúc chưa mở khoá.")]
+        [Tooltip("Dấu + mời thêm lượt khi booster đã mở khoá mà hết lượt.")]
         [SerializeField] private GameObject _hintAddIcon;
 
         [Header("Booster tô tự do")]
-        [Tooltip("Nút bật booster: trong ít giây, MỌI ô chưa tô đều hiện dấu gợi ý và " +
-                 "chạm vào ô nào cũng tô được ô đó (ra đúng màu của ô, không phải màu " +
-                 "đang chọn).\n\n" +
-                 "Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
+        [Tooltip("Nút bật booster tô tự do.")]
         [SerializeField] private Button _freePaintButton;
 
-        [Tooltip("Số lượt tô tự do còn lại. Để trống thì không hiện số.")]
+        [Tooltip("Số lượt tô tự do còn lại.")]
         [SerializeField] private TMP_Text _freePaintCreditsText;
 
-        [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — cùng lý do như huy hiệu của " +
-                 "nút gợi ý.")]
+        [Tooltip("Huy hiệu bọc con số.")]
         [SerializeField] private GameObject _freePaintCreditsBadge;
 
-        [Tooltip("Dấu + mời thêm lượt, hiện khi booster ĐÃ MỞ KHOÁ mà HẾT lượt — ngược " +
-                 "chiều với huy hiệu số ở trên.\n\n" +
-                 "Để trống cũng chạy. Nhưng ĐỪNG tự bật object này sẵn trong scene rồi bỏ " +
-                 "trống ô này: không code nào tắt nó đi, nên nó nằm đè lên cả lúc còn lượt " +
-                 "lẫn lúc chưa mở khoá.")]
+        [Tooltip("Dấu + mời thêm lượt khi booster đã mở khoá mà hết lượt.")]
         [SerializeField] private GameObject _freePaintAddIcon;
 
-        [Tooltip("Object bọc CẢ khung đồng hồ — kéo fr_time vào đây. Chỉ mình nó được " +
-                 "bật/tắt theo booster.\n\n" +
-                 "Để trống thì bật/tắt riêng phần chữ và phần vòng chạy như bản cũ. Cách " +
-                 "đó vẫn chạy, chỉ là mọi thứ khác trong khung — nền, viền, icon — ở lại " +
-                 "trên màn hình sau khi booster đã tắt.")]
+        [Tooltip("Object bọc khung đồng hồ.")]
         [SerializeField] private GameObject _freePaintTimerRoot;
 
-        [Tooltip("Đồng hồ đếm ngược, chỉ hiện trong lúc booster chạy. Ghi dạng 00:SS, " +
-                 "thêm số 0 đằng trước khi còn dưới 10 giây. Để trống thì không hiện.")]
+        [Tooltip("Đồng hồ đếm ngược của booster.")]
         [SerializeField] private Text _freePaintTimerText;
 
-        [Tooltip("Vòng/thanh chạy vơi dần theo thời gian còn lại, thang 0..1. Image phải " +
-                 "để Image Type = Filled. Để trống thì bỏ qua.")]
+        [Tooltip("Thanh thời gian còn lại, thang 0..1.")]
         [SerializeField] private Image _freePaintTimerFill;
 
         [Header("Booster tô hết màu")]
-        [Tooltip("Nút bật booster: tô nốt MỌI ô còn lại của màu đang chọn.\n\n" +
-                 "Chưa chọn màu mà bấm thì nó hiện lời nhắc chọn màu và KHÔNG trừ lượt.\n\n" +
-                 "Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
+        [Tooltip("Nút bật booster tô hết màu.")]
         [SerializeField] private Button _fillColorButton;
 
-        [Tooltip("Số lượt tô hết màu còn lại. Để trống thì không hiện số.")]
+        [Tooltip("Số lượt tô hết màu còn lại.")]
         [SerializeField] private TMP_Text _fillColorCreditsText;
 
-        [Tooltip("Huy hiệu bọc con số. Tự ẩn khi hết lượt — cùng lý do như huy hiệu của " +
-                 "nút gợi ý.")]
+        [Tooltip("Huy hiệu bọc con số.")]
         [SerializeField] private GameObject _fillColorCreditsBadge;
 
-        [Tooltip("Dấu + mời thêm lượt, hiện khi booster ĐÃ MỞ KHOÁ mà HẾT lượt — ngược " +
-                 "chiều với huy hiệu số ở trên.\n\n" +
-                 "Để trống cũng chạy. Nhưng ĐỪNG tự bật object này sẵn trong scene rồi bỏ " +
-                 "trống ô này: không code nào tắt nó đi, nên nó nằm đè lên cả lúc còn lượt " +
-                 "lẫn lúc chưa mở khoá.")]
+        [Tooltip("Dấu + mời thêm lượt khi booster đã mở khoá mà hết lượt.")]
         [SerializeField] private GameObject _fillColorAddIcon;
 
-        [Tooltip("Vòng/thanh chạy đầy dần theo tiến độ đợt tô, thang 0..1. Image phải để " +
-                 "Image Type = Filled. Chỉ hiện trong lúc đang tô. Để trống thì bỏ qua.")]
+        [Tooltip("Thanh tiến độ đợt tô, thang 0..1.")]
         [SerializeField] private Image _fillColorProgressFill;
 
-        [Tooltip("Nút Tô lại: xoá sạch tiến độ tô của màn đang chơi rồi nạp lại từ đầu.\n\n" +
-                 "Tự xám đi khi chưa tô ô nào — bấm vào lúc đó không có gì xảy ra, mà nút " +
-                 "bấm được nhưng không làm gì là lời nói dối nhỏ người chơi phải mất một " +
-                 "lúc mới nhận ra.\n\n" +
-                 "Để trống thì HUD chạy bình thường, chỉ là không có nút.")]
+        [Tooltip("Nút Tô lại.")]
         [SerializeField] private Button _resetButton;
 
-        [Tooltip("Nút bánh răng: mở popup Cài đặt. Đường về Home nằm TRONG popup đó.")]
+        [Tooltip("Nút mở popup Cài đặt.")]
         [FormerlySerializedAs("_collectionButton")]
         [FormerlySerializedAs("_homeButton")]
         [SerializeField] private Button _settingsButton;
 
         [Header("Mở khoá booster")]
-        [Tooltip("Bảng mốc mở khoá của từng booster. Để trống thì mọi booster mở sẵn từ " +
-                 "màn 1 — HUD chạy đúng như trước khi có phần này.")]
+        [Tooltip("Bảng mốc mở khoá của từng booster.")]
         [SerializeField] private BoosterUnlockConfig _boosterUnlock;
 
-        [Tooltip("Phần mặt ĐÃ MỞ KHOÁ của nút gợi ý — icon, huy hiệu, những gì người " +
-                 "chơi thấy khi booster dùng được. Tự ẩn khi chưa tới mốc, để lộ mặt khoá " +
-                 "nằm dưới (ảnh nền của chính cái nút).\n\n" +
-                 "Bật sẵn trong prefab: nó là trạng thái thường, còn khoá mới là ngoại lệ.\n\n" +
-                 "Để trống thì nút vẫn bị khoá đúng, chỉ là trông y hệt lúc mở — người " +
-                 "chơi gặp một cái nút bấm không ăn và không biết vì sao.")]
+        [Tooltip("Phần mặt đã mở khoá của nút gợi ý.")]
         [SerializeField] private GameObject _hintUnlockRoot;
 
-        [Tooltip("Phần mặt ĐANG KHOÁ của nút gợi ý — kéo object Lock vào đây. Ngược chiều " +
-                 "hẳn với ô trên: chỉ hiện khi CHƯA tới mốc.\n\n" +
-                 "Để trống thì ổ khoá NẰM LẠI sau khi booster đã mở, vì không code nào tắt " +
-                 "nó đi. Trước đây ô này không tồn tại, và đó đúng là lỗi nó sinh ra để sửa.")]
+        [Tooltip("Phần mặt đang khoá của nút gợi ý.")]
         [SerializeField] private GameObject _hintLockRoot;
 
-        [Tooltip("Chữ ghi màn mở khoá, ví dụ \"5\". Nằm trong cụm Lock. Để trống thì " +
-                 "không hiện số.")]
+        [Tooltip("Chữ ghi màn mở khoá của nút gợi ý.")]
         [SerializeField] private Text _hintLockLevelText;
 
-        [Tooltip("Phần mặt đã mở khoá của nút tô tự do. Cùng quy ước với nút gợi ý.")]
+        [Tooltip("Phần mặt đã mở khoá của nút tô tự do.")]
         [SerializeField] private GameObject _freePaintUnlockRoot;
 
-        [Tooltip("Phần mặt đang khoá của nút tô tự do. Cùng quy ước với nút gợi ý.")]
+        [Tooltip("Phần mặt đang khoá của nút tô tự do.")]
         [SerializeField] private GameObject _freePaintLockRoot;
 
         [SerializeField] private Text _freePaintLockLevelText;
 
-        [Tooltip("Phần mặt đã mở khoá của nút tô hết màu. Cùng quy ước với nút gợi ý.")]
+        [Tooltip("Phần mặt đã mở khoá của nút tô hết màu.")]
         [SerializeField] private GameObject _fillColorUnlockRoot;
 
-        [Tooltip("Phần mặt đang khoá của nút tô hết màu. Cùng quy ước với nút gợi ý.")]
+        [Tooltip("Phần mặt đang khoá của nút tô hết màu.")]
         [SerializeField] private GameObject _fillColorLockRoot;
 
         [SerializeField] private Text _fillColorLockLevelText;
 
-        [Tooltip("Khuôn chữ ghi màn mở khoá. {0} là số màn.\n\n" +
-                 "Để trống thì chỉ ghi trần con số — hợp khi trong ảnh ổ khoá đã có sẵn " +
-                 "chữ \"Level\".")]
+        [Tooltip("Khuôn chữ ghi màn mở khoá.")]
         [SerializeField] private string _lockLevelFormat = "Level {0}";
 
-        [Tooltip("Object bị ẩn khi thắng màn. Để TRỐNG thì ẩn chính object này — cách " +
-                 "đó vẫn chạy đúng, chỉ là không tách được phần nào của HUD ở lại.")]
+        [Tooltip("Object bị ẩn khi thắng màn.")]
         [SerializeField] private GameObject _content;
 
-        [Tooltip("CanvasGroup để HUD MỜ DẦN đi lúc màn ăn mừng bắt đầu, thay vì tắt phụt. " +
-                 "Thường gán CanvasGroup đặt trên chính Content. Để trống thì tắt phụt như cũ.\n\n" +
-                 "Chỉ dùng cho đường ra của màn ăn mừng. Mọi chỗ ẩn HUD khác — vào Home, mở " +
-                 "Cài đặt — vẫn tắt ngay, vì ở đó có một màn hình khác phủ lên ngay lập tức.")]
+        [Tooltip("CanvasGroup để HUD mờ dần lúc màn ăn mừng bắt đầu.")]
         [SerializeField] private CanvasGroup _celebrationFadeGroup;
 
-        [Tooltip("Thời gian HUD mờ đi. Nên NGẮN hơn Sweep Start Delay của WinCelebration, " +
-                 "để HUD đi hẳn trước khi dải quét chạy tới.")]
+        [Tooltip("Thời gian HUD mờ đi.")]
         [SerializeField] private float _celebrationFadeDuration = 0.25f;
-        private HomeScreenView _home;
 
         private ILevelService _levelService;
         private IPaintService _paintService;
@@ -184,20 +125,13 @@ namespace JewelPainter.UI.Views
         private PlayerWallet _wallet;
         private ILevelFlowService _levelFlow;
 
-        /// Lượt mờ đi của màn ăn mừng đang chạy.
         private Tween _celebrationFade;
         private IPopupService _popupService;
         private ISoundService _sound;
 
-        /// Chỉ đọc một câu: nhịp hướng dẫn hiện tại có khoá thao tác không.
         private TutorialState _tutorialState;
         private PlayerProgress _progress;
 
-        /// Ba booster đang mở khoá hay chưa, tính lại mỗi lần vào màn.
-        ///
-        /// Giữ lại thay vì hỏi config mỗi lần: SetHintAvailable và hai hàm anh em của nó
-        /// chạy theo sự kiện của service, có thể nổ nhiều lần trong một màn, và cả ba đều
-        /// phải AND với trạng thái khoá.
         private bool _hintUnlocked = true;
         private bool _freePaintUnlocked = true;
         private bool _fillColorUnlocked = true;
@@ -207,12 +141,8 @@ namespace JewelPainter.UI.Views
         private int _displayedFreePaintCredits = -1;
         private int _displayedFillColorCredits = -1;
 
-        /// Số tiền đang hiện trên màn. Chỉ đổi chữ khi giá trị thật sự khác — cùng lý do
-        /// đã ghi ở HomeScreenView.SetCoins.
         private int _displayedCoins = -1;
 
-        /// Số giây nguyên đã ghi ra lần gần nhất. Đồng hồ chỉ hiện tới giây, nên đổi chữ
-        /// mỗi frame là 59 lần SetText thừa cho mỗi giây thật — mà SetText thì sinh rác GC.
         private int _displayedFreePaintSeconds = -1;
 
         public void Init(
@@ -224,7 +154,6 @@ namespace JewelPainter.UI.Views
             ILevelFlowService levelFlow,
             IPopupService popupService,
             PlayerWallet wallet,
-            HomeScreenView home,
             ISoundService sound,
             PlayerProgress progress,
             TutorialState tutorialState)
@@ -240,11 +169,8 @@ namespace JewelPainter.UI.Views
             _levelFlow = levelFlow;
             _popupService = popupService;
             _wallet = wallet;
-            _home = home;
             _sound = sound;
 
-            // TRƯỚC mọi lời gọi SetXAvailable ở dưới: ba hàm đó đọc cờ khoá, mà cờ mặc
-            // định là "đã mở". Chạy sau thì nút khoá vẫn bấm được cho tới lần vào màn kế.
             RefreshBoosterLocks();
 
             _levelService.OnLevelStarted += HandleLevelStarted;
@@ -252,10 +178,6 @@ namespace JewelPainter.UI.Views
             _hintService.OnHintAvailabilityChanged += SetHintAvailable;
             _hintService.OnCreditsChanged += SetHintCredits;
 
-            // Nghe thẳng, không qua presenter. Popup mở bằng SỰ KIỆN thì mới cần một
-            // object luôn sống làm cái tai — vì chính popup chưa tồn tại trước lần mở
-            // đầu tiên. Ở đây sự kiện là hệ quả trực tiếp của việc bấm cái nút mà HUD
-            // đang giữ, nên HUD đã là object luôn sống đó rồi.
             _hintService.OnCreditsExhausted += HandleCreditsExhausted;
             _levelFlow.OnCelebrationStarted += HandleCelebrationStarted;
             _levelFlow.OnLevelCleared += HandleLevelCleared;
@@ -276,8 +198,6 @@ namespace JewelPainter.UI.Views
                 _fillColorService.OnFillingChanged += HandleFillingChanged;
             }
 
-            // Nghe ví TRƯỚC rồi đọc giá trị hiện tại, không phải ngược lại: giữa hai lời
-            // gọi đó vẫn có thể có một cú cộng tiền, và cú đó sẽ rơi vào khoảng trống.
             if (_wallet != null)
             {
                 _wallet.OnCoinsChanged += SetCoins;
@@ -311,8 +231,6 @@ namespace JewelPainter.UI.Views
 
             RefreshResetAvailable();
 
-            // Ẩn cho tới khi có màn được nạp. Lúc mới vào game màn hình chờ đang che,
-            // mà HUD thì chưa có gì để hiện ngoài chữ "Level 0".
             SetVisible(false);
 
             if (_hintButton == null) return;
@@ -321,7 +239,7 @@ namespace JewelPainter.UI.Views
             SetHintAvailable(_hintService.CanUseHint);
         }
 
-        /// Huỷ đăng ký để tránh gọi vào object đã bị huỷ.
+        /// Huỷ đăng ký sự kiện.
         private void OnDestroy()
         {
             KillCelebrationFade();
@@ -371,20 +289,14 @@ namespace JewelPainter.UI.Views
             SetVisible(true);
             SetLevel(levelId);
 
-            // Tiến trình chỉ nhích lên giữa hai màn, nên đây là chỗ duy nhất cần soi lại.
             RefreshBoosterLocks();
 
             RefreshResetAvailable();
         }
 
         /// Đọc lại mốc mở khoá rồi dựng lại cả ba nút.
-        ///
-        /// So với PlayerProgress.Level — TIẾN TRÌNH CAO NHẤT — chứ không phải màn đang
-        /// chơi. Chơi lại màn 1 sau khi đã tới màn 20 thì booster vẫn còn đó.
         private void RefreshBoosterLocks()
         {
-            // Chưa gán bảng thì mọi thứ mở sẵn, y như trước khi có phần này. Không cảnh
-            // báo: một game không khoá booster nào là cấu hình hợp lệ.
             var level = _progress != null ? _progress.Level : int.MaxValue;
 
             _hintUnlocked = _boosterUnlock == null
@@ -401,25 +313,10 @@ namespace JewelPainter.UI.Views
             ApplyLockVisual(CreditPoolKind.FillColor, _fillColorUnlocked,
                 _fillColorUnlockRoot, _fillColorLockRoot, _fillColorLockLevelText);
 
-            // Dựng lại trạng thái bấm được từ nguồn thật. Không tự đặt interactable ở đây:
-            // nút còn phụ thuộc vào việc service có cho dùng hay không, và chỉ service mới
-            // biết điều đó.
             if (_hintService != null) SetHintAvailable(_hintService.CanUseHint);
             if (_freePaintService != null) SetFreePaintAvailable(_freePaintService.CanUse);
             if (_fillColorService != null) SetFillColorAvailable(_fillColorService.CanUse);
 
-            // Huy hiệu số lượt và dấu + cũng phải theo — và phải theo cả HAI CHIỀU.
-            //
-            // Đây là chỗ đã hỏng một lần. Bản trước chỉ có ba dòng `if (!_hintUnlocked)
-            // ... 0, false`, tức là chỉ biết TẮT. Lúc còn khoá thì đúng, nhưng tới đúng
-            // màn mở khoá thì không dòng nào bật huy hiệu lên lại: SetXxxAvailable ở trên
-            // chỉ đụng tới interactable, còn SetXxxCredits thì chỉ chạy khi số lượt ĐỔI —
-            // mà số lượt ngồi yên ở mức được tặng từ lần chạy đầu. Kết quả: mở khoá xong
-            // nút vẫn trống trơn, không số cũng không dấu +, cho tới lần tiêu lượt đầu.
-            //
-            // Nên gọi thẳng SetXxxCredits với số lượt THẬT: nó dựng lại cả cặp huy
-            // hiệu/dấu + theo cờ _xxxUnlocked vừa tính, và tiện thể đồng bộ luôn con số
-            // in trên nút. Service để trống thì rơi về nhánh 0/false, y như cũ.
             if (_hintService != null) SetHintCredits(_hintService.RemainingCredits);
             else ApplyCreditVisual(_hintCreditsBadge, _hintAddIcon, 0, false);
 
@@ -430,16 +327,7 @@ namespace JewelPainter.UI.Views
             else ApplyCreditVisual(_fillColorCreditsBadge, _fillColorAddIcon, 0, false);
         }
 
-        /// Huy hiệu số lượt và dấu + là MỘT cặp ngược chiều, không phải hai thứ rời.
-        ///
-        /// Còn lượt thì hiện con số; hết lượt thì hiện dấu + mời thêm lượt; chưa mở khoá
-        /// thì tắt cả hai — lúc đó nút đang đeo ổ khoá, mà một dấu + cạnh ổ khoá là mời
-        /// mua một thứ chưa bán.
-        ///
-        /// Gom vào một hàm vì đây là chỗ RẤT dễ hỏng lệch: ba booster, ba cặp object, và
-        /// lỗi chỉ lộ ra ở đúng một trạng thái. Trước đây dấu + không có ô nào trong
-        /// Inspector nên không code nào tắt nó được — nó bật sẵn trong scene và nằm đè lên
-        /// cả lúc còn lượt lẫn lúc chưa mở khoá.
+        /// Hiện huy hiệu số lượt hoặc dấu cộng.
         private static void ApplyCreditVisual(GameObject badge, GameObject addIcon, int remaining, bool unlocked)
         {
             var hasCredits = remaining > 0;
@@ -448,17 +336,7 @@ namespace JewelPainter.UI.Views
             if (addIcon != null) addIcon.SetActive(unlocked && !hasCredits);
         }
 
-        /// Hai cụm NGƯỢC CHIỀU nhau: mặt mở khoá hiện khi đã tới mốc, mặt khoá hiện khi
-        /// chưa. Cả hai đều phải được bật/tắt tường minh.
-        ///
-        /// Bản trước chỉ bật/tắt mặt MỞ KHOÁ, dựa trên giả định rằng mặt khoá là thứ nằm
-        /// sẵn phía dưới và tự lộ ra khi mặt kia tắt đi. Giả định đó sai với cách scene
-        /// đang dựng: Lock và UnLock là HAI object anh em cùng cấp, không cái nào che cái
-        /// nào. Nên tới màn mở khoá thì UnLock bật lên, còn ổ khoá vẫn nằm nguyên đó —
-        /// hai mặt chồng lên nhau trên cùng một cái nút.
-        ///
-        /// Để trống ô Lock Root thì hành vi y như bản cũ, không hỏng gì thêm; chỉ là ổ
-        /// khoá không ai tắt hộ.
+        /// Hiện mặt khoá hoặc mặt mở khoá của nút booster.
         private void ApplyLockVisual(CreditPoolKind booster, bool unlocked,
             GameObject unlockRoot, GameObject lockRoot, Text levelText)
         {
@@ -467,15 +345,8 @@ namespace JewelPainter.UI.Views
 
             if (levelText == null) return;
 
-            // Vẫn bật/tắt riêng con chữ, dù nó nằm trong cụm Lock vừa tắt: ô Lock Root có
-            // thể để trống, và lúc đó đây là thứ duy nhất còn giấu được con số đi.
             levelText.gameObject.SetActive(!unlocked);
 
-            // Chỉ ghi chữ khi đang khoá. Ghi cả lúc đã mở là dựng lưới chữ cho một dòng
-            // nằm trong object vừa tắt.
-            //
-            // string.Format sinh rác, nhưng hàm này chạy đúng một lần mỗi lần vào màn —
-            // không phải chỗ đáng đi vòng để né.
             if (unlocked || _boosterUnlock == null) return;
 
             var level = _boosterUnlock.UnlockLevelFor(booster);
@@ -485,16 +356,10 @@ namespace JewelPainter.UI.Views
                 : string.Format(_lockLevelFormat, level);
         }
 
-        /// Ô đầu tiên được tô là lúc nút Tô lại có việc để làm. Nghe từng ô nghe thì phí,
-        /// nhưng thân hàm chỉ là một phép gán mà Unity tự bỏ qua khi giá trị không đổi.
+        /// Cập nhật nút Tô lại khi có ô được tô.
         private void HandleCellPainted(Vector2Int cell, int paletteIndex) => RefreshResetAvailable();
 
-        /// Màn ăn mừng bắt đầu — HUD dọn đi ngay, không đợi popup.
-        ///
-        /// Đây mới là mốc đúng: từ đây tới lúc popup mở là gần hai giây dải quét và đóng
-        /// khung, mà cả đoạn đó bức tranh phải đứng một mình. HandleLevelCleared vẫn giữ
-        /// làm lưới an toàn cho những đường không đi qua màn ăn mừng — màn mở ra đã tô
-        /// kín sẵn chẳng hạn.
+        /// Ẩn HUD khi màn ăn mừng bắt đầu.
         private void HandleCelebrationStarted()
         {
             var target = _content != null ? _content : gameObject;
@@ -508,14 +373,9 @@ namespace JewelPainter.UI.Views
 
             KillCelebrationFade();
 
-            // Khoá chạm NGAY, không đợi mờ xong: suốt quãng đang tan, HUD chỉ còn là hình
-            // ảnh. Bấm trúng nút gợi ý lúc đó là giật ngang màn ăn mừng.
             _celebrationFadeGroup.interactable = false;
             _celebrationFadeGroup.blocksRaycasts = false;
 
-            // DOVirtual.Float chứ KHÔNG phải CanvasGroup.DOFade — DOFade nằm trong
-            // DOTweenModuleUI.cs, một file .cs rời mà asmdef JewelPainter.UI không với
-            // tới. Cùng cái bẫy đã ghi ở PopupView.
             _celebrationFade = DOVirtual
                 .Float(_celebrationFadeGroup.alpha, 0f, _celebrationFadeDuration, value =>
                 {
@@ -527,8 +387,7 @@ namespace JewelPainter.UI.Views
 
         private void HandleLevelCleared() => SetVisible(false);
 
-        /// Trả CanvasGroup về trạng thái hiện đủ. Thiếu nó thì HUD của màn sau bật lên
-        /// với alpha vẫn đang là 0 — object bật, chỗ đứng đúng, mà không ai thấy gì.
+        /// Trả CanvasGroup về trạng thái hiện đủ.
         private void RestoreCelebrationFade()
         {
             KillCelebrationFade();
@@ -547,17 +406,9 @@ namespace JewelPainter.UI.Views
             _celebrationFade = null;
         }
 
-        /// Ẩn bằng SetActive chứ không đổi alpha: HUD tắt hẳn thì nút gợi ý cũng không
-        /// còn nhận được cú chạm nào, khỏi phải nhớ khoá riêng từng nút.
-        ///
-        /// Ẩn chính object này vẫn an toàn dù handler nằm trên nó: sự kiện C# giữ tham
-        /// chiếu tới instance, nên hàm vẫn chạy khi GameObject đang tắt — đó là cách
-        /// HUD tự bật lại được ở màn sau.
-        /// public vì popup Cài đặt phải ẩn HUD trước khi mở Home.
+        /// Ẩn hoặc hiện HUD.
         public void SetVisible(bool visible)
         {
-            // Mọi đường vào đây đều chốt lại trạng thái NGAY. Lượt mờ đang chạy dở mà
-            // không giết thì cái OnComplete của nó tắt luôn HUD vừa được bật lên.
             if (visible) RestoreCelebrationFade();
             else KillCelebrationFade();
 
@@ -566,10 +417,7 @@ namespace JewelPainter.UI.Views
             if (target.activeSelf != visible) target.SetActive(visible);
         }
 
-        /// Tiếng kêu ở cú BẤM, không phải ở lúc booster thật sự chạy.
-        ///
-        /// Bấm khi hết lượt thì booster không chạy mà mở popup mời mua — người chơi vẫn
-        /// phải nghe thấy cú bấm của mình có tới nơi. Im lặng ở đó đọc ra là nút hỏng.
+        /// Xử lý bấm nút gợi ý.
         private void HandleHintClicked()
         {
             if (_sound != null) _sound.Play(SoundKey.Hint);
@@ -589,12 +437,6 @@ namespace JewelPainter.UI.Views
         private void HandleFreePaintExhausted() => _popupService.Show(PopupKey.FreePaint);
 
         /// Bật/tắt phần đồng hồ đếm ngược.
-        ///
-        /// Không đụng tới nút. Nút giờ KHÔNG xám trong lúc booster chạy — cú bấm lặp
-        /// lại bị FreePaintController.Use bỏ qua mà không trừ lượt. Mọi thay đổi trạng
-        /// thái nút vẫn chỉ đi một đường: CanUse → OnAvailabilityChanged →
-        /// SetFreePaintAvailable. Tắt tay thêm ở đây là dựng ra hai nguồn sự thật cho
-        /// cùng một cái nút.
         private void HandleFreePaintActiveChanged(bool active)
         {
             if (_freePaintTimerRoot != null)
@@ -623,8 +465,7 @@ namespace JewelPainter.UI.Views
 
         private void HandleFillColorExhausted() => _popupService.Show(PopupKey.FillColor);
 
-        /// Bật/tắt vòng tiến độ của đợt tô. Không đụng tới nút — nó tự xám qua CanUse,
-        /// cùng đường như nút booster kia.
+        /// Bật/tắt vòng tiến độ của đợt tô.
         private void HandleFillingChanged(bool filling)
         {
             if (_fillColorProgressFill == null) return;
@@ -634,7 +475,7 @@ namespace JewelPainter.UI.Views
             if (filling) _fillColorProgressFill.fillAmount = 0f;
         }
 
-        /// Chỉ chạy khi có việc: booster đếm ngược đang bật, hoặc đợt tô đang chạy.
+        /// Cập nhật đồng hồ booster và tiến độ đợt tô.
         private void Update()
         {
             if (_freePaintService != null && _freePaintService.IsActive) TickFreePaintTimer();
@@ -656,17 +497,11 @@ namespace JewelPainter.UI.Views
 
             if (_freePaintTimerText == null) return;
 
-            // Làm tròn LÊN: còn 0.4 giây mà hiện số 0 thì đồng hồ đứng ở 0 gần một giây
-            // trước khi tắt, đọc ra như bị treo.
             var seconds = Mathf.Max(0, Mathf.CeilToInt(remaining));
             if (seconds == _displayedFreePaintSeconds) return;
 
             _displayedFreePaintSeconds = seconds;
 
-            // Đệm số 0 cho phần giây một chữ số: "00:5" đọc ra là một con số bị hụt, còn
-            // "00:05" mới ra dáng đồng hồ. Ghép thêm một ký tự chứ không gọi ToString("00")
-            // — cùng một string sinh ra, nhưng cách này không phải nuôi một chuỗi định
-            // dạng mà người đọc sau phải dịch ngược.
             _freePaintTimerText.text = seconds < 10
                 ? "00:0" + seconds
                 : "00:" + seconds;
@@ -708,55 +543,19 @@ namespace JewelPainter.UI.Views
             _fillColorButton.interactable = available && _fillColorUnlocked;
         }
 
-        /// Xoá tiến độ tô của màn đang chơi rồi nạp lại. Gameplay lo phần còn lại — HUD
-        /// không biết bản lưu nằm ở đâu, cũng không biết bảng được dựng lại thế nào.
+        /// Xoá tiến độ tô của màn đang chơi rồi nạp lại.
         private void HandleResetClicked() => _paintService.ResetCurrentLevel();
 
         private void RefreshResetAvailable()
         {
             if (_resetButton == null || _paintService == null) return;
 
-            // Selectable.interactable tự bỏ qua khi giá trị không đổi, nên gán thẳng mỗi
-            // lần là đủ — không cần nhớ giá trị cũ ở đây.
             _resetButton.interactable = _paintService.CanReset;
         }
 
-        private void HandleHomeClicked()
-        {
-            SetVisible(false);
-
-            if (_home != null) _home.Show();
-        }
-
-        /// Chỉ mở popup. Đường về Home nằm trong chính popup đó, và cũng chính nó lo
-        /// việc ẩn HUD — HUD không cần biết Home tồn tại.
-        /// Tiếng ButtonClick chứ không phải Direction: bánh răng chỉ MỞ một bảng nằm đè
-        /// lên, người chơi vẫn đang ở trong màn. Direction để dành cho những nút thật sự
-        /// đưa họ đi chỗ khác — Play, Home, Continue.
+        /// Mở popup cài đặt.
         private void HandleSettingsClicked()
         {
-            // Hướng dẫn đang chạy ở BẤT KỲ nhịp nào thì không làm gì — không popup, không kêu.
-            //
-            // Đây là ngoại lệ có chủ ý của nhịp cuối: nhịp đó thả hết khoá thao tác CHƠI —
-            // tô, kéo, zoom, cuộn thanh màu — nhưng bánh răng không phải một thao tác
-            // chơi. Đường duy nhất trong popup đó là nút về Home, tức là bỏ dở luôn màn
-            // hướng dẫn, và người chơi mới bấm vào nó gần như chắc chắn là bấm nhầm.
-            //
-            // Nên ở đây hỏi IsRunning chứ không hỏi LocksInput: hai câu hỏi khác nhau, và
-            // cái nút này thuộc về câu thứ nhất.
-            //
-            // Cả màn hướng dẫn chỉ hỏi người chơi mới đúng một câu: chạm vào ô màu kia.
-            // Một bảng cài đặt mở đè lên câu hỏi đó là đưa cho họ mười thứ khác để đọc,
-            // ngay lúc họ còn chưa biết cái nút đầu tiên dùng để làm gì.
-            //
-            // Im hẳn chứ không kêu một tiếng: một tiếng động là một lời xác nhận, mà ở
-            // đây không có gì để xác nhận. Nút không phản hồi thì người chơi quay lại chỗ
-            // duy nhất đang động đậy — chính là ngón tay.
-            //
-            // Chặn Ở ĐÂY chứ không tắt interactable của nút: ổ khoá và nút xám là để nói
-            // "chưa tới lượt bạn". Quãng này dài chừng vài giây và kết thúc ngay khi họ
-            // chọn màu, nên làm nút xám đi rồi sáng lại chỉ là một nhấp nháy vô nghĩa
-            // giữa lúc cần họ nhìn chỗ khác.
             if (_tutorialState != null && _tutorialState.IsRunning) return;
 
             if (_sound != null) _sound.Play(SoundKey.ButtonClick);
@@ -764,20 +563,10 @@ namespace JewelPainter.UI.Views
             _popupService.Show(PopupKey.Settings);
         }
 
-        /// Bấm nút mà hết lượt: mở popup mời thêm lượt. Một dòng cho mỗi booster.
-        ///
-        /// Key nằm THẲNG trong code chứ không phải một ô PopupKey ngoài Inspector, và ba
-        /// cái giống hệt nhau là có chủ ý: quan hệ "nút này ↔ popup này" là cố định theo
-        /// thiết kế, không phải một thứ để chỉnh. Đưa ra Inspector thì nó thành ba ô có
-        /// thể để trống hoặc gán chéo nhau, mà cả ba trạng thái sai đó đều chỉ lộ ra đúng
-        /// lúc người chơi hết lượt — tức là lúc hiếm nhất trong quá trình test.
-        ///
-        /// Đổi lại: MỖI key ở đây BẮT BUỘC phải có prefab khai trong PopupConfig. Thiếu thì
-        /// PopupManager.Show bắn LogError chứ không im lặng — đó cũng là điều mong muốn,
-        /// vì một cái nút hết lượt mà không mở gì cả thì người chơi tưởng game đứng.
+        /// Bấm nút mà hết lượt: mở popup mời thêm lượt.
         private void HandleCreditsExhausted() => _popupService.Show(PopupKey.HintMove);
 
-        /// Chỉ SetText khi con số thật sự đổi — cùng lý do đã ghi ở SetLevel.
+        /// Hiện số lượt gợi ý.
         private void SetHintCredits(int remaining)
         {
             ApplyCreditVisual(_hintCreditsBadge, _hintAddIcon, remaining, _hintUnlocked);
@@ -789,11 +578,7 @@ namespace JewelPainter.UI.Views
             _hintCreditsText.SetText("{0}", remaining);
         }
 
-        /// Booster đang khoá thì nút TẮT, dù service có nói gì.
-        ///
-        /// Phải chặn ngay tại đây chứ không chỉ ở lúc đổi màn: hàm này chạy theo sự kiện
-        /// của service, và một tín hiệu "dùng được" nổ ra giữa màn sẽ lặng lẽ bật lại
-        /// đúng cái nút vừa bị khoá.
+        /// Bật tắt nút gợi ý theo khoá và trạng thái service.
         private void SetHintAvailable(bool available)
         {
             if (_hintButton == null) return;
@@ -801,8 +586,7 @@ namespace JewelPainter.UI.Views
             _hintButton.interactable = available && _hintUnlocked;
         }
 
-        /// Chỉ đổi chữ khi con số thật sự khác — đổi text là dựng lại lưới chữ, mà sự
-        /// kiện tiền có thể nổ nhiều lần liên tiếp lúc coin bay ở popup thắng màn.
+        /// Hiện số tiền.
         private void SetCoins(int coins)
         {
             if (_coinsText == null) return;

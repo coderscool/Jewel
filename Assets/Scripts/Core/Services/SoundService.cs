@@ -4,38 +4,21 @@ using UnityEngine;
 
 namespace JewelPainter.Core.Services
 {
-    /// Giữ AudioSource, tra clip theo key, phát. Trạng thái bật/tắt uỷ cho ISaveService —
-    /// service này không biết PlayerPrefs.
-    ///
-    /// Hai phần tách hẳn nhau:
-    ///
-    /// TIẾNG ĐỘNG đi qua một DÀN AudioSource quay vòng, không phải PlayOneShot trên một
-    /// nguồn duy nhất. PlayOneShot dùng chung pitch của cái nguồn đó, nên đổi cao độ cho
-    /// một tiếng là đổi luôn cho mọi tiếng đang ngân — với tiếng Pop bắn liên tục thì đó
-    /// là cả một dàn ngọc cùng méo giọng một lúc. Mỗi nguồn riêng thì mỗi tiếng giữ đúng
-    /// cao độ của nó, và số nguồn cũng chính là trần số tiếng chồng nhau.
-    ///
-    /// NHẠC NỀN đi qua hai nguồn để fade chéo được: bản cũ nhỏ dần trong khi bản mới to
-    /// dần, thay vì cắt phựt.
+    /// Giữ AudioSource, tra clip theo key, phát.
     public class SoundService : MonoBehaviour, ISoundService
     {
         [SerializeField] private SoundConfig _config;
 
-        [Tooltip("Nguồn phát tiếng động. Dàn nguồn quay vòng được nhân bản TỪ nó lúc chạy, " +
-                 "nên mọi thiết lập (Output Mixer, Spatial Blend...) đặt ở đây là đủ.")]
+        [Tooltip("Nguồn phát tiếng động.")]
         [SerializeField] private AudioSource _sfxSource;
 
         [Tooltip("Nguồn nhạc nền thứ nhất.")]
         [SerializeField] private AudioSource _musicSource;
 
-        [Tooltip("Nguồn nhạc nền thứ hai, dùng để fade chéo. ĐỂ TRỐNG thì nhạc vẫn chuyển " +
-                 "được, chỉ là cắt thẳng sang bản mới không có quãng giao.")]
+        [Tooltip("Nguồn nhạc nền thứ hai, dùng để fade chéo.")]
         [SerializeField] private AudioSource _musicSourceB;
 
-        [Tooltip("Số tiếng động được phép chồng lên nhau. Vượt quá thì tiếng CŨ NHẤT bị " +
-                 "cắt để nhường chỗ.\n\n" +
-                 "12 là thoải mái cho đợt tô của booster: nhịp bắn đã bị Min Interval của " +
-                 "tiếng Pop ghìm lại từ trước rồi.")]
+        [Tooltip("Số tiếng động được phép chồng lên nhau.")]
         [Range(1, 32)]
         [SerializeField] private int _sfxVoices = 12;
 
@@ -45,9 +28,6 @@ namespace JewelPainter.Core.Services
         private readonly Dictionary<SoundKey, SoundConfig.Entry> _clips = new();
         private readonly Dictionary<MusicKey, SoundConfig.MusicEntry> _musicClips = new();
 
-        /// Lần cuối mỗi key được phát, theo đồng hồ KHÔNG phụ thuộc timeScale. Dùng
-        /// unscaled vì tiếng động vẫn phải kêu bình thường khi game bị dừng bằng
-        /// timeScale = 0 — mở popup chẳng hạn.
         private readonly Dictionary<SoundKey, float> _lastPlayed = new();
 
         private AudioSource[] _voices;
@@ -69,7 +49,7 @@ namespace JewelPainter.Core.Services
 
         public MusicKey CurrentMusic { get; private set; } = MusicKey.None;
 
-        /// Bootstrap gọi trước khi dùng. Không tự đi tìm phụ thuộc.
+        /// Khởi tạo service.
         public void Init(ISaveService save)
         {
             _save = save;
@@ -100,9 +80,7 @@ namespace JewelPainter.Core.Services
             }
         }
 
-        /// Nhân bản nguồn mẫu thay vì tạo AudioSource trắng: người dựng chỉnh Output
-        /// Mixer, Spatial Blend, Bypass Effects... trên nguồn mẫu, và một nguồn trắng
-        /// sẽ bỏ qua sạch những thiết lập đó mà không báo gì.
+        /// Tạo các AudioSource phát tiếng từ nguồn mẫu.
         private void BuildVoices()
         {
             if (_sfxSource == null) return;
@@ -136,8 +114,6 @@ namespace JewelPainter.Core.Services
 
             var now = Time.unscaledTime;
 
-            // Chặn theo TỪNG key, không phải chặn chung. Tiếng Pop dày đặc không được
-            // phép nuốt mất tiếng bấm nút xảy ra cùng lúc.
             if (entry.minInterval > 0f
                 && _lastPlayed.TryGetValue(key, out var last)
                 && now - last < entry.minInterval)
@@ -158,11 +134,7 @@ namespace JewelPainter.Core.Services
             voice.Play();
         }
 
-        /// Ưu tiên một nguồn đang RẢNH; hết rảnh thì cướp nguồn kế tiếp trong vòng quay.
-        ///
-        /// Quay vòng chứ không đi tìm "nguồn kêu lâu nhất": muốn biết cái nào cũ nhất thì
-        /// phải nhớ thêm mốc thời gian cho từng nguồn, mà kết quả gần như trùng với vòng
-        /// quay — nguồn được cướp cũng chính là nguồn đã thuê từ lâu nhất.
+        /// Chọn AudioSource để phát tiếng tiếp theo.
         private AudioSource NextVoice()
         {
             for (var i = 0; i < _voices.Length; i++)
@@ -182,9 +154,6 @@ namespace JewelPainter.Core.Services
 
         public void PlayMusic(MusicKey key)
         {
-            // Gọi lại đúng bản đang chạy thì im lặng bỏ qua. Nhờ vậy bên gọi cứ gọi vô tư
-            // ở mỗi lần mở màn hình mà không phải tự nhớ mình đang phát bản nào — và
-            // nhạc không bị giật lại từ đầu mỗi lần mở popup rồi đóng.
             if (key == CurrentMusic) return;
 
             CurrentMusic = key;
@@ -201,8 +170,6 @@ namespace JewelPainter.Core.Services
 
             if (enabled || _voices == null) return;
 
-            // Cắt luôn những tiếng đang ngân. Tắt tiếng mà vẫn nghe nốt một tiếng Pop dài
-            // thì người chơi tưởng công tắc hỏng.
             foreach (var voice in _voices)
             {
                 if (voice != null) voice.Stop();
@@ -217,11 +184,7 @@ namespace JewelPainter.Core.Services
             ApplyMusicState();
         }
 
-        /// Đưa phần nhạc về đúng trạng thái nó PHẢI ở: đúng bản, đúng bật/tắt.
-        ///
-        /// Một hàm duy nhất cho cả ba đường vào (đổi bản, bật/tắt công tắc, nạp thiết lập
-        /// lúc khởi động) thay vì mỗi đường tự xử. Ba đường tự xử là ba chỗ phải nhớ sửa
-        /// mỗi lần thêm một luật, và chỗ bị quên thì im lặng chạy sai.
+        /// Đưa nhạc nền về đúng bản và đúng trạng thái bật/tắt.
         private void ApplyMusicState()
         {
             if (_musicSource == null) return;
@@ -250,8 +213,6 @@ namespace JewelPainter.Core.Services
 
             if (_activeMusic == null) _activeMusic = _musicSource;
 
-            // Đang phát đúng clip đó rồi thì chỉ chỉnh âm lượng. Xảy ra khi người chơi
-            // tắt nhạc rồi bật lại mà không đi đâu cả.
             if (_activeMusic.clip == entry.clip && _activeMusic.isPlaying)
             {
                 _activeMusic.volume = target;
@@ -294,8 +255,6 @@ namespace JewelPainter.Core.Services
         {
             if (!_isFading) return;
 
-            // Thời gian KHÔNG phụ thuộc timeScale: nhạc phải chuyển bình thường kể cả khi
-            // game đang bị dừng — mà đổi màn hình thì rất hay đi kèm một popup đang mở.
             _fadeElapsed += Time.unscaledDeltaTime;
 
             var t = Mathf.Clamp01(_fadeElapsed / Mathf.Max(0.01f, _musicFadeDuration));

@@ -7,7 +7,6 @@ using UnityEngine;
 namespace JewelPainter.Editor
 {
     /// Lớp vỏ Editor: đọc Texture2D, gọi xuống Domain, trả về lưới kèm bảng màu.
-    /// Mọi tính toán thật nằm ở GridSampler, ColorQuantizer và PaletteMatcher.
     public static class ImageToGridGenerator
     {
         public static GridGenerationResult Generate(
@@ -32,8 +31,6 @@ namespace JewelPainter.Editor
 
             var cells = GridSampler.Sample(pixels, texture.width, texture.height, gridSize.x, gridSize.y);
 
-            // Rút bảng màu từ chính các ô đã lấy mẫu, không phải từ toàn bộ pixel ảnh:
-            // ít dữ liệu hơn hẳn mà lại đúng thứ cần biểu diễn.
             var opaqueColors = CollectOpaqueColors(cells);
             var palette = ColorQuantizer.Quantize(opaqueColors, maxColors, mergeDistance);
 
@@ -42,8 +39,7 @@ namespace JewelPainter.Editor
             return new GridGenerationResult(grid, palette);
         }
 
-        /// Gợi ý kích thước lưới giữ đúng tỉ lệ ảnh, dùng cho nút "Theo tỉ lệ ảnh"
-        /// trong cửa sổ tool. Người dùng vẫn nhập tay được hai cạnh nếu muốn kéo méo.
+        /// Gợi ý kích thước lưới giữ đúng tỉ lệ ảnh, dùng cho nút "Theo tỉ lệ ảnh" trong cửa sổ tool.
         public static Vector2Int CalculateGridSize(int imageWidth, int imageHeight, int longestSideCells)
         {
             if (imageWidth <= 0) throw new ArgumentOutOfRangeException(nameof(imageWidth), imageWidth, "Phải dương");
@@ -60,31 +56,11 @@ namespace JewelPainter.Editor
             return new Vector2Int(width, longestSideCells);
         }
 
-        /// Ép ảnh về trạng thái đọc được ĐÚNG pixel gốc, rồi mới lấy mẫu.
-        ///
-        /// Read/Write chỉ là một nửa. Nửa còn lại — và là nửa âm thầm phá hoại — là NÉN:
-        ///
-        /// GetPixels32 trả về dữ liệu đã GIẢI NÉN, không phải pixel trong file PNG. Với
-        /// Compression = Compressed (mặc định của Unity), ảnh nằm ở dạng DXT/ETC: mỗi khối
-        /// 4x4 chỉ giữ HAI màu đầu mút, đã hạ về RGB565, rồi mọi pixel trong khối bị ép về
-        /// một trong bốn giá trị — hai đầu mút và hai màu nội suy giữa chúng.
-        ///
-        /// Hệ quả với tranh pixel: nét viền đen sát cạnh mảng xanh bị kéo thành một dãy
-        /// màu pha không hề tồn tại trong file gốc. Ảnh 60x60 tưởng là 16 màu sạch hoá ra
-        /// hơn một nghìn màu, và chính đám màu pha đó làm bộ lượng tử hoá sinh ra bảng màu
-        /// xỉn — nó có bàn đạp để gộp dần đen sang xanh.
-        ///
-        /// npotScale cũng bị ép về None: ảnh cạnh không phải luỹ thừa 2 mà để ToNearest thì
-        /// Unity co giãn nó bằng lọc song tuyến trước khi ta kịp đọc, và mọi cạnh sắc thành
-        /// cạnh nhoè.
-        ///
-        /// Sửa thẳng Import Settings thay vì chỉ báo lỗi — cùng lối đã dùng cho Read/Write:
-        /// đây là tool nội bộ, và bắt người dùng tự đi tick ba ô là ba chỗ để quên.
+        /// Ép ảnh về trạng thái đọc được đúng pixel gốc, rồi mới lấy mẫu.
         public static bool EnsureRawPixels(Texture2D texture)
         {
             var path = AssetDatabase.GetAssetPath(texture);
 
-            // Ảnh tạo bằng code không nằm trong AssetDatabase — nó vốn đã là pixel thật.
             if (string.IsNullOrEmpty(path)) return texture.isReadable;
 
             if (AssetImporter.GetAtPath(path) is not TextureImporter importer) return texture.isReadable;
@@ -115,23 +91,12 @@ namespace JewelPainter.Editor
                 changed = true;
             }
 
-            if (changed)
-            {
-                Debug.Log($"[ImageToGrid] Đã đặt lại Import Settings của '{texture.name}': " +
-                          "Read/Write bật, Compression None, npotScale None. Không có ba thứ này " +
-                          "thì pixel đọc ra là bản đã qua nén, không phải ảnh gốc.");
-
-                importer.SaveAndReimport();
-            }
+            if (changed) importer.SaveAndReimport();
 
             return texture.isReadable;
         }
 
         /// Ảnh có bị Max Size cắt nhỏ lúc import không.
-        ///
-        /// Bị cắt thì thứ tool đọc được đã là bản THU NHỎ bằng lọc song tuyến — cạnh nhoè,
-        /// màu pha, y hệt tác hại của nén. Không tự sửa vì nâng Max Size là quyết định về
-        /// bộ nhớ, không phải thứ tool được tự tiện đổi hộ.
         public static bool IsSizeClamped(Texture2D texture)
         {
             var path = AssetDatabase.GetAssetPath(texture);
@@ -166,7 +131,7 @@ namespace JewelPainter.Editor
                 for (var x = 0; x < gridSize.x; x++)
                 {
                     var cell = cells[y * gridSize.x + x];
-                    if (cell.IsEmpty) continue;   // PixelGrid đã khởi tạo sẵn EmptyCell
+                    if (cell.IsEmpty) continue;
 
                     grid.SetCell(x, y, PaletteMatcher.FindNearest(cell.Color, palette));
                 }
@@ -175,7 +140,7 @@ namespace JewelPainter.Editor
             return grid;
         }
 
-        /// Texture2D trả hàng dưới cùng trước; PixelGrid quy ước y = 0 là hàng trên cùng.
+        /// Lật lưới theo chiều dọc.
         private static Color32[] FlipVertically(Color32[] pixels, int width, int height)
         {
             var flipped = new Color32[pixels.Length];

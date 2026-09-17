@@ -9,59 +9,42 @@ using UnityEngine;
 
 namespace JewelPainter.Gameplay.Managers
 {
-    /// MonoBehaviour mỏng: điều phối vòng đời màn chơi.
-    /// Toàn bộ luật tiến trình nằm ở PlayerProgress (thuần C#).
+    /// Điều phối vòng đời màn chơi.
     public class LevelManager : MonoBehaviour, ILevelService
     {
         [SerializeField] private LevelConfig[] _levels = Array.Empty<LevelConfig>();
 
-        [Tooltip("Phép chỉnh từ màu đất sang màu viên ngọc, dùng chung cho mọi màn. " +
-                 "Bỏ trống thì ngọc mang đúng màu đất.\n\n" +
-                 "Dò bộ số bằng JewelPainter > Chỉnh màu viên ngọc.")]
+        [Tooltip("Phép chỉnh từ màu đất sang màu viên ngọc, dùng chung cho mọi màn.")]
         [SerializeField] private JewelTintConfig _jewelTint;
 
         private PlayerProgress _progress;
         private LevelConfig _currentConfig;
         private IReadOnlyList<Color32> _jewelColors = Array.Empty<Color32>();
 
-        /// Con số THÔ trong tiến trình — "đã xong tới đâu". Vượt qua màn cuối được, và
-        /// phải vượt: IsCompleted đọc nó, mà màn cuối chỉ tính là xong khi có thứ gì đó
-        /// đứng sau nó.
-        ///
-        /// Không lộ ra ngoài. Mọi thứ bên ngoài đọc CurrentLevel đã kẹp.
         private int RawLevel => _progress?.Level ?? 0;
 
         public int CurrentLevel => HasLevel(RawLevel) ? RawLevel : HighestLevelId();
         public LevelConfig CurrentConfig => _currentConfig;
 
-        // Không dùng `_currentConfig?.GridData` — LevelConfig là UnityEngine.Object,
-        // toán tử ?. bỏ qua phép so sánh null của Unity nên object đã huỷ vẫn lọt qua.
         public LevelGridData CurrentGrid => _currentConfig != null ? _currentConfig.GridData : null;
 
         public IReadOnlyList<LevelConfig> Levels => _levels;
 
         public IReadOnlyList<Color32> CurrentJewelColors => _jewelColors;
 
-        /// Mở khoá theo tiến trình, không lưu riêng cờ cho từng màn: game chỉ chơi tuần
-        /// tự nên "đã tới màn 5" đã nói đủ rằng 1–4 xong rồi.
+        /// Màn đã mở khoá chưa.
         public bool IsUnlocked(int levelId) => levelId <= RawLevel;
 
-        /// Tiến trình chỉ nhích khi một màn tô xong, nên "đứng trước màn hiện tại" đã đủ
-        /// nghĩa là "đã hoàn thành" — không cần lưu riêng cờ cho từng màn.
-        ///
-        /// Đọc con số THÔ, không đọc CurrentLevel đã kẹp: kẹp rồi thì màn cuối đứng ngang
-        /// bằng chứ không đứng trước, và nó vĩnh viễn không được tính là đã hoàn thành.
+        /// Màn đã hoàn thành chưa.
         public bool IsCompleted(int levelId) => levelId < RawLevel;
 
         public event Action<int> OnLevelLoadStarted;
         public event Action<int> OnLevelStarted;
         public event Action<int> OnLevelCompleted;
 
-        /// Lượt nạp đang chạy. Bấm nạp màn mới giữa chừng thì huỷ lượt cũ — không huỷ
-        /// thì hai lượt cùng bắn OnLevelStarted và bàn chơi dựng hai lần.
         private Coroutine _loadRoutine;
 
-        /// Bootstrap đưa phụ thuộc xuống — không tự đi tìm.
+        /// Khởi tạo phụ thuộc.
         public void Init(PlayerProgress progress)
         {
             _progress = progress;
@@ -69,8 +52,7 @@ namespace JewelPainter.Gameplay.Managers
 
         public bool HasLevel(int levelId) => FindConfig(levelId) != null;
 
-        /// Level Id LỚN NHẤT đang khai, không phải phần tử cuối mảng: thứ tự trong
-        /// Inspector không có gì bắt phải trùng với thứ tự id.
+        /// Id màn lớn nhất đang khai.
         private int HighestLevelId()
         {
             var highest = 0;
@@ -83,25 +65,11 @@ namespace JewelPainter.Gameplay.Managers
             return highest;
         }
 
-        /// KHÔNG dựng bàn ngay trong lời gọi này.
-        ///
-        /// Dựng bàn là việc nặng nhất của cả game — texture, hàng nghìn object dựng sẵn,
-        /// mười một lớp cùng dựng lại. Làm hết trong frame của cú bấm thì người chơi thấy
-        /// game đứng hình ngay dưới ngón tay mình, và màn hình chờ có tồn tại cũng vô ích
-        /// vì nó chưa kịp được vẽ lần nào.
-        ///
-        /// Nên: bắn OnLevelLoadStarted để màn chờ hiện lên, nhường vài frame cho nó thật
-        /// sự lên màn hình, rồi mới dựng. Mọi nơi gọi LoadLevel — Home, chơi lại, cheat,
-        /// lúc khởi động — đều được che mà không phải tự lo gì.
-        ///
-        /// Cái giá: LoadLevel KHÔNG còn đồng bộ. Đọc CurrentConfig ngay dòng sau lời gọi
-        /// sẽ ra màn CŨ. Muốn chạy việc gì sau khi bàn dựng xong thì nghe OnLevelStarted.
+        /// Nạp một màn chơi.
         public void LoadLevel(int levelId)
         {
             if (_loadRoutine != null) StopCoroutine(_loadRoutine);
 
-            // Object tắt thì không chạy được coroutine. Hiếm, nhưng nếu xảy ra thì thà
-            // dựng thẳng còn hơn im lặng không nạp màn nào.
             if (!isActiveAndEnabled)
             {
                 Build(levelId);
@@ -115,9 +83,6 @@ namespace JewelPainter.Gameplay.Managers
         {
             OnLevelLoadStarted?.Invoke(levelId);
 
-            // HAI frame, không phải một: frame đầu Canvas dựng lại layout của màn chờ,
-            // frame sau nó mới thật sự được vẽ ra. Một frame đủ trên máy khoẻ, và không
-            // đủ đúng trên những máy mà cú khựng này khó chịu nhất.
             yield return null;
             yield return null;
 
@@ -130,15 +95,12 @@ namespace JewelPainter.Gameplay.Managers
         {
             _currentConfig = FindConfig(levelId);
 
-            // Dựng TRƯỚC khi bắn event: BoardView và ColorPaletteBar đều đọc bảng này
-            // ngay trong lượt xử lý OnLevelStarted.
             _jewelColors = BuildJewelColors();
 
             OnLevelStarted?.Invoke(levelId);
         }
 
-        /// Trả thẳng bảng màu đất khi không có gì để chỉnh — không copy một mảng chỉ để
-        /// nó giống hệt mảng gốc.
+        /// Dựng bảng màu ngọc từ bảng màu đất.
         private IReadOnlyList<Color32> BuildJewelColors()
         {
             var grid = CurrentGrid;
@@ -158,14 +120,8 @@ namespace JewelPainter.Gameplay.Managers
             {
                 var source = ground[i];
 
-                // Dòng ghi đè thay HẲN màu ngọc, không chồng thêm Tint lên nữa.
-                //
-                // Ghi đè tồn tại đúng để cứu những màu mà phép chỉnh chung làm hỏng, nên
-                // cho phép chỉnh chung chạy tiếp lên nó là quay lại đúng chỗ vừa thoát ra.
                 if (_jewelTint.TryGetOverride(source, out var forced))
                 {
-                    // Giữ alpha của màu ĐẤT: shader nhân alpha đỉnh vào kết quả, mà ô ghi
-                    // đè trong Inspector rất dễ bị bỏ quên ở 0.
                     forced.a = source.a;
                     jewel[i] = forced;
                     continue;
@@ -187,9 +143,6 @@ namespace JewelPainter.Gameplay.Managers
         }
 
         /// Chỉ bắn tín hiệu "màn này đã tô xong", không đụng tới tiến trình.
-        ///
-        /// CompleteCurrentLevel đi qua đây thay vì tự bắn: hai đường phải phát ra CÙNG
-        /// một sự kiện, không thì người nghe chỉ dọn dẹp được cho một nửa số lượt chơi.
         public void MarkLevelFinished(int levelId) => OnLevelCompleted?.Invoke(levelId);
 
         private LevelConfig FindConfig(int levelId)

@@ -6,76 +6,38 @@ using UnityEngine;
 
 namespace JewelPainter.Gameplay.Interfaces
 {
-    /// Contract do Gameplay tự định nghĩa. UI phụ thuộc interface này,
-    /// Gameplay không bao giờ using ngược lên UI.
+    /// Contract quản lý màn chơi.
     public interface ILevelService
     {
-        /// Màn đang chơi, và cũng là màn để MỞ khi vào game. LUÔN là một màn CÓ THẬT.
-        ///
-        /// Tô xong màn cuối thì con số lưu trong tiến trình vượt qua màn cuối cùng — nó
-        /// phải vượt, không thì IsCompleted không bao giờ tính màn cuối là đã xong và bức
-        /// tranh đó không vào được bộ sưu tập. Nhưng con số vượt ngưỡng ấy là chuyện NỘI
-        /// BỘ của tiến trình: ai đọc CurrentLevel cũng để hiện ra màn hình hoặc để nạp
-        /// màn, và cả hai việc đó đều cần một màn có thật.
-        ///
-        /// Nên nó được kẹp ở đây, một lần, thay vì bắt từng nơi gọi tự nhớ mà kẹp.
         int CurrentLevel { get; }
 
-        /// Cấu hình của màn đang chơi. null nếu chưa nạp màn nào.
         LevelConfig CurrentConfig { get; }
 
-        /// Dữ liệu lưới của màn đang chơi. null nếu màn chưa nạp hoặc chưa gán GridData.
         LevelGridData CurrentGrid { get; }
 
-        /// Bảng màu của VIÊN NGỌC cho màn đang chơi — màu đất đã qua JewelTintConfig.
-        ///
-        /// Cùng số lượng và cùng thứ tự với CurrentGrid.Colors, nên một chỉ số dùng
-        /// được cho cả hai bảng. Rỗng khi chưa nạp màn nào.
-        ///
-        /// Vì sao là một bảng dựng sẵn chứ không phải hàm tính từng màu: nơi tô ngọc là
-        /// vòng lặp sinh hàng nghìn viên, còn bảng thì chỉ vài màu. Tính một lần lúc vào
-        /// màn là xong, không đụng gì tới đường chạy nóng.
         IReadOnlyList<Color32> CurrentJewelColors { get; }
 
-        /// Toàn bộ màn chơi, đúng thứ tự khai trong LevelManager. Popup bộ sưu tập
-        /// duyệt danh sách này. Có thể chứa phần tử null nếu Inspector bỏ trống ô nào.
         IReadOnlyList<LevelConfig> Levels { get; }
 
         /// Màn đã mở khoá: id nhỏ hơn hoặc bằng màn đang chơi.
         bool IsUnlocked(int levelId);
 
-        /// Bắn NGAY khi có yêu cầu nạp màn, TRƯỚC khi bàn chơi được dựng.
-        ///
-        /// Tách khỏi OnLevelStarted để màn hình chờ có chỗ chen vào: nó hiện lên ở sự
-        /// kiện này, rồi LevelManager mới nhường vài frame cho Canvas kịp vẽ. Gộp một
-        /// sự kiện thì màn chờ và cú dựng bàn lại rơi vào cùng một frame, và người chơi
-        /// chỉ thấy game đứng hình chứ không thấy màn chờ.
         event Action<int> OnLevelLoadStarted;
 
-        /// Bàn chơi đã dựng xong. Mọi lớp hiển thị dựng lại theo sự kiện này.
         event Action<int> OnLevelStarted;
 
         event Action<int> OnLevelCompleted;
 
-        /// Có LevelConfig nào mang id này không. Dùng để biết còn màn kế hay đã hết.
+        /// Có LevelConfig nào mang id này không.
         bool HasLevel(int levelId);
 
-        /// Màn đã TÔ XONG. Khác IsUnlocked ở đúng một màn: màn đang chơi dở đã mở khoá
-        /// nhưng chưa hoàn thành.
-        ///
-        /// Hai câu hỏi khác nhau nên có hai hàm: "vào chơi được không" dùng IsUnlocked,
-        /// "đã có trong bộ sưu tập chưa" dùng hàm này.
+        /// Màn đã tô xong.
         bool IsCompleted(int levelId);
 
         void LoadLevel(int levelId);
         void CompleteCurrentLevel();
 
-        /// Ghi nhận một màn đã TÔ XONG mà KHÔNG nhích tiến trình.
-        ///
-        /// Dành cho lượt chơi lại một màn cũ. Tiến trình chỉ đi tới nên không được nhích,
-        /// nhưng mọi việc dọn dẹp theo màn thì vẫn phải chạy — trước hết là xoá bản lưu ô
-        /// đã tô. Không xoá thì lần vào sau bảng hiện ra đã tô kín sẵn, và không còn gì
-        /// để chơi lại.
+        /// Ghi nhận một màn đã tô xong mà không nhích tiến trình.
         void MarkLevelFinished(int levelId);
     }
 }

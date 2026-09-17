@@ -8,120 +8,75 @@ using UnityEngine;
 namespace JewelPainter.Gameplay.Board
 {
     /// Viên ngọc bay từ ô màu trên thanh chọn tới ô vừa tô.
-    ///
-    /// Là NGUỒN SỰ THẬT cho việc "ô này đã có ngọc chưa": JewelLayer chờ sự kiện
-    /// OnJewelLanded chứ không nghe thẳng OnCellPainted. Nhờ vậy ngọc chỉ hiện khi
-    /// viên bay đáp xuống, đúng cảm giác lấy ngọc từ khay gắn vào tranh.
-    ///
-    /// Mọi đường thoát đều phải bắn OnJewelLanded — không sinh được viên bay, hết chỗ
-    /// trong hạn mức, hay thiếu điểm xuất phát đều bắn NGAY. Thiếu một đường thoát là
-    /// ô đó kẹt vĩnh viễn không bao giờ có ngọc.
     public class JewelFlyEffect : MonoBehaviour
     {
         [SerializeField] private SpriteRenderer _jewelPrefab;
         [SerializeField] private Transform _root;
 
         [Header("Đường bay")]
-        [Tooltip("Thời gian bay ứng với Reference Distance. Quãng ngắn hơn thì nhanh " +
-                 "hơn, dài hơn thì chậm hơn, luôn kẹp trong Min/Max Duration.")]
+        [Tooltip("Thời gian bay ứng với Reference Distance.")]
         [SerializeField] private float _duration = 0.4f;
 
-        [Tooltip("Khoảng cách (world unit) mà tại đó viên bay đúng bằng Duration. " +
-                 "Đây là thứ giữ cho TỐC ĐỘ đều nhau giữa các cú bay xa gần khác nhau.")]
+        [Tooltip("Khoảng cách (world unit) mà tại đó viên bay đúng bằng Duration.")]
         [SerializeField] private float _referenceDistance = 8f;
 
-        [Tooltip("Sàn thời gian bay. Đây là ô chặn cảm giác 'ô gần bay vụt một cái là " +
-                 "xong' — mắt đọc nhịp theo THỜI GIAN chứ không theo quãng đường.")]
+        [Tooltip("Sàn thời gian bay.")]
         [SerializeField] private float _minDuration = 0.42f;
 
         [SerializeField] private float _maxDuration = 0.62f;
 
-        [Tooltip("Thời gian bay bám theo quãng đường CHẶT tới đâu.\n\n" +
-                 "1 là tỉ lệ thẳng — quãng nửa thì thời gian nửa, và ô sát thanh màu bay " +
-                 "vụt một cái.\n" +
-                 "0.25 là mặc định: quãng xa vẫn lâu hơn quãng gần, nhưng chỉ chừng 1.5 " +
-                 "lần thay vì gấp đôi.\n" +
-                 "0 là MỌI quãng cùng một thời gian.")]
+        [Tooltip("Mức độ thời gian bay phụ thuộc vào quãng đường.")]
         [Range(0f, 1f)]
         [SerializeField] private float _durationFalloff = 0.25f;
 
-        [Tooltip("Xê dịch ngẫu nhiên thời gian bay, theo tỉ lệ. 0.08 là ±8%. Kéo tay tô " +
-                 "một loạt ô thì các viên không đi thành hàng lối cứng nhắc nữa.")]
+        [Tooltip("Xê dịch ngẫu nhiên thời gian bay, theo tỉ lệ.")]
         [Range(0f, 0.4f)]
         [SerializeField] private float _durationVariance = 0.08f;
 
-        [Tooltip("Nhịp của quãng bay XA. OutCubic: vọt ra nhanh rồi hạ dần — phản hồi " +
-                 "tức thì mà vẫn đáp êm.")]
+        [Tooltip("Ease của quãng bay xa.")]
         [SerializeField] private Ease _moveEase = Ease.OutCubic;
 
-        [Tooltip("Nhịp của quãng bay GẦN.\n\n" +
-                 "OutCubic có tốc độ ĐỈNH bằng 3 lần tốc độ trung bình, và cả cú vọt đó " +
-                 "dồn vào ngay lúc rời thanh màu. Quãng dài thì không sao vì còn cả đoạn " +
-                 "sau để hạ dần, nhưng quãng ngắn thì người chơi chỉ kịp thấy đúng cú " +
-                 "vọt — đó là cảm giác 'búng một cái'.\n\n" +
-                 "InOutSine có đỉnh chỉ 1.57 lần, và đỉnh nằm ở GIỮA quãng nên hai đầu " +
-                 "đều êm.")]
+        [Tooltip("Ease của quãng bay gần.")]
         [SerializeField] private Ease _nearMoveEase = Ease.InOutSine;
 
-        [Tooltip("Quãng ngắn hơn ngần này PHẦN của Reference Distance thì dùng Near Move " +
-                 "Ease. 0.8 với Reference Distance 8 nghĩa là dưới 6.4 world unit.\n\n" +
-                 "Đổi nhịp đột ngột qua ngưỡng không nhìn ra được: mỗi cú bay là một sự " +
-                 "kiện riêng, không có hai cú cạnh nhau để mà so.")]
+        [Tooltip("Quãng ngắn hơn tỉ lệ này của Reference Distance thì dùng Near Move Ease.")]
         [Range(0f, 1f)]
         [SerializeField] private float _nearEaseReach = 0.8f;
 
         [Header("Cỡ viên")]
-        [Tooltip("Cỡ viên lúc rời thanh màu khi bay quãng XA (từ Reference Distance trở " +
-                 "lên), so với cỡ ô. Lớn hơn 1 rồi nhỏ dần cho cảm giác bay từ gần ra xa.")]
+        [Tooltip("Cỡ viên lúc rời thanh màu khi bay xa, so với cỡ ô.")]
         [SerializeField] private float _startScale = 2.6f;
 
-        [Tooltip("Cỡ viên lúc rời thanh màu khi bay quãng RẤT NGẮN. Quãng ở giữa thì nội " +
-                 "suy giữa hai giá trị.\n\n" +
-                 "Đây là ô chữa đúng cái cảm giác 'ô sát thanh màu bay giật': quãng ngắn " +
-                 "chỉ có chừng 0.3 giây, mà vẫn phải co từ cỡ 5 về 1 thì mắt đọc ra là " +
-                 "búng chứ không phải bay.")]
+        [Tooltip("Cỡ viên lúc rời thanh màu khi bay rất ngắn.")]
         [SerializeField] private float _nearStartScale = 1.2f;
 
-        [Tooltip("Cỡ viên ở thời điểm chạm ô, trước khi nở về đúng 1. Hơi nhỏ hơn 1 rồi " +
-                 "giãn ra là thứ làm cú đáp đọc ra 'êm' thay vì 'dừng phựt'.")]
+        [Tooltip("Cỡ viên ở thời điểm chạm ô, trước khi nở về đúng 1.")]
         [SerializeField] private float _settleScale = 0.92f;
 
-        [Tooltip("Phần cuối của quãng bay dành cho pha nở về 1, tính theo tỉ lệ. " +
-                 "Để 0 là bỏ hẳn pha đáp.")]
+        [Tooltip("Phần cuối của quãng bay dành cho pha nở về 1, tính theo tỉ lệ.")]
         [Range(0f, 0.5f)]
         [SerializeField] private float _settlePortion = 0.18f;
 
         [SerializeField] private Ease _scaleEase = Ease.InOutSine;
 
         [Header("Hiện dần")]
-        [Tooltip("Phần đầu quãng bay dành cho việc hiện dần từ trong suốt, tính theo " +
-                 "tỉ lệ. Để 0 là hiện ngay tức khắc.")]
+        [Tooltip("Phần đầu quãng bay dành cho việc hiện dần từ trong suốt, tính theo tỉ lệ.")]
         [Range(0f, 0.6f)]
         [SerializeField] private float _fadeInPortion = 0.2f;
 
         [Header("Giới hạn")]
-        [Tooltip("Số viên bay cùng lúc tối đa. Vượt quá thì ô vẫn được tô, chỉ là " +
-                 "ngọc hiện ngay không có hiệu ứng.")]
+        [Tooltip("Số viên bay cùng lúc tối đa.")]
         [SerializeField] private int _maxConcurrent = 24;
 
         [SerializeField] private int _prewarmCount = 24;
 
-        [Tooltip("Hạn mức viên bay cùng lúc trong ĐỢT TÔ của booster tô hết màu. Phải " +
-                 "cao hơn hẳn Max Concurrent thường.\n\n" +
-                 "Booster tô hàng chục ô mỗi frame, nên số viên trên trời ở trạng thái ổn " +
-                 "định xấp xỉ (số ô tô mỗi frame) × (thời gian bay × 60) — với thời gian " +
-                 "bay chừng nửa giây thì đó là hàng trăm viên. Để nguyên hạn mức 24 thì " +
-                 "chỉ vài ô đầu tiên có ngọc bay, phần còn lại hiện ngay tại chỗ, và cả " +
-                 "đợt tô không đọc ra thành một chuyển động nào cả.\n\n" +
-                 "420 khớp với Burst Cells Per Frame = 12 của FillColorController.")]
+        [Tooltip("Số viên bay cùng lúc tối đa trong đợt tô của booster tô hết màu.")]
         [SerializeField] private int _burstMaxConcurrent = 420;
 
-        [Tooltip("Order in Layer của viên NGỌC ĐANG BAY, để nó nổi trên mọi lớp của bảng. " +
-                 "Đáp xuống thì trả về giá trị gốc của prefab.")]
+        [Tooltip("Order in Layer của viên ngọc đang bay.")]
         [SerializeField] private int _flyingSortingOrder = 15;
 
-        /// Một cú bay đang dở. Struct để cả danh sách nằm gọn trong một mảng liên tục,
-        /// không có object nào được cấp phát cho mỗi viên.
+        /// Một cú bay đang dở.
         private struct Flight
         {
             public SpriteRenderer Flyer;
@@ -133,8 +88,6 @@ namespace JewelPainter.Gameplay.Board
             public float Duration;
             public float StartScale;
 
-            /// Quãng đường so với Reference Distance, đã kẹp về 0..1. Giữ lại để mỗi frame
-            /// khỏi tính lại, và để chọn đúng ease gần hay xa.
             public float Reach;
 
             public float TargetAlpha;
@@ -144,8 +97,6 @@ namespace JewelPainter.Gameplay.Board
         private readonly List<Flight> _flights = new();
         private readonly HashSet<Vector2Int> _inFlight = new();
 
-        /// Đếm số viên đang bay theo TỪNG MÀU. Cần đếm riêng vì "màu này đã xong chưa"
-        /// không suy được từ _inFlight — muốn biết thì phải tra màu của từng ô đang bay.
         private readonly Dictionary<int, int> _inFlightByPalette = new();
 
         private readonly HashSet<string> _warnings = new();
@@ -155,14 +106,11 @@ namespace JewelPainter.Gameplay.Board
         private IPaintOriginProvider _originProvider;
         private ISoundService _sound;
 
-        /// Đợt tô của booster đang chạy — chỉ để nới hạn mức viên bay cùng lúc.
         private bool _burstActive;
 
-        /// Order in Layer gốc của prefab, đọc một lần để trả về đúng giá trị đó.
         private int _baseSortingOrder;
         private bool _hasBaseSortingOrder;
 
-        /// Bắn khi ô đã thật sự có ngọc — JewelLayer nghe cái này.
         public event Action<Vector2Int, int> OnJewelLanded;
 
         public void Init(BoardView boardView, IPaintService paintService, IPaintOriginProvider originProvider,
@@ -185,23 +133,16 @@ namespace JewelPainter.Gameplay.Board
             AbortAllFlights();
         }
 
-        /// Bật/tắt ĐỢT TÔ của booster. Không đổi một li nào cách viên ngọc bay — vẫn
-        /// xuất phát từ ô màu trên thanh chọn, vẫn đúng nhịp và cỡ của cú tô tay. Việc
-        /// duy nhất nó làm là nới hạn mức viên bay cùng lúc, để mọi ô trong đợt đều có
-        /// ngọc bay chứ không phải chỉ hai chục ô đầu.
+        /// Bật tắt chế độ bay hàng loạt của booster.
         public void SetBurstMode(bool active)
         {
             _burstActive = active;
         }
 
-        /// Ô đang có viên bay tới thì JewelLayer chưa được hiện ngọc ở đó.
+        /// Ô này có viên ngọc đang bay tới không.
         public bool IsInFlight(Vector2Int cell) => _inFlight.Contains(cell);
 
         /// Màu này còn viên nào đang bay giữa trời không.
-        ///
-        /// Khác hẳn RemainingFor của IPaintService: con số đó giảm ngay lúc BẤM, còn cái
-        /// này chỉ về 0 khi viên cuối cùng đã ĐÁP XUỐNG. Hiệu ứng ăn mừng phải hỏi cái
-        /// này, không thì nó nổ trong lúc vài viên vẫn đang trên đường.
         public bool HasInFlight(int paletteIndex)
         {
             return _inFlightByPalette.TryGetValue(paletteIndex, out var count) && count > 0;
@@ -228,8 +169,6 @@ namespace JewelPainter.Gameplay.Board
             if (layout == null || colors == null) return false;
             if (paletteIndex < 0 || paletteIndex >= colors.Count) return false;
 
-            // Đợt tô lấy giá trị LỚN HƠN trong hai hạn mức: đặt nhầm Burst Max Concurrent
-            // thấp hơn hạn mức thường thì cũng không làm hiệu ứng tệ đi so với lúc thường.
             var limit = _burstActive ? Mathf.Max(_maxConcurrent, _burstMaxConcurrent) : _maxConcurrent;
 
             if (_flights.Count >= limit) return false;
@@ -237,9 +176,6 @@ namespace JewelPainter.Gameplay.Board
             if (_originProvider == null ||
                 !_originProvider.TryGetOriginWorldPosition(paletteIndex, out var origin))
             {
-                // Không có điểm xuất phát thì ngọc hiện ngay, không bay. Im lặng ở đây
-                // là kiểu hỏng khó chịu nhất: game vẫn chạy, chỉ mất hiệu ứng mà không
-                // biết vì sao. Báo một lần rồi thôi.
                 WarnOnce("Không lấy được vị trí ô màu trên thanh chọn — ngọc sẽ hiện ngay " +
                          "không có hiệu ứng bay. Kiểm tra ô World Camera của ColorPaletteBar.");
                 return false;
@@ -264,17 +200,9 @@ namespace JewelPainter.Gameplay.Board
             flyer.sortingOrder = _flyingSortingOrder;
             flyer.transform.position = origin;
 
-            // Cỡ xuất phát đi theo quãng đường, không phải một hằng số.
-            //
-            // Quãng ngắn dù có nới thời gian tới đâu cũng chỉ được vài phần mười giây,
-            // mà nếu vẫn phải co từ cỡ 5 về 1 thì TỐC ĐỘ ĐỔI CỠ vọt lên gấp mấy lần một
-            // cú bay dài. Mắt bắt nhịp đó chứ không bắt quãng đường, nên nó đọc ra là
-            // búng chứ không phải bay.
             var startScale = Mathf.Lerp(_nearStartScale, _startScale, reach);
             flyer.transform.localScale = Vector3.one * startScale;
 
-            // Alpha đích đọc từ màu vừa gán chứ không cứng bằng 1: prefab có thể để sẵn
-            // một độ trong suốt riêng, và pha hiện dần phải về đúng giá trị đó.
             var targetAlpha = flyer.color.a;
 
             if (_fadeInPortion > 0f)
@@ -305,17 +233,6 @@ namespace JewelPainter.Gameplay.Board
         }
 
         /// Mỗi frame nhích mọi viên đang bay một bước.
-        ///
-        /// Tự nội suy thay vì dựng tween cho từng viên. DOTween cấp phát chừng một tá
-        /// object nhỏ cho MỖI cú bay: mỗi DOMove/DOScale/DOTween.To là hai delegate cộng
-        /// một closure giữ tham chiếu, rồi thêm closure của OnComplete. Kéo tay tô nhanh
-        /// trên màn nhiều ô là vài trăm lần cấp phát mỗi giây, và trên mobile chạy IL2CPP
-        /// thì bộ dọn rác dừng cả thế giới đúng vào lúc người chơi đang nhìn viên bay.
-        /// Vòng này chạy trên List struct nên không cấp phát lấy một byte.
-        ///
-        /// Đường cong easing vẫn là của DOTween, lấy qua DOVirtual.EasedValue — hàm đó chỉ
-        /// tính một giá trị chứ không dựng tween. Nhờ vậy mọi ô Ease bạn đã chọn trong
-        /// Inspector giữ nguyên tác dụng, và cảm giác bay không đổi một li.
         private void Update()
         {
             if (_flights.Count == 0) return;
@@ -323,13 +240,10 @@ namespace JewelPainter.Gameplay.Board
             var deltaTime = Time.deltaTime;
             var travelPortion = 1f - Mathf.Clamp01(_settlePortion);
 
-            // Chạy ngược vì Finish kéo phần tử cuối vào chỗ vừa trống.
             for (var i = _flights.Count - 1; i >= 0; i--)
             {
                 var flight = _flights[i];
 
-                // Viên bị huỷ giữa chừng (đổi cảnh, prefab bị xoá). Vẫn phải cho ô hạ
-                // cánh, không thì nó kẹt vĩnh viễn không bao giờ có ngọc.
                 if (flight.Flyer == null)
                 {
                     Finish(i, flight, recycle: false);
@@ -356,7 +270,6 @@ namespace JewelPainter.Gameplay.Board
 
                 if (t < 1f)
                 {
-                    // Ghi lại vì Flight là struct: sửa bản sao không đụng tới List.
                     _flights[i] = flight;
                     continue;
                 }
@@ -365,12 +278,7 @@ namespace JewelPainter.Gameplay.Board
             }
         }
 
-        /// Co dần về Settle Scale suốt quãng bay, rồi nở về 1 ở đoạn cuối.
-        ///
-        /// Hai pha NỐI ĐUÔI nhau chứ không chồng thời gian. Bản dùng tween trước đây phải
-        /// ghi rõ điều đó vì DOTween để tween sau đè tween trước và pha co bị nuốt mất;
-        /// ở đây thì mỗi thời điểm chỉ có đúng một công thức chạy nên chuyện đó không có
-        /// cửa xảy ra.
+        /// Tỉ lệ viên ngọc theo tiến độ bay.
         private float ResolveScale(float startScale, float t, float travelPortion)
         {
             if (travelPortion >= 1f || Mathf.Approximately(_settleScale, 1f))
@@ -392,32 +300,23 @@ namespace JewelPainter.Gameplay.Board
 
         private void Finish(int index, Flight flight, bool recycle)
         {
-            // Kéo phần tử cuối vào chỗ trống thay vì RemoveAt giữa danh sách. Vòng lặp
-            // gọi hàm này chạy ngược nên phần tử vừa kéo về đã duyệt rồi.
             var last = _flights.Count - 1;
             _flights[index] = _flights[last];
             _flights.RemoveAt(last);
 
             if (recycle) Recycle(flight.Flyer);
 
-            // Gỡ khỏi sổ TRƯỚC khi bắn sự kiện: người nghe hỏi ngay "màu này còn viên nào
-            // đang bay không", mà lúc đó chính viên này đã hạ cánh rồi.
             _inFlight.Remove(flight.Cell);
             AddInFlight(flight.PaletteIndex, -1);
 
             Land(flight.Cell, flight.PaletteIndex);
         }
 
-        /// Giữ TỐC ĐỘ đều thay vì giữ thời gian đều. Thời gian cố định làm ô ngay sát
-        /// thanh màu bay lừ đừ còn ô ở mép bảng thì lao vun vút — mắt đọc ra ngay là
-        /// hai chuyển động khác nhau, và đó chính là cái làm hiệu ứng thấy gợn.
+        /// Thời gian bay theo quãng đường.
         private float ResolveDuration(float distance)
         {
             var reference = Mathf.Max(0.01f, _referenceDistance);
 
-            // Số mũ < 1 làm đường cong LÕM: quãng ngắn được chia phần thời gian rộng
-            // rãi hơn tỉ lệ của nó. Tỉ lệ thẳng (số mũ 1) thì ô sát thanh màu chỉ được
-            // 1/8 thời gian của ô ở mép bảng — quá gấp để đọc ra là một cú bay.
             var factor = Mathf.Pow(distance / reference, Mathf.Clamp01(_durationFalloff));
             var scaled = _duration * factor;
 
@@ -429,17 +328,9 @@ namespace JewelPainter.Gameplay.Board
             return Mathf.Clamp(scaled, min, max) * variance;
         }
 
-        /// Ô chỉ đổi từ xám sang màu thật ở đây, không phải lúc người chơi bấm.
+        /// Xử lý viên ngọc đáp xuống ô.
         private void Land(Vector2Int cell, int paletteIndex)
         {
-            // Kêu ở đây chứ không ở lúc bấm, và đây là chỗ ĐÚNG DUY NHẤT: mọi đường đều
-            // đi qua nó — viên bay bình thường, viên bị bỏ hiệu ứng vì hết hạn mức, viên
-            // không tìm được điểm xuất phát. Móc vào OnCellPainted thì tiếng kêu đi trước
-            // viên ngọc cả nửa giây.
-            //
-            // Đợt tô của booster đặt hàng chục ô mỗi frame, nên tiếng này bắn dày hơn mọi
-            // tiếng khác trong game. Việc giãn nhịp không nằm ở đây mà nằm ở Min Interval
-            // của SoundConfig — chỗ đó chỉnh được bằng tay và áp cho mọi nguồn gọi.
             if (_sound != null) _sound.Play(SoundKey.Pop);
 
             _boardView.RevealCell(cell, paletteIndex);
@@ -457,7 +348,7 @@ namespace JewelPainter.Gameplay.Board
             else _inFlightByPalette[paletteIndex] = count;
         }
 
-        /// Tô là hành động lặp liên tục — cảnh báo mỗi lần sẽ ngập Console.
+        /// Cảnh báo một lần duy nhất.
         private void WarnOnce(string message)
         {
             if (!_warnings.Add(message)) return;
@@ -482,9 +373,6 @@ namespace JewelPainter.Gameplay.Board
         }
 
         /// Bỏ mọi cú bay đang dở, dùng khi đổi màn hoặc lúc huỷ object.
-        ///
-        /// KHÔNG bắn OnJewelLanded cho những ô đó: bảng cũ không còn tồn tại, mà người
-        /// nghe cũng đã tự dọn sạch theo OnBoardRebuilt rồi.
         private void AbortAllFlights()
         {
             for (var i = 0; i < _flights.Count; i++)
@@ -498,11 +386,7 @@ namespace JewelPainter.Gameplay.Board
             _inFlightByPalette.Clear();
         }
 
-        /// MỘT nơi duy nhất trả viên về kho, cho cả hai đường (đáp xuống và đổi màn).
-        ///
-        /// Trước đây hai đường tự reset riêng và đã có lần sót sortingOrder. Mỗi lần
-        /// thêm một thứ bị đổi lúc thuê — scale, sortingOrder, giờ là alpha — là một
-        /// lần nữa phải nhớ sửa cả hai chỗ. Gộp lại thì không còn chỗ để sót.
+        /// Trả viên ngọc về kho.
         private void Recycle(SpriteRenderer flyer)
         {
             flyer.transform.localScale = Vector3.one;
@@ -512,13 +396,11 @@ namespace JewelPainter.Gameplay.Board
             color.a = 1f;
             flyer.color = color;
 
-            // Tắt RENDERER chứ không tắt GameObject — cùng lý do đã ghi ở JewelLayer.Release.
             flyer.enabled = false;
             _pool.Push(flyer);
         }
 
-        /// Đọc từ prefab, không đọc từ viên đang dùng — viên đó đã bị đổi sang
-        /// _flyingSortingOrder rồi, lấy về là lưu nhầm giá trị bay làm giá trị gốc.
+        /// Lưu sorting order gốc từ prefab.
         private void CacheBaseSortingOrder()
         {
             if (_hasBaseSortingOrder || _jewelPrefab == null) return;

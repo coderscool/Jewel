@@ -11,19 +11,13 @@ using VContainer.Unity;
 
 namespace JewelPainter.Bootstrap
 {
-    /// Chạy một lần sau khi container dựng xong: đưa phụ thuộc cho các
-    /// MonoBehaviour trong scene rồi mở màn chơi hiện tại.
-    /// Class thuần C# — không phải MonoBehaviour.
-    ///
-    /// Constructor dài là bình thường ở composition root: đây đúng là nơi mọi thứ
-    /// gặp nhau, và thà thấy hết ở một chỗ còn hơn để từng object tự đi tìm.
+    /// Nối phụ thuộc cho các MonoBehaviour trong scene rồi mở màn chơi hiện tại.
     public class GameEntryPoint : IStartable
     {
         private readonly ISaveService _save;
         private readonly PlayerProgress _progress;
         private readonly SoundService _sound;
 
-        /// Dựng ở Start, sống hết phiên chơi. Xem chú thích ở chỗ khởi tạo.
         private MusicDirector _musicDirector;
         private readonly LevelManager _levelManager;
         private readonly ILevelService _levelService;
@@ -144,64 +138,36 @@ namespace JewelPainter.Bootstrap
             _sound.Init(_save);
             _levelManager.Init(_progress);
 
-            // Kho tiến độ Init trước PaintManager: PaintManager nạp lại tiến độ qua nó
-            // ngay trong handler OnLevelStarted đầu tiên.
             _paintProgressStore.Init(_save, _levelService);
 
-            // PaintManager phải Init TRƯỚC BoardView: cả hai nghe OnLevelStarted, và
-            // BoardView hỏi trạng thái tô ngay lúc dựng lại bảng.
             _paintManager.Init(_levelService, _paintProgressStore);
 
             _boardView.Init(_levelService, _paintService);
             _gridLines.Init(_boardView);
 
-            // BoardInput quyết định mỗi nét kéo là tô hay di chuyển; camera đọc lại
-            // quyết định đó nên phải Init sau nó.
             _boardInput.Init(_boardView, _paintService, _tutorialState);
             _boardCamera.Init(_boardView, _levelService, _boardInput);
 
-            // Nút gợi ý cần cả trạng thái tô lẫn camera. HudView hỏi nó "bấm được chưa"
-            // ngay trong Init của mình, nên nó phải xong trước HUD.
             _hintMarker.Init(_boardView);
             _hintFocus.Init(_paintService, _boardCamera, _hintMarker, _hintCredits);
 
-            // Booster tô tự do nhận PaintManager chứ không nhận IPaintService: nó là bên
-            // DUY NHẤT được phép bật luật tô tự do, mà hàm bật thì cố ý không nằm trên
-            // interface — xem chú thích ở IPaintService.FreePaintActive.
-            //
-            // Init trước HUD vì HUD hỏi nó "bấm được chưa", "còn mấy lượt" ngay trong
-            // Init của mình.
             _freePaint.Init(_paintManager, _freePaintCredits);
 
-            // Cũng nhận PaintManager: nó tô bằng TryPaintAs, cửa sau cố ý không nằm trên
-            // IPaintService — xem chú thích ở chính hàm đó.
-            // Cũng nhận JewelFlyEffect: trong lúc đợt tô chạy, booster nới hạn mức viên
-            // bay cùng lúc để mọi ô đều có ngọc bay ra từ thanh màu như lúc tô tay.
             _fillColor.Init(_paintManager, _fillColorCredits, _jewelFlyEffect);
 
             _hud.Init(
                 _levelService, _paintService, _hintFocus, _freePaint, _fillColor, _levelFlow,
-                _popupService, _wallet, _home, _sound, _progress, _tutorialState);
+                _popupService, _wallet, _sound, _progress, _tutorialState);
 
-            // PaletteBar Init trước: hiệu ứng ngọc bay hỏi nó vị trí xuất phát.
-            // Cũng nhận JewelFlyEffect: ô màu chỉ được thu lại khi viên ngọc CUỐI CÙNG
-            // của màu đó đã đáp xuống tranh, không phải lúc ô cuối được bấm.
             _paletteBar.Init(_paintService, _levelService, _levelFlow, _jewelFlyEffect, _sound,
                 _tutorialState, _colorCompleteSparkle);
 
-            // Hướng dẫn Init SAU PaletteBar: cả hai nghe OnBoardReady, mà ngón tay chỉ
-            // biết đứng ở đâu sau khi thanh màu đã dựng xong các ô.
             _tutorial.Init(_levelService, _paintService, _paletteBar, _tutorialState, _hintFocus,
                 _boardView, _boardCamera);
 
-            // JewelFlyEffect quyết định lúc nào một ô coi như "xong": nó đổi màu ô,
-            // gỡ marker gợi ý và cho hiện ngọc. Hai lớp dưới đều chờ tín hiệu của nó.
             _jewelFlyEffect.Init(_boardView, _paintService, _paletteBar, _sound);
             _hintLayer.Init(_boardView, _paintService, _jewelFlyEffect);
 
-            // Lớp số Init CÙNG CHỖ với hai lớp ô kia, không còn ở trên cùng: nó cũng nghe
-            // OnJewelLanded để gỡ số ở ô đã tô, nên nó thuộc về nhóm này chứ không thuộc
-            // nhóm dựng bảng.
             _numberLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLayer.Init(_boardView, _paintService, _jewelFlyEffect);
             _jewelLandSparkle.Init(_boardView, _jewelFlyEffect);
@@ -210,41 +176,21 @@ namespace JewelPainter.Bootstrap
             _levelFlow.Init(_levelService, _paintService, _jewelFlyEffect, _winCelebration,
                 _colorCompleteSparkle);
 
-            // Init sau LevelFlow: nó đăng ký nghe sự kiện thắng màn của LevelFlow.
             _winPopupPresenter.Init(_levelFlow, _popupService);
             _notificationPresenter.Init(_paintService, _popupService, _tutorialState);
 
-            // Home dựng sẵn nhưng không tự mở — nút Home trong popup Cài đặt mới mở nó.
             _home.Init(_levelService, _popupService, _paintProgressStore, _wallet, _boardView, _sound);
 
-            // Nhạc nền: dựng SAU Home vì nó nghe sự kiện Home mở/đóng, và TRƯỚC lời gọi
-            // nạp màn ở cuối hàm vì nó cũng nghe OnLevelStarted.
-            //
-            // Giữ tham chiếu vào một field chứ không thả trôi: không ai gọi lại nó, nhưng
-            // một object chỉ tồn tại nhờ mấy cái event đăng ký được là thứ người đọc sau
-            // sẽ tưởng là rác và xoá đi.
             _musicDirector = new MusicDirector(_sound, _levelService, _home, _loading);
 
-            // Màn hình chờ nối vào sự kiện chứ không tự nạp màn. Nhịp nhường frame giờ
-            // nằm trong LevelManager.LoadLevel, nên MỌI lời gọi nạp màn — ở đây, nút Play
-            // của Home, nút chơi lại, cheat — đều được che như nhau.
             _loading.Bind(_levelService);
 
-            // Cheat dựng trước lời gọi nạp màn: bridge hỏi màn đang chơi và trạng thái tô
-            // ngay lúc bind, nên mọi thứ ở trên phải xong trước.
-            //
-            // Không có define CHEAT_ENABLED thì cả CheatInstaller lẫn asmdef của CheatKit
-            // đều không tồn tại, và ba dòng này biến mất cùng nhau — bản phát hành không
-            // còn một byte cheat nào.
 #if CHEAT_ENABLED
             Cheat.CheatInstaller.Install(
                 _levelService, _paintService, _paintProgressStore, _progress, _wallet, _hintCredits,
                 _freePaintCredits, _fillColorCredits, _hud);
 #endif
 
-            // Nạp màn là việc CUỐI CÙNG của lượt nối dây, và nó không dựng bàn ngay trong
-            // lời gọi này — LevelManager nhường vài frame cho màn hình chờ lên hình trước.
-            // Mọi thứ nghe OnLevelStarted vì thế phải đã đăng ký xong trước dòng này.
             _levelService.LoadLevel(_levelService.CurrentLevel);
         }
     }

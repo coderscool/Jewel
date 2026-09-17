@@ -4,22 +4,18 @@ using UnityEngine;
 
 namespace JewelPainter.Gameplay.Domain
 {
-    /// Trạng thái tô của một màn chơi. Thuần C# — không MonoBehaviour, không scene,
-    /// nên toàn bộ luật tô test được ở EditMode.
+    /// Trạng thái tô của một màn chơi.
     public class PaintState
     {
         private readonly PixelGrid _grid;
         private readonly bool[] _painted;
         private readonly Dictionary<int, int> _remaining = new();
 
-        /// Tổng số ô của mỗi màu lúc mới vào màn. Cần giữ riêng vì _remaining giảm dần,
-        /// không suy ngược ra được mẫu số để tính phần trăm.
         private readonly Dictionary<int, int> _totals = new();
         private readonly List<int> _usedPaletteIndices = new();
 
         private int _remainingTotal;
 
-        /// Tổng số ô có màu của lưới, chốt một lần lúc quét. Không đổi trong cả màn.
         private int _totalColored;
 
         public PaintState(PixelGrid grid)
@@ -30,19 +26,16 @@ namespace JewelPainter.Gameplay.Domain
             ScanGrid();
         }
 
-        /// Các chỉ số màu lưới thật sự dùng, tăng dần. Ô rỗng không tính.
-        /// Đây là thứ cho thanh màu biết chỉ hiện 7 màu thay vì cả 16.
         public IReadOnlyList<int> UsedPaletteIndices => _usedPaletteIndices;
 
         public bool IsComplete => _remainingTotal == 0;
 
-        /// Chưa tô ô nào. Lưới rỗng cũng tính là chưa tô.
         public bool IsUntouched => _remainingTotal == _totalColored;
 
-        /// false nếu toạ độ nằm ngoài bảng — bên gọi quét lưới không phải tự kiểm biên.
+        /// Ô đã tô chưa; false nếu ngoài bảng.
         public bool IsPainted(int x, int y) => IsInside(x, y) && _painted[Index(x, y)];
 
-        /// Ảnh có dùng màu này không. Tra dictionary, không duyệt danh sách.
+        /// Ảnh có dùng màu này không.
         public bool IsUsed(int paletteIndex) => _remaining.ContainsKey(paletteIndex);
 
         public int RemainingFor(int paletteIndex)
@@ -56,7 +49,6 @@ namespace JewelPainter.Gameplay.Domain
         }
 
         /// Tỉ lệ ô đã tô của một màu, thang 0..1.
-        /// Màu không có ô nào coi như đã xong — không có gì để tô thì không thể dở dang.
         public float ProgressFor(int paletteIndex)
         {
             var total = TotalFor(paletteIndex);
@@ -65,8 +57,6 @@ namespace JewelPainter.Gameplay.Domain
             return (total - RemainingFor(paletteIndex)) / (float)total;
         }
 
-        /// Số byte cần để gói trạng thái tô của lưới này. Mỗi ô một BIT, nên bảng 64x64
-        /// (4096 ô) gói vừa 512 byte.
         public int PaintedBitsLength => (_painted.Length + 7) / 8;
 
         /// Đóng gói trạng thái tô để đem đi lưu.
@@ -82,11 +72,7 @@ namespace JewelPainter.Gameplay.Domain
             return bytes;
         }
 
-        /// false khi dữ liệu không khớp cỡ lưới hiện tại.
-        ///
-        /// Từ chối thay vì cố khôi phục một phần: người ta sinh lại lưới cho một màn là
-        /// chuyện thường, mà bản lưu cũ đắp lên lưới mới sẽ tô sai chỗ hàng loạt — mất
-        /// tiến độ còn dễ hiểu hơn là một bức tranh lem nhem không rõ vì sao.
+        /// Nạp trạng thái tô từ bản lưu; false khi không khớp cỡ lưới.
         public bool RestorePaintedBits(byte[] bytes)
         {
             if (bytes == null || bytes.Length != PaintedBitsLength) return false;
@@ -100,15 +86,7 @@ namespace JewelPainter.Gameplay.Domain
             return true;
         }
 
-        /// Đánh dấu MỌI ô có màu là đã tô.
-        ///
-        /// Dùng khi mở lại một màn đã ghi nhận hoàn thành: bức tranh phải hiện ra nguyên
-        /// vẹn. Trạng thái đó suy thẳng từ TIẾN TRÌNH chứ không cần bản lưu nào — màn đã
-        /// xong thì theo định nghĩa là mọi ô đều đã tô, không có gì để mà lưu.
-        ///
-        /// Đi qua chính mảng _painted rồi đếm lại, thay vì đặt tay _remainingTotal = 0:
-        /// ô RỖNG không được đánh dấu đã tô, và RecountRemaining là nơi duy nhất giữ luật
-        /// đó. Đặt tay là dựng ra một trạng thái mà không cách nào tô tay ra được.
+        /// Đánh dấu mọi ô có màu là đã tô.
         public void PaintAll()
         {
             for (var y = 0; y < _grid.Height; y++)
@@ -124,8 +102,7 @@ namespace JewelPainter.Gameplay.Domain
             RecountRemaining();
         }
 
-        /// Đếm lại từ đầu sau khi nạp: _remaining giảm dần theo từng nước tô nên không
-        /// suy ngược ra được từ mảng _painted, phải quét lưới một lượt.
+        /// Đếm lại số ô còn lại của từng màu.
         private void RecountRemaining()
         {
             _remainingTotal = 0;
@@ -143,20 +120,13 @@ namespace JewelPainter.Gameplay.Domain
                     if (cell == PixelGrid.EmptyCell) continue;
                     if (!_remaining.ContainsKey(cell)) continue;
 
-                    // Ô rỗng bị đánh dấu đã tô trong bản lưu hỏng thì bỏ qua ở nhánh
-                    // trên, không làm lệch số đếm.
                     if (_painted[Index(x, y)]) _remaining[cell] -= 1;
                     else _remainingTotal++;
                 }
             }
         }
 
-        /// Ô CHƯA TÔ thứ `ordinal` của một màu (đếm từ 0), quét trái→phải, trên→dưới.
-        /// false khi màu đó không có đủ ngần ấy ô chưa tô.
-        ///
-        /// Nhận ordinal thay vì tự bốc ngẫu nhiên: Domain giữ được tính tất định nên
-        /// test được ở EditMode, còn ai muốn ngẫu nhiên thì bốc số ở tầng trên rồi
-        /// truyền xuống. RemainingFor() chính là cận trên hợp lệ của ordinal.
+        /// Ô chưa tô thứ `ordinal` của một màu (đếm từ 0), quét trái→phải, trên→dưới.
         public bool TryGetUnpainted(int paletteIndex, int ordinal, out Vector2Int cell)
         {
             cell = default;
@@ -183,17 +153,7 @@ namespace JewelPainter.Gameplay.Domain
             return false;
         }
 
-        /// Tỉ lệ ô đã tô của một lưới, thang 0..1, tính THẲNG từ bản lưu.
-        ///
-        /// static và không dựng PaintState, vì bên gọi là màn hình Home: nó hỏi cho từng
-        /// màn trong danh sách, mà dựng PaintState là cấp phát một mảng bool cỡ cả lưới
-        /// cho mỗi lần hỏi — bảng 101x105 là hơn mười nghìn phần tử, nhân lên mười lăm màn.
-        ///
-        /// Trả 0 khi bản lưu KHÔNG khớp cỡ lưới, cùng luật với RestorePaintedBits: lưới
-        /// được sinh lại là bản lưu cũ đắp lên sai chỗ hàng loạt, và một con số phần trăm
-        /// bịa ra còn tệ hơn con số 0.
-        ///
-        /// Lưới không có ô màu nào trả về 1: không có gì để tô thì không thể dở dang.
+        /// Tỉ lệ ô đã tô của một lưới, thang 0..1, tính thẳng từ bản lưu.
         public static float FractionPainted(PixelGrid grid, byte[] paintedBits)
         {
             if (grid == null) return 0f;
@@ -212,8 +172,6 @@ namespace JewelPainter.Gameplay.Domain
 
                     colored++;
 
-                    // Cùng cách đánh chỉ số với Index(x, y) và ToPaintedBits — lệch một
-                    // nhịp ở đây là phần trăm sai mà không có gì báo.
                     var index = y * grid.Width + x;
 
                     if ((paintedBits[index >> 3] & (1 << (index & 7))) != 0) painted++;
@@ -223,16 +181,7 @@ namespace JewelPainter.Gameplay.Domain
             return colored > 0 ? painted / (float)colored : 1f;
         }
 
-        /// Gom MỌI ô chưa tô của một màu vào danh sách cho sẵn, quét trái→phải,
-        /// trên→dưới. Trả về số ô đã thêm. Danh sách được Clear trước.
-        ///
-        /// Nhận buffer từ ngoài thay vì tự trả về một List mới: booster tô hết màu gọi
-        /// hàm này mỗi lần bấm nút, mà một màu có thể vài nghìn ô — cấp phát mới mỗi lần
-        /// là rác GC đúng vào lúc bảng đang bận nhất.
-        ///
-        /// Gom MỘT LẦN rồi tô dần theo danh sách, thay vì mỗi frame lại hỏi
-        /// TryGetUnpainted(ordinal 0): hàm đó quét cả lưới cho MỖI ô, nên tô n ô là quét
-        /// n lần cả lưới — bảng 108x108 thành hơn trăm triệu phép so.
+        /// Gom mọi ô chưa tô của một màu vào danh sách cho sẵn, quét trái→phải, trên→dưới.
         public int CollectUnpainted(int paletteIndex, List<Vector2Int> buffer)
         {
             if (buffer == null) return 0;
@@ -277,12 +226,7 @@ namespace JewelPainter.Gameplay.Domain
             return true;
         }
 
-        /// Ô này tô được KHÔNG CẦN đúng màu: chỉ cần nằm trong bảng, có màu, và chưa tô.
-        ///
-        /// Dùng cho booster "tô tự do". Cố ý KHÔNG thêm tham số paletteIndex nhận -1 vào
-        /// CanPaint ở trên: luật thường và luật booster là hai câu hỏi khác nhau, gộp lại
-        /// thì mọi chỗ gọi CanPaint đều phải tự nhớ truyền đúng thứ, và quên một chỗ là
-        /// người chơi tô được bất kỳ ô nào suốt cả màn.
+        /// Ô này tô được không cần đúng màu: chỉ cần nằm trong bảng, có màu, và chưa tô.
         public bool CanPaintAny(int x, int y)
         {
             if (!IsInside(x, y)) return false;
@@ -291,13 +235,7 @@ namespace JewelPainter.Gameplay.Domain
             return _grid.GetCell(x, y) != PixelGrid.EmptyCell;
         }
 
-        /// Tô một ô bằng CHÍNH MÀU CỦA NÓ, bất kể người chơi đang chọn màu nào.
-        ///
-        /// paletteIndex là màu thật sự được tô, để bên gọi bắn kèm trong sự kiện — ngọc
-        /// bay ra từ ô màu nào, vòng tiến độ nào nhích lên đều đọc con số này.
-        ///
-        /// Tô bằng màu ĐANG CHỌN thì bức tranh sẽ hỏng: ô đó vĩnh viễn sai màu, mà số
-        /// đếm của cả hai màu cũng lệch. Booster rút ngắn đường đi, không đổi đáp án.
+        /// Tô một ô bằng chính màu của nó, bất kể người chơi đang chọn màu nào.
         public bool TryPaintAny(int x, int y, out int paletteIndex)
         {
             paletteIndex = PixelGrid.EmptyCell;
@@ -340,9 +278,6 @@ namespace JewelPainter.Gameplay.Domain
 
             _usedPaletteIndices.Sort();
 
-            // Chốt lại tổng số ô CÓ MÀU của lưới. Từ đây _remainingTotal chỉ giảm, nên so
-            // hai con số là biết đã tô ô nào chưa. RestorePaintedBits tính lại
-            // _remainingTotal nhưng không đụng tới con số này — đúng ý, vì lưới không đổi.
             _totalColored = _remainingTotal;
         }
 

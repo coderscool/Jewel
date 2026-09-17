@@ -5,27 +5,15 @@ using UnityEngine;
 namespace JewelPainter.Gameplay.Domain
 {
     /// Rút bảng màu từ một tập màu bằng thuật toán median cut.
-    ///
-    /// Ý tưởng: bỏ hết màu vào một hộp, cắt đôi hộp theo trục màu trải rộng nhất tại
-    /// điểm giữa, lặp lại trên hộp còn rộng nhất cho tới khi đủ số hộp. Mỗi hộp lấy
-    /// màu trung bình. Cắt theo phân bố thật nên vùng nào nhiều màu thì được chia mịn hơn.
-    ///
-    /// Thuần C# — test EditMode được, không cần scene.
     public static class ColorQuantizer
     {
-        /// Ít màu hơn yêu cầu thì trả đúng số màu đang có, không nhồi thêm màu rác.
-        ///
-        /// mergeDistance > 0 thì sau khi cắt xong, những hộp có màu trung bình gần nhau
-        /// hơn ngưỡng đó sẽ gộp lại. Thang khoảng cách 0..765 theo PaletteMatcher —
-        /// 20 là gộp các sắc độ rất sát, 60 là gộp mạnh tay.
+        /// Rút bảng màu theo số màu yêu cầu.
         public static Color32[] Quantize(IReadOnlyList<Color32> colors, int maxColors, float mergeDistance = 0f)
         {
             if (colors == null) throw new ArgumentNullException(nameof(colors));
             if (maxColors < 1) maxColors = 1;
             if (colors.Count == 0) return Array.Empty<Color32>();
 
-            // Ảnh ít màu hơn yêu cầu: trả thẳng, khỏi cắt. Nếu để median cut chạy thì
-            // một màu có thể bị tách thành hai hộp giống hệt nhau, ra bảng màu trùng lặp.
             var distinct = CollectDistinct(colors);
             if (distinct.Count <= maxColors)
             {
@@ -59,7 +47,7 @@ namespace JewelPainter.Gameplay.Domain
             return palette;
         }
 
-        /// Gộp trên danh sách màu rời, dùng cho nhánh ảnh vốn đã ít màu.
+        /// Gộp các màu gần nhau trong danh sách màu rời.
         private static Color32[] MergeColors(List<Color32> colors, float mergeDistance)
         {
             var boxes = new List<List<Color32>>(colors.Count);
@@ -73,33 +61,12 @@ namespace JewelPainter.Gameplay.Domain
             return palette;
         }
 
-        /// Gộp lặp lại cặp hộp gần nhau nhất cho tới khi không còn cặp nào hợp lệ.
-        ///
-        /// Gộp trên HỘP chứ không trên màu trung bình: hai hộp nhập vào nhau rồi mới
-        /// tính trung bình, nên hộp nhiều pixel kéo màu chung về phía nó — đúng hơn là
-        /// lấy trung bình của hai màu đại diện.
-        ///
-        /// HAI phép kiểm, không phải một, và phép thứ hai mới là phần quan trọng:
-        ///
-        ///   1. hai tâm hộp phải cách nhau dưới mergeDistance — đây là phép cũ;
-        ///   2. hộp SAU KHI GỘP vẫn phải nằm gọn trong bán kính mergeDistance.
-        ///
-        /// Thiếu phép thứ hai thì đây là gộp cụm theo liên kết đơn, và nó DÂY CHUYỀN: A
-        /// nuốt B (cách 20), tâm trôi; hộp mới nuốt C (lại cách 20), tâm trôi tiếp. Sau
-        /// tám bước hộp trải rộng 160 trong không gian màu, trong khi MỌI bước đều lọt qua
-        /// ngưỡng 20.
-        ///
-        /// Đó là cách nét viền đen bị nuốt vào mảng xanh dù hai màu cách nhau 171 — xa hơn
-        /// cả giá trị lớn nhất của thanh trượt. Kết quả là bảng màu xỉn và mất hẳn màu đen,
-        /// còn người dùng thì không hiểu vì sao đặt ngưỡng 24 lại gộp hai màu cách nhau 171.
+        /// Gộp dần các cặp hộp màu gần nhau nhất.
         private static void MergeSimilar(List<List<Color32>> boxes, float mergeDistance)
         {
             var averages = new List<Color32>(boxes.Count);
             for (var i = 0; i < boxes.Count; i++) averages.Add(Average(boxes[i]));
 
-            // Cặp đã bị từ chối vì gộp vào sẽ phình quá rộng. Nhớ lại để vòng sau không
-            // chọn đúng nó rồi từ chối mãi. Xoá sạch sau MỖI lần gộp thành công: nội dung
-            // hộp đã đổi nên mọi phán quyết cũ hết giá trị.
             var rejected = new HashSet<(List<Color32>, List<Color32>)>();
 
             while (boxes.Count > 1)
@@ -125,8 +92,6 @@ namespace JewelPainter.Gameplay.Domain
 
                 if (bestA < 0) return;
 
-                // Chỉ đo bán kính cho cặp ĐANG THẮNG, không đo cho mọi cặp: phép này duyệt
-                // hết pixel của cả hai hộp, mà số cặp dưới ngưỡng thì đông.
                 if (SpreadAfterMerge(boxes[bestA], boxes[bestB]) > mergeDistance)
                 {
                     rejected.Add((boxes[bestA], boxes[bestB]));
@@ -144,8 +109,7 @@ namespace JewelPainter.Gameplay.Domain
             }
         }
 
-        /// Bán kính của hộp SAU KHI gộp: khoảng cách từ màu trung bình mới tới thành viên
-        /// xa nhất. Đây là thứ nói được "hộp này còn là MỘT màu hay đã thành một vệt".
+        /// Bán kính của hộp sau khi gộp: khoảng cách từ màu trung bình mới tới thành viên xa nhất.
         private static double SpreadAfterMerge(List<Color32> a, List<Color32> b)
         {
             long sumRed = 0, sumGreen = 0, sumBlue = 0;
@@ -194,16 +158,7 @@ namespace JewelPainter.Gameplay.Domain
             return distinct;
         }
 
-        /// Hộp đáng cắt nhất. -1 khi không hộp nào còn cắt được (mọi hộp chỉ còn một màu).
-        ///
-        /// Chấm điểm bằng ĐỘ TRẢI NHÂN SỐ PIXEL, không chỉ độ trải.
-        ///
-        /// Chỉ xét độ trải thì một hộp chứa dăm pixel màu pha vương vãi ở mép hình — vốn
-        /// trải rất rộng vì nó nối hai vùng màu khác nhau — sẽ liên tục giành nhát cắt khỏi
-        /// những hộp thật sự chiếm diện tích tranh. Ảnh càng nhiễu, nó càng ăn nhiều nhát,
-        /// và bảng màu càng tiêu tốn ô cho những màu không ai nhìn thấy.
-        ///
-        /// Nhân thêm số pixel là cách median cut chuẩn cân hai thứ đó.
+        /// Hộp đáng cắt nhất.
         private static int FindWidestBox(List<List<Color32>> boxes)
         {
             var bestIndex = -1;
@@ -277,15 +232,7 @@ namespace JewelPainter.Gameplay.Domain
             return (left, right);
         }
 
-        /// Dời điểm cắt tới RANH GIỚI GIÁ TRỊ gần giữa nhất.
-        ///
-        /// Cắt thẳng ở chỉ số giữa thì những màu TRÙNG NHAU nằm vắt qua điểm cắt bị chia
-        /// sang hai hộp, và hai hộp đó cho ra cùng một màu trung bình — tức hai ô bảng màu
-        /// trùng nhau. Người dùng xin 32 màu nhưng chỉ nhận về chừng 28 màu dùng được, mà
-        /// không có gì báo.
-        ///
-        /// Ranh giới luôn tồn tại vì bên gọi đã bỏ qua hộp có độ trải bằng 0 — nghĩa là
-        /// trên trục này chắc chắn có ít nhất hai giá trị khác nhau.
+        /// Tìm điểm cắt hộp màu.
         private static int SplitIndex(List<Color32> box, int axis, int middle)
         {
             for (var offset = 0; offset < box.Count; offset++)

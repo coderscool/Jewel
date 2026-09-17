@@ -4,31 +4,20 @@ using UnityEngine;
 namespace JewelPainter.Gameplay.Board
 {
     /// Bản chạy bằng Particle System của BurstEffectPool.
-    ///
-    /// Lợi ích về hiệu năng so với việc gắn hệ hạt thẳng vào prefab viên ngọc: số hệ hạt
-    /// sống cùng lúc phụ thuộc số sự kiện vừa xảy ra, không phụ thuộc số ngọc đang hiện
-    /// trên màn. Vì sao KHÔNG gắn thẳng vào viên ngọc thì xem chú thích ở lớp cha.
     public class ParticleBurstPool : BurstEffectPool
     {
-        [Tooltip("Prefab Particle System. Phải TẮT Play On Awake — kho tự gọi Play().")]
+        [Tooltip("Prefab Particle System.")]
         [SerializeField] private ParticleSystem _prefab;
 
-        [Tooltip("Cha của các hệ hạt lấy ra dùng. Thường là chính object này.")]
+        [Tooltip("Cha của các hệ hạt lấy ra dùng.")]
         [SerializeField] private Transform _root;
 
         [SerializeField] private int _prewarmCount = 32;
 
-        [Tooltip("Số hiệu ứng sống cùng lúc tối đa. Vượt quá thì BỎ QUA lần gọi mới — " +
-                 "hiệu ứng đó mất hẳn, không xếp hàng lại.\n\n" +
-                 "Đây là trần cứng cuối cùng. Muốn cả một màu cùng loé thì phải đặt LỚN " +
-                 "HƠN số ô của màu nhiều ô nhất trong màn, không thì phần vượt bị nuốt " +
-                 "dù bên gọi đã rải đều ra nhiều frame.\n\n" +
-                 "Để 0 là không giới hạn.")]
+        [Tooltip("Số hiệu ứng sống cùng lúc tối đa.")]
         [SerializeField] private int _maxConcurrent = 400;
 
-        [Tooltip("Chờ ít nhất ngần này giây rồi mới tin IsAlive để thu về. Đặt LỚN HƠN " +
-                 "Start Delay lớn nhất trong prefab, không thì hệ hạt bị thu ngay trước " +
-                 "khi kịp bắn hạt đầu tiên.")]
+        [Tooltip("Chờ ít nhất ngần này giây rồi mới tin IsAlive để thu về.")]
         [SerializeField] private float _minAliveSeconds = 0.3f;
 
         private struct ActiveBurst
@@ -53,8 +42,6 @@ namespace JewelPainter.Gameplay.Board
 
             system.transform.position = world;
 
-            // Clear trước Play: hệ hạt lấy từ kho có thể còn hạt đông cứng từ lần trước,
-            // và chúng sẽ hiện ra ngay frame đầu ở đúng chỗ mới.
             system.Clear(true);
             system.Play(true);
 
@@ -85,7 +72,6 @@ namespace JewelPainter.Gameplay.Board
 
             var deltaTime = Time.deltaTime;
 
-            // Chạy ngược vì Release() xoá phần tử ngay dưới chân.
             for (var i = _active.Count - 1; i >= 0; i--)
             {
                 var item = _active[i];
@@ -97,7 +83,6 @@ namespace JewelPainter.Gameplay.Board
                     continue;
                 }
 
-                // Ghi lại vì ActiveBurst là struct: sửa bản sao không đụng tới List.
                 _active[i] = item;
             }
         }
@@ -124,8 +109,6 @@ namespace JewelPainter.Gameplay.Board
             item.System.gameObject.SetActive(false);
             _pool.Push(item.System);
 
-            // Kéo phần tử cuối vào chỗ trống thay vì RemoveAt giữa danh sách. Vòng lặp
-            // gọi hàm này chạy ngược nên phần tử vừa kéo về đã duyệt rồi.
             var last = _active.Count - 1;
             _active[index] = _active[last];
             _active.RemoveAt(last);

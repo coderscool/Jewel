@@ -2,11 +2,7 @@ using UnityEngine;
 
 namespace JewelPainter.Gameplay.Board
 {
-    /// Phép tính màu dùng chung cho bảng. Thuần C#, không trạng thái.
-    ///
-    /// Hệ số 0.299 / 0.587 / 0.114 là trọng số độ sáng cảm nhận (Rec. 601):
-    /// mắt người nhạy với xanh lá hơn hẳn xanh dương, nên trung bình cộng ba kênh
-    /// cho ra ảnh xám sai lệch rõ.
+    /// Phép tính màu dùng chung cho bảng.
     public static class BoardColors
     {
         private const float RedWeight = 0.299f;
@@ -19,10 +15,7 @@ namespace JewelPainter.Gameplay.Board
             return RedWeight * color.r + GreenWeight * color.g + BlueWeight * color.b;
         }
 
-        /// Bản xám của một màu. Giữ nguyên alpha.
-        ///
-        /// Ảnh xám giữ đúng độ sáng của màu gốc, nên mọi quyết định dựa trên Luminance
-        /// cho cùng kết quả dù bảng đang xám hay đang màu.
+        /// Bản xám của một màu.
         public static Color32 ToGrayscale(Color32 color)
         {
             var gray = (byte)Mathf.Clamp(Mathf.RoundToInt(Luminance(color)), 0, 255);

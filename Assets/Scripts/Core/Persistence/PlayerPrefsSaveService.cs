@@ -3,7 +3,6 @@ using UnityEngine;
 namespace JewelPainter.Core.Persistence
 {
     /// Class thuần (không MonoBehaviour) bọc PlayerPrefs.
-    /// Muốn đổi sang file JSON hay cloud save thì chỉ thay class này.
     public class PlayerPrefsSaveService : ISaveService
     {
         public int GetInt(string key, int defaultValue = 0) => PlayerPrefs.GetInt(key, defaultValue);

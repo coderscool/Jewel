@@ -5,10 +5,6 @@ using UnityEngine;
 namespace JewelPainter.Gameplay.Domain
 {
     /// Tìm màu gần nhất trong bảng màu.
-    ///
-    /// Dùng xấp xỉ "redmean" thay vì khoảng cách Euclid thẳng trên RGB. Thêm khoảng
-    /// mười dòng nhưng bám cảm nhận mắt người tốt hơn đáng kể — khoảng cách RGB thẳng
-    /// coi mọi kênh nặng như nhau, khiến tông da người hay bị đẩy sang xanh lá.
     public static class PaletteMatcher
     {
         public static int FindNearest(Color32 color, IReadOnlyList<Color32> palette)
@@ -31,9 +27,7 @@ namespace JewelPainter.Gameplay.Domain
             return bestIndex;
         }
 
-        /// Khoảng cách cảm nhận giữa hai màu, thang 0 (trùng khớp) đến khoảng 765
-        /// (đen với trắng). Công khai để ColorQuantizer dùng chung một định nghĩa
-        /// "gần giống nhau" với việc dò màu.
+        /// Khoảng cách cảm nhận giữa hai màu, thang 0 (trùng khớp) đến khoảng 765 (đen với trắng).
         public static double Distance(Color32 a, Color32 b) => Math.Sqrt(SquaredDistance(a, b));
 
         private static double SquaredDistance(Color32 a, Color32 b)

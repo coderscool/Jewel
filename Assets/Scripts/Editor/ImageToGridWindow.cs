@@ -7,7 +7,6 @@ using UnityEngine;
 namespace JewelPainter.Editor
 {
     /// Cửa sổ chuyển ảnh thành lưới ô màu.
-    /// Chỉ là lớp vỏ: thu thập input, gọi ImageToGridGenerator, hiện preview, ghi asset.
     public class ImageToGridWindow : EditorWindow
     {
         private const int MinCells = 1;
@@ -30,26 +29,14 @@ namespace JewelPainter.Editor
 
         private Vector2 _scroll;
 
-        /// Bảng màu ngay lúc vừa rút từ ảnh, giữ nguyên không ai đụng vào.
-        /// Chỉ để nút hoàn tác có chỗ mà quay về.
         private Color32[] _originalPalette;
 
-        /// Chữ đang gõ trong ô hex của từng màu.
-        ///
-        /// Phải nhớ riêng chứ không sinh lại từ màu mỗi frame: gõ tới ký tự thứ ba thì
-        /// chuỗi chưa hợp lệ, mà dựng lại từ màu sẽ xoá luôn thứ người ta đang gõ dở.
         private string[] _hexBuffers;
 
-        /// Số ô của lưới dùng từng màu. Con số này là thứ quyết định màu nào đáng chỉnh:
-        /// sửa một màu chỉ có 3 ô thì không ai nhận ra.
         private int[] _paletteCellCounts;
 
         private bool _paletteFoldout = true;
 
-        /// Bảng màu và mấy mảng đi kèm đã khớp nhau chưa.
-        ///
-        /// Cần kiểm vì EditorWindow sống qua lần biên dịch lại, mà PixelGrid trong _result
-        /// là class thuần C# nên không serialize được — sau reload các mảng có thể lệch.
         private bool HasPaletteState =>
             _result.IsValid
             && _originalPalette != null && _originalPalette.Length == _result.Palette.Length
@@ -67,7 +54,6 @@ namespace JewelPainter.Editor
 
         private void OnGUI()
         {
-            // Bảng màu tối đa 64 dòng, không cuộn thì phần dưới cửa sổ không với tới được.
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
 
             DrawBody();
@@ -135,12 +121,6 @@ namespace JewelPainter.Editor
         }
 
         /// Sửa mã màu của từng màu trong bảng, ngay tại chỗ.
-        ///
-        /// Sửa màu KHÔNG tính lại lưới. Chỉ số trong lưới giữ nguyên, chỉ có màu mà chỉ số
-        /// đó trỏ tới là đổi — nên mọi ô đang mang màu số 3 đổi theo cùng một lúc, và hình
-        /// dạng bức tranh không suy chuyển. Đó là điều bạn muốn khi chỉnh tông màu, và cũng
-        /// là lý do không được gọi lại Generate ở đây: sinh lại là bảng màu mới đè lên,
-        /// mất sạch phần vừa chỉnh.
         private void DrawPaletteEditor()
         {
             if (!HasPaletteState) return;
@@ -169,7 +149,6 @@ namespace JewelPainter.Editor
         {
             using (new EditorGUILayout.HorizontalScope())
             {
-                // index + 1 vì lưới đánh số từ 0 còn ô màu trong game hiện từ 1.
                 EditorGUILayout.LabelField($"{index + 1}", GUILayout.Width(24f));
 
                 EditorGUI.BeginChangeCheck();
@@ -202,10 +181,7 @@ namespace JewelPainter.Editor
             RebuildPreview();
         }
 
-        /// Gõ dở thì KHÔNG làm gì, không báo lỗi, không tự sửa chuỗi.
-        ///
-        /// Người ta gõ "1A2B3C" từng ký tự một, và bốn ký tự đầu đều là chuỗi không hợp lệ.
-        /// Nhảy vào chỉnh hay cảnh báo ở đó là cướp bàn phím của người dùng.
+        /// Áp mã hex vừa gõ vào màu trong bảng.
         private void ApplyHex(int index)
         {
             var text = _hexBuffers[index];
@@ -220,8 +196,7 @@ namespace JewelPainter.Editor
             RebuildPreview();
         }
 
-        /// Bảng màu luôn đục. Ô trong suốt được ghi bằng PixelGrid.EmptyCell chứ không
-        /// bằng một màu alpha 0, nên một màu bảng có alpha < 255 chỉ là lỗi chờ xảy ra.
+        /// Ép màu về alpha 1.
         private static Color32 ToOpaque(Color color)
         {
             var value = (Color32)color;
@@ -253,7 +228,7 @@ namespace JewelPainter.Editor
             SetMessage("Đã trả bảng màu về đúng thứ rút từ ảnh.", MessageType.Info);
         }
 
-        /// Chụp lại bảng màu gốc và dựng các mảng đi kèm. Gọi ngay sau mỗi lần sinh lưới.
+        /// Chụp lại bảng màu gốc và dựng các mảng đi kèm.
         private void CapturePaletteState()
         {
             var palette = _result.Palette;
@@ -288,8 +263,7 @@ namespace JewelPainter.Editor
             }
         }
 
-        /// Ghi đè hai ô nhập bằng kích thước giữ đúng tỉ lệ ảnh, lấy cạnh dài hiện tại
-        /// làm mốc. Để người dùng có điểm khởi đầu hợp lý rồi tự tinh chỉnh.
+        /// Ghi đè hai ô nhập bằng kích thước giữ đúng tỉ lệ ảnh, lấy cạnh dài hiện tại làm mốc.
         private void DrawFitAspectButton()
         {
             using (new EditorGUI.DisabledScope(_sourceTexture == null))
@@ -331,9 +305,6 @@ namespace JewelPainter.Editor
                     MessageType.Warning);
             }
 
-            // Read/Write, Compression và npotScale thì tool tự sửa được. Max Size thì không:
-            // nâng nó lên là quyết định về bộ nhớ của cả project, không phải thứ một tool
-            // sinh lưới được tự tiện đổi hộ.
             if (ImageToGridGenerator.IsSizeClamped(_sourceTexture))
             {
                 EditorGUILayout.HelpBox(
@@ -386,8 +357,6 @@ namespace JewelPainter.Editor
                 hideFlags = HideFlags.HideAndDontSave,
             };
 
-            // Dựng cả mảng rồi đẩy một lần, không SetPixel từng ô: hàm này chạy lại sau
-            // MỖI ký tự gõ vào ô hex, mà lưới 256x256 là 65 nghìn lời gọi.
             var pixels = new Color32[grid.Width * grid.Height];
 
             for (var y = 0; y < grid.Height; y++)
@@ -399,7 +368,6 @@ namespace JewelPainter.Editor
                         ? new Color32(0, 0, 0, 0)
                         : palette[index];
 
-                    // Texture2D có y = 0 ở dưới cùng, PixelGrid có y = 0 ở trên cùng
                     pixels[(grid.Height - 1 - y) * grid.Width + x] = color;
                 }
             }

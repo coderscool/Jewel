@@ -6,13 +6,6 @@ using UnityEngine;
 namespace JewelPainter.Gameplay.Data
 {
     /// Dữ liệu lưới của một màn chơi, do Editor tool sinh ra.
-    ///
-    /// Giữ luôn bảng màu của riêng nó: màu được rút từ chính ảnh nguồn nên mỗi màn
-    /// một bộ khác nhau, không có bảng màu dùng chung nào cả. Chỉ số trong lưới vô
-    /// nghĩa nếu tách khỏi bảng màu này.
-    ///
-    /// Tách khỏi LevelConfig vì tool ghi đè toàn bộ asset này mỗi lần sinh lại —
-    /// không nên để tool đụng vào file người ta chỉnh tay.
     [CreateAssetMenu(fileName = "LevelGridData", menuName = "JewelPainter/Gameplay/Level Grid Data")]
     public class LevelGridData : ScriptableObject
     {
@@ -26,7 +19,7 @@ namespace JewelPainter.Gameplay.Data
 
         public IReadOnlyList<Color32> Colors => _colors;
 
-        /// Trả về null nếu asset chưa được tool sinh dữ liệu.
+        /// Đổi dữ liệu thành PixelGrid; null nếu chưa có dữ liệu.
         public PixelGrid ToGrid()
         {
             if (_width <= 0 || _height <= 0) return null;
@@ -36,7 +29,7 @@ namespace JewelPainter.Gameplay.Data
         }
 
 #if UNITY_EDITOR
-        /// Chỉ dành cho Editor tool. Không gọi lúc chạy game.
+        /// Ghi dữ liệu lưới từ Editor tool.
         public void SetData(int width, int height, Color32[] colors, int[] cells)
         {
             _width = width;

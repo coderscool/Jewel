@@ -5,40 +5,19 @@ using UnityEngine.UI;
 
 namespace JewelPainter.UI.Views
 {
-    /// Màn hình chờ che cú dựng bàn chơi — MỌI lần nạp màn, không riêng lúc mở game.
-    ///
-    /// Không tự gọi LoadLevel nữa. Nó chỉ nghe hai mốc mà LevelManager bắn ra:
-    ///   OnLevelLoadStarted — có yêu cầu nạp, bàn chưa dựng → hiện lên
-    ///   OnLevelStarted     — bàn đã dựng xong             → đếm nốt thời gian tối thiểu rồi tắt
-    ///
-    /// Nhờ vậy nút Play ở Home, nút chơi lại và cheat đều được che như nhau, mà không
-    /// nơi nào phải biết màn hình chờ tồn tại.
-    ///
-    /// Dùng Update chứ không dùng coroutine: SetVisible có thể tắt chính GameObject này
-    /// khi Content để trống, mà coroutine trên một object đã tắt thì dừng giữa chừng.
+    /// Màn hình chờ che lúc dựng bàn chơi.
     public class LoadingScreenView : MonoBehaviour
     {
-        [Tooltip("Object bị ẩn khi xong. Để trống thì ẩn chính object này.")]
+        [Tooltip("Object bị ẩn khi xong.")]
         [SerializeField] private GameObject _content;
 
-        [Tooltip("Giữ màn chờ thêm ngần này giây TÍNH TỪ LÚC BÀN ĐÃ DỰNG XONG — không " +
-                 "phải từ lúc màn chờ hiện lên.\n\n" +
-                 "Đo từ lúc hiện lên là cái bẫy đã làm thanh tiến trình đứng im: cú dựng " +
-                 "bàn chiếm trọn khoảng đó, nên đến lúc chạy được dòng cập nhật đầu tiên " +
-                 "thì thời gian đã hết và thanh nhảy thẳng từ 0 sang tắt.\n\n" +
-                 "Đo từ lúc dựng xong thì khoảng này LUÔN là khoảng thanh chạy thật, dù " +
-                 "máy chậm tới đâu. Nó cũng chính là khoảng che cho phần dựng sẵn đang " +
-                 "trải ra nhiều frame ở lớp số, lớp ngọc và lớp gợi ý.")]
+        [Tooltip("Thời gian giữ màn chờ tính từ lúc bàn dựng xong.")]
         [SerializeField] private float _minimumSeconds = 0.8f;
 
         [Header("Tuỳ chọn — để trống cũng chạy")]
-        [Tooltip("Thanh tiến trình. Image phải đặt Image Type = Filled — code chỉ gán " +
-                 "fillAmount.")]
+        [Tooltip("Thanh tiến trình.")]
         [SerializeField] private Image _progressFill;
 
-        /// Phần dải dành cho quãng "đang dựng bàn". Quãng đó không cập nhật được thanh
-        /// — nó nằm gọn trong một frame bị chiếm — nên thanh đứng yên ở đây một nhịp
-        /// ngắn rồi mới chạy tiếp phần còn lại.
         private const float BuildProgressShare = 0.25f;
 
         private ILevelService _levelService;
@@ -47,9 +26,6 @@ namespace JewelPainter.UI.Views
         private bool _isBoardBuilt;
         private float _builtAt;
 
-        /// Màn chờ đang che màn hình. Đọc trạng thái THẬT của object chứ không đọc cờ
-        /// _isShowing: cờ đó về false ở đầu Update cuối cùng, còn object thì tắt ở dòng
-        /// sau — hỏi giữa hai dòng đó ra hai câu trả lời khác nhau.
         public bool IsShowing
         {
             get
@@ -60,14 +36,9 @@ namespace JewelPainter.UI.Views
             }
         }
 
-        /// Bắn khi màn chờ hiện lên hoặc tắt đi. Chỉ bắn lúc ĐỔI.
-        ///
-        /// Có sự kiện thì phần nhạc nền không phải hỏi thăm mỗi frame, mà màn chờ cũng
-        /// không cần biết nhạc tồn tại — nó chỉ kể ra mình vừa hiện hay vừa tắt.
         public event Action<bool> OnVisibilityChanged;
 
-        /// GameEntryPoint gọi một lần lúc nối dây. Từ đó về sau màn chờ tự chạy theo
-        /// sự kiện, không ai phải gọi nó nữa.
+        /// Nối phụ thuộc.
         public void Bind(ILevelService levelService)
         {
             if (_levelService != null) Unbind();
@@ -101,11 +72,7 @@ namespace JewelPainter.UI.Views
             SetProgress(0f);
         }
 
-        /// Bàn đã dựng xong. ĐÂY mới là mốc bấm giờ cho khoảng giữ màn chờ.
-        ///
-        /// Bấm giờ từ lúc màn chờ hiện lên thì cú dựng bàn ăn hết khoảng đó, và dòng cập
-        /// nhật thanh đầu tiên chỉ chạy được sau khi đã hết giờ — thanh nằm im ở 0 suốt
-        /// lúc máy bận, rồi tắt ngay. Đó đúng là cảnh "thanh loading đơ rồi vào game luôn".
+        /// Bắt đầu đếm giờ giữ màn chờ khi bàn đã dựng xong.
         private void HandleBoardBuilt(int levelId)
         {
             _isBoardBuilt = true;
@@ -116,7 +83,6 @@ namespace JewelPainter.UI.Views
         {
             if (!_isShowing) return;
 
-            // Chưa dựng xong: chỉ vài frame, giữ thanh ở đầu dải cho có gì đó khác 0.
             if (!_isBoardBuilt)
             {
                 SetProgress(BuildProgressShare * 0.5f);
@@ -152,8 +118,6 @@ namespace JewelPainter.UI.Views
 
             target.SetActive(visible);
 
-            // Báo SAU khi object đã đổi trạng thái: người nghe có quyền hỏi lại IsShowing
-            // ngay trong handler.
             OnVisibilityChanged?.Invoke(visible);
         }
     }

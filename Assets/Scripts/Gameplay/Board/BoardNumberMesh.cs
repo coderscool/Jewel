@@ -8,80 +8,37 @@ using UnityEngine.Rendering;
 
 namespace JewelPainter.Gameplay.Board
 {
-    /// Hiện chỉ số bảng màu bằng MỘT mesh duy nhất cho cả bảng.
-    ///
-    /// Bản thay thế cho BoardNumberLayer. Cùng kết quả trên màn hình, khác hẳn ở cái giá:
-    ///
-    ///   BoardNumberLayer — một GameObject mỗi ô trong tầm nhìn. Bảng 101x105 ở mức zoom
-    ///                      mà số bật lên là hơn 10.000 renderer, và mỗi frame engine đều
-    ///                      phải cull, sắp xếp theo chiều sâu rồi dựng lệnh vẽ cho từng
-    ///                      cái. Cái giá đó phải trả kể cả khi người chơi đứng yên.
-    ///   BoardNumberMesh  — 1 renderer, 1 draw call, bất kể bảng bao nhiêu ô. Kéo và zoom
-    ///                      không tốn một phép tính nào: không có object nào để cull, và
-    ///                      mesh không phải dựng lại vì nó vốn đã chứa CẢ bảng.
-    ///
-    /// Đổi lại: mỗi lần nội dung đổi là dựng lại toàn bộ mesh. Nên việc đổi nội dung được
-    /// gom lại và giãn ra bằng Rebuild Cooldown — xem tooltip của ô đó.
-    ///
-    /// KHÔNG tự dựng hình học chữ. Hình học được CHÉP từ chính TextMeshPro: lúc vào màn,
-    /// lớp này dựng một TextMeshPro tạm, bảo nó viết từng con số rồi lấy nguyên mesh nó
-    /// sinh ra làm khuôn. Nhờ vậy mọi kênh đỉnh mà shader của TMP cần đều đúng, không
-    /// phải đoán — mà mấy kênh đó thì khác nhau giữa các phiên bản TMP và không có tài
-    /// liệu nào chốt.
+    /// Hiện chỉ số bảng màu bằng một mesh duy nhất cho cả bảng.
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
     public class BoardNumberMesh : MonoBehaviour, IBoardNumbers
     {
         [SerializeField] private Camera _camera;
 
-        [Tooltip("Prefab TextMeshPro dùng làm KHUÔN chữ. Dùng chung prefab với " +
-                 "BoardNumberLayer được — lớp này chỉ mượn nó để lấy hình học và vật liệu, " +
-                 "rồi huỷ ngay. Phải là TextMeshPro (bản 3D), không phải TextMeshProUGUI.\n\n" +
-                 "Cỡ chữ, font, canh giữa, Order in Layer đều đọc từ prefab này, nên đổi " +
-                 "prefab là đổi được cả hai bản cài đặt cùng lúc.")]
+        [Tooltip("Prefab TextMeshPro dùng làm khuôn chữ.")]
         [SerializeField] private TextMeshPro _numberPrefab;
 
-        [Tooltip("Số hiện ra ở đâu trong dải zoom CỦA MÀN ĐÓ: 0 là ngay khi vào màn " +
-                 "(Camera Max Size), 1 là mãi tới lúc lớp màu tan hết (Fade Switch Size). " +
-                 "HẠ xuống thì số hiện sớm hơn. Chỉ có tác dụng khi LevelConfig có điền " +
-                 "Fade Switch Size.\n\n" +
-                 "Ở bản mesh này, đặt thấp KHÔNG còn đắt như bản cũ — số object không đổi. " +
-                 "Nhưng số vẫn nên hiện đúng lúc ĐỌC ĐƯỢC, nếu không nó chỉ là nhiễu.")]
+        [Tooltip("Vị trí trong dải zoom của màn mà số bắt đầu hiện (0 = lúc vào màn, 1 = lúc lớp màu tan hết).")]
         [Range(0f, 1f)]
         [SerializeField] private float _showAtZoomProgress = 0.2f;
 
-        [Tooltip("Đường lui khi LevelConfig để trống Fade Switch Size: ô chiếu lên màn hình " +
-                 "nhỏ hơn ngần này pixel thì không hiện số.")]
+        [Tooltip("Ô nhỏ hơn ngần này pixel trên màn hình thì không hiện số khi LevelConfig không đặt Fade Switch Size.")]
         [SerializeField] private float _minCellScreenPixels = 32f;
 
-        [Tooltip("Dải trễ quanh ngưỡng hiện số. Ở bản mesh, việc bật tắt chỉ là gạt một cờ " +
-                 "renderer nên rẻ hơn hẳn bản cũ, nhưng dải trễ vẫn nên giữ: nhấp nháy " +
-                 "quanh ngưỡng là thứ khó chịu về mặt nhìn, không chỉ về mặt hiệu năng.")]
+        [Tooltip("Dải trễ quanh ngưỡng hiện số.")]
         [Range(0f, 0.5f)]
         [SerializeField] private float _showHysteresis = 0.08f;
 
-        [Tooltip("Màu chữ số. Đọc MỘT LẦN lúc dựng khuôn, nên đổi lúc đang chạy phải vào " +
-                 "lại màn mới thấy.")]
+        [Tooltip("Màu chữ số.")]
         [SerializeField] private Color _numberColor = Color.black;
 
-        [Tooltip("Gỡ số ở ô đã tô.\n\n" +
-                 "Bỏ tick thì số nằm lại dưới viên ngọc. Ở bản mesh việc đó gần như KHÔNG " +
-                 "tốn gì — vài đỉnh nằm khuất trong một mesh sẵn có — nên bỏ tick là cách " +
-                 "tắt hẳn mọi lần dựng lại giữa lúc chơi, đổi lấy việc số vẫn còn đó nếu " +
-                 "viên ngọc của bạn không phủ kín ô.")]
+        [Tooltip("Gỡ số ở ô đã tô.")]
         [SerializeField] private bool _hideOnPainted = true;
 
-        [Tooltip("Gom các lần dựng lại trong ngần này giây thành một.\n\n" +
-                 "Mỗi ô tô xong là một lần nội dung đổi. Dựng lại ngay từng lần thì kéo tay " +
-                 "tô liên tục — hoặc booster tô hết màu, 24 ô mỗi frame — sẽ dựng lại cả " +
-                 "mesh mỗi frame, và đó là cách nhanh nhất để bản này còn chậm hơn bản cũ.\n\n" +
-                 "0.12 giây là chờ chừng 7 frame. Con số dưới viên ngọc chậm biến mất ngần " +
-                 "ấy thì không ai thấy, vì viên ngọc đã che nó rồi.\n\n" +
-                 "Để 0 là dựng lại ngay mỗi lần đổi.")]
+        [Tooltip("Gom các lần dựng lại trong ngần này giây thành một.")]
         [SerializeField] private float _rebuildCooldown = 0.12f;
 
-        /// Hình học của MỘT con số, chép nguyên từ mesh mà TextMeshPro sinh ra.
-        /// Toạ độ đỉnh đã nhân sẵn scale của prefab và lấy tâm ô làm gốc.
+        /// Hình học của một con số.
         private struct Stamp
         {
             public Vector3[] Vertices;
@@ -95,8 +52,6 @@ namespace JewelPainter.Gameplay.Board
 
         private readonly Dictionary<int, Stamp> _stamps = new();
 
-        /// Bộ đệm dựng mesh, dùng lại qua mọi lần dựng. Cấp phát mới mỗi lần là vài trăm
-        /// KB rác cho mỗi cú tô.
         private readonly List<Vector3> _vertices = new();
         private readonly List<Vector3> _normals = new();
         private readonly List<Vector4> _tangents = new();
@@ -117,11 +72,9 @@ namespace JewelPainter.Gameplay.Board
         private bool _needsBaseCapture = true;
         private bool _numbersShown;
 
-        /// Nội dung đã đổi, chờ dựng lại.
         private bool _dirty;
         private float _nextRebuildTime;
 
-        /// Khuôn đã dựng xong cho màn này. Chưa có thì không vẽ gì.
         private bool _hasStamps;
 
         private bool _prefabRejected;
@@ -137,8 +90,6 @@ namespace JewelPainter.Gameplay.Board
             _filter = GetComponent<MeshFilter>();
             _renderer = GetComponent<MeshRenderer>();
 
-            // Mesh sinh lúc chạy, KHÔNG phải asset. Unity không dọn giúp — phải tự huỷ ở
-            // OnDestroy, không thì mỗi lần vào lại scene là bộ nhớ lớn thêm một nấc.
             _mesh = new Mesh { name = "BoardNumbers" };
             _mesh.MarkDynamic();
             _filter.sharedMesh = _mesh;
@@ -170,9 +121,7 @@ namespace JewelPainter.Gameplay.Board
             if (_mesh != null) Destroy(_mesh);
         }
 
-        /// Đỉnh được ghi thẳng bằng toạ độ WORLD mà BoardLayout trả về, nên transform của
-        /// chính object này phải là đơn vị. Lệch một chút là cả bảng số lệch theo, mà
-        /// triệu chứng — số không nằm đúng ô — trông y hệt lỗi tính toạ độ.
+        /// Cảnh báo khi transform của object không phải đơn vị.
         private void WarnIfTransformed()
         {
             var t = transform;
@@ -192,7 +141,6 @@ namespace JewelPainter.Gameplay.Board
 
         private void HandleCoverChanged()
         {
-            // Không dựng lại gì — chỉ cần tắt renderer, và LateUpdate lo việc đó.
         }
 
         private void HandleJewelLanded(Vector2Int cell, int paletteIndex)
@@ -216,12 +164,7 @@ namespace JewelPainter.Gameplay.Board
             _nextRebuildTime = 0f;
         }
 
-        /// Dựng khuôn cho mọi con số màn này dùng, bằng cách nhờ chính TextMeshPro sinh
-        /// hình học rồi chép lại.
-        ///
-        /// Chạy một lần mỗi màn, lúc màn hình chờ đang che. Mỗi con số là một lần SetText
-        /// cộng ForceMeshUpdate — với 28 màu là 28 lần, không đáng kể so với hàng nghìn
-        /// lần mà bản cũ phải làm.
+        /// Dựng khuôn hình học cho mọi con số màn này dùng.
         private bool BuildStamps()
         {
             _stamps.Clear();
@@ -241,9 +184,6 @@ namespace JewelPainter.Gameplay.Board
 
             var source = Instantiate(_numberPrefab, transform);
 
-            // HideInHierarchy thôi, KHÔNG phải HideAndDontSave: cờ DontSave nằm trong đó
-            // làm object khó huỷ đúng cách, mà thứ duy nhất cần ở đây là nó đừng bày ra
-            // giữa cây scene trong lúc sống chưa tới một frame.
             source.gameObject.hideFlags = HideFlags.HideInHierarchy;
 
             var sourceRenderer = source.GetComponent<MeshRenderer>();
@@ -261,8 +201,6 @@ namespace JewelPainter.Gameplay.Board
 
             source.color = _numberColor;
 
-            // Scale của prefab KHÔNG nằm trong mesh mà TMP sinh ra — nó nằm ở transform.
-            // Nướng sẵn vào khuôn, vì transform của mesh gộp phải là đơn vị.
             var scale = _numberPrefab.transform.localScale;
 
             var used = new HashSet<int>();
@@ -287,18 +225,10 @@ namespace JewelPainter.Gameplay.Board
                 _stamps[number] = CaptureStamp(source.mesh, scale);
             }
 
-            // Vật liệu và thứ tự vẽ đọc SAU vòng trên: TextMeshPro có thể đổi vật liệu ở
-            // lần dựng lưới chữ đầu tiên, nên hỏi trước là hỏi phải bản cũ.
-            //
-            // Một font atlas là một vật liệu, nên cả bảng số gộp lại vẫn đúng một draw
-            // call. Thiếu sortingOrder thì mesh này vẽ sai lớp so với bảng — kiểu sai nhìn
-            // ra ngay nhưng khó đoán vì sao.
             _renderer.sharedMaterial = sourceRenderer.sharedMaterial;
             _renderer.sortingLayerID = sourceRenderer.sortingLayerID;
             _renderer.sortingOrder = sourceRenderer.sortingOrder;
 
-            // Tắt renderer TRƯỚC khi huỷ. Destroy chỉ có hiệu lực ở cuối frame, nên không
-            // tắt thì con số cuối cùng vừa viết sẽ loé lên một frame ngay giữa bảng.
             sourceRenderer.enabled = false;
 
             Destroy(source.gameObject);
@@ -306,11 +236,7 @@ namespace JewelPainter.Gameplay.Board
             return _stamps.Count > 0;
         }
 
-        /// Chép nguyên mọi kênh đỉnh, kể cả normal và tangent.
-        ///
-        /// Chép hết chứ không chọn lọc: các biến thể shader của TMP dùng những kênh khác
-        /// nhau — bản có vát cạnh đọc normal và tangent, bản mobile thì không — và đoán
-        /// sai một kênh cho ra chữ đen sì hoặc mất hẳn, không kèm lỗi nào.
+        /// Chép hình học của một con số từ TextMeshPro.
         private static Stamp CaptureStamp(Mesh mesh, Vector3 scale)
         {
             var source = mesh.vertices;
@@ -342,8 +268,6 @@ namespace JewelPainter.Gameplay.Board
 
             if (_needsBaseCapture)
             {
-                // Lấy ở LateUpdate chứ không trong handler, để BoardCamera kịp đặt lại mức
-                // zoom cho bảng mới. Không phụ thuộc thứ tự đăng ký event.
                 _baseSize = _camera.orthographicSize;
                 _needsBaseCapture = false;
             }
@@ -352,9 +276,6 @@ namespace JewelPainter.Gameplay.Board
 
             if (_renderer.enabled != show) _renderer.enabled = show;
 
-            // Đang không hiện thì KHÔNG dựng lại, nhưng vẫn giữ cờ bẩn. Tô cả màn ở mức
-            // zoom xa vì thế không tốn một lần dựng nào; tới lúc zoom vào mới dựng đúng
-            // một lần.
             if (!show || !_dirty) return;
 
             if (_rebuildCooldown > 0f && Time.unscaledTime < _nextRebuildTime) return;
@@ -401,8 +322,6 @@ namespace JewelPainter.Gameplay.Board
 
             _mesh.Clear();
 
-            // 16 bit chỉ đánh số được 65.535 đỉnh — bảng 101x105 với số hai chữ là hơn
-            // 80.000. Đặt TRƯỚC khi ghi đỉnh, không thì Unity chửi và cắt cụt mesh.
             _mesh.indexFormat = IndexFormat.UInt32;
 
             _mesh.SetVertices(_vertices);
@@ -413,8 +332,6 @@ namespace JewelPainter.Gameplay.Board
             if (_uv2.Count == _vertices.Count) _mesh.SetUVs(1, _uv2);
             if (_colors.Count == _vertices.Count) _mesh.SetColors(_colors);
 
-            // calculateBounds: false rồi đặt tay bằng khung bảng. Tự tính là quét lại cả
-            // tám vạn đỉnh chỉ để ra đúng cái hình chữ nhật mình đã biết sẵn.
             _mesh.SetTriangles(_triangles, 0, false);
             _mesh.bounds = layout.WorldBounds;
         }
@@ -461,7 +378,7 @@ namespace JewelPainter.Gameplay.Board
             for (var i = 0; i < triangles.Length; i++) _triangles.Add(start + triangles[i]);
         }
 
-        /// Xem chú thích cùng tên ở BoardNumberLayer.
+        /// Ô đã tô và viên ngọc đã đáp.
         private bool IsDone(int x, int y)
         {
             if (_paintService == null || !_paintService.IsPainted(x, y)) return false;
@@ -469,8 +386,7 @@ namespace JewelPainter.Gameplay.Board
             return _flyEffect == null || !_flyEffect.IsInFlight(new Vector2Int(x, y));
         }
 
-        /// Xem chú thích cùng tên ở BoardNumberLayer — luật giống hệt, chỉ khác là ở đây
-        /// nó chỉ gạt một cờ renderer thay vì thu về cả nghìn object.
+        /// Có hiện số ở mức zoom hiện tại không.
         private bool ShouldShowNumbers()
         {
             var threshold = ResolveShowSize();
@@ -486,7 +402,7 @@ namespace JewelPainter.Gameplay.Board
             return _numbersShown;
         }
 
-        /// Xem chú thích cùng tên ở BoardNumberLayer.
+        /// orthographicSize mà tại đó số bắt đầu hiện.
         private float ResolveShowSize()
         {
             var config = _boardView.Config;

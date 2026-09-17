@@ -6,12 +6,7 @@ using UnityEngine.UI;
 
 namespace JewelPainter.Bootstrap.Cheat
 {
-    /// MODULE ĐẶC THÙ — phần cheat chỉ JewelPainter mới có, gắn vào panel qua
-    /// CheatPanelBuilder.AddModule mà KHÔNG sửa lấy một dòng của kit (OCP).
-    ///
-    /// Phụ thuộc IJewelPainterCheatService qua Bind, không phụ thuộc bridge cụ thể (DIP).
-    /// Mọi thứ đều null-safe: chưa Bind, hoặc bind bằng một CheatServices không có port
-    /// này, thì nút xám đi chứ không ném lỗi.
+    /// Module cheat riêng của JewelPainter gắn vào panel.
     public sealed class JewelPainterCheatModule : UITestModuleBase, ICheatBindable, ICheatModuleUi
     {
         private const int SmallBatch = 10;
@@ -32,13 +27,8 @@ namespace JewelPainter.Bootstrap.Cheat
         private Button _toggleHud;
         private Text _stats;
 
-        /// Nhãn nút giấu HUD ở lần vẽ gần nhất. Cùng lý do với mấy con số dưới đây: gán
-        /// Text.text là dựng lại lưới chữ, đừng làm mỗi frame cho một chữ đứng yên.
         private bool _lastHudHidden;
 
-        /// Giá trị đã VẼ lần gần nhất. Có nó thì OnUpdate chỉ chạm Text.text khi số thật
-        /// sự đổi — gán text mỗi frame là dựng lại lưới chữ mỗi frame, đúng thứ làm tụt
-        /// khung hình trên máy yếu mà lại chỉ để hiện một con số đứng yên.
         private int _lastRemaining = int.MinValue;
         private int _lastHints = int.MinValue;
         private bool _lastFilling;
@@ -110,9 +100,6 @@ namespace JewelPainter.Bootstrap.Cheat
                 ApplyInteractable();
             }
 
-            // Theo dõi cả chiều NGƯỢC LẠI, không chỉ cập nhật lúc bấm: game tự trả HUD về
-            // hiện sau mỗi màn, và nếu nhãn chỉ đổi lúc bấm thì nó sẽ nói "Hiện HUD" trong
-            // khi HUD đang hiện sẵn — bấm một phát nữa mới về đúng.
             if (_game.IsHudHidden != _lastHudHidden) RefreshHudLabel();
 
             if (_game.RemainingCells == _lastRemaining && _game.HintCredits == _lastHints) return;
@@ -128,11 +115,7 @@ namespace JewelPainter.Bootstrap.Cheat
         private void OnAddFreePaint() => _game?.AddFreePaintCredits(FreePaintGrant);
         private void OnAddFillColor() => _game?.AddFillColorCredits(FillColorGrant);
 
-        /// Giấu HUD đi mà vẫn bấm được nó — xem IJewelPainterCheatService.SetHudHidden.
-        ///
-        /// Panel cheat nằm trên canvas riêng của kit nên KHÔNG bị giấu theo. Muốn khuôn
-        /// hình sạch hẳn thì đóng panel lại; nút của HUD vẫn ở đúng chỗ cũ và vẫn ăn chạm,
-        /// chỉ là phải bấm bằng trí nhớ.
+        /// Bật tắt ẩn HUD.
         private void OnToggleHud()
         {
             if (_game == null) return;
@@ -154,8 +137,7 @@ namespace JewelPainter.Bootstrap.Cheat
 
         private static string HudLabel(bool hidden) => hidden ? "Hiện HUD" : "Giấu HUD";
 
-        /// Nút "Dừng tô" chỉ bấm được khi thật sự đang tô — nút bấm được mà không làm gì
-        /// là lời nói dối nhỏ mà người test phải mất một lúc mới nhận ra.
+        /// Chỉ cho bấm nút Dừng tô khi đang tô.
         private void ApplyInteractable()
         {
             var has = _game != null;

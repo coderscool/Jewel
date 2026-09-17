@@ -9,165 +9,97 @@ using JewelPainter.Gameplay.Managers;
 using JewelPainter.UI.Components;
 using JewelPainter.UI.Definitions;
 using JewelPainter.UI.Interfaces;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace JewelPainter.UI.Views
 {
     /// Màn hình đầu game: danh sách mọi màn chơi và nút vào chơi.
-    ///
-    /// Mỗi ô hiện đúng trạng thái của màn đó:
-    ///   - đã xong  → tranh hoàn thiện
-    ///   - đang chơi → ảnh tiến độ ngay lúc này, giống hệt thứ đang thấy trong game
-    ///   - chưa mở  → ô xám
-    ///
-    /// Home nằm cùng scene với bàn chơi và chỉ bật tắt. Không tách scene riêng vì
-    /// LifetimeScope, tiến trình và mọi service đang sống ở đây — tách ra là phải dựng
-    /// thêm một scope cha để chúng sống xuyên scene, đổi lấy một thứ chưa cần tới.
     public class HomeScreenView : MonoBehaviour
     {
-        [Tooltip("Object bị ẩn khi vào chơi. Để trống thì ẩn chính object này.")]
+        [Tooltip("Object bị ẩn khi vào chơi.")]
         [SerializeField] private GameObject _content;
 
         [Header("Danh sách màn")]
         [SerializeField] private HomeLevelItemView _itemPrefab;
 
-        [Tooltip("Object chứa các ô, thường gắn Vertical Layout Group. Nằm trong Content " +
-                 "của Scroll Rect.")]
+        [Tooltip("Object chứa các ô, thường gắn Vertical Layout Group.")]
         [SerializeField] private Transform _itemRoot;
 
-        [Tooltip("Scroll Rect của danh sách. Có gán thì lúc mở Home nó tự cuộn tới màn " +
-                 "đang chơi.")]
+        [Tooltip("Scroll Rect của danh sách.")]
         [SerializeField] private ScrollRect _scrollRect;
 
-        [Tooltip("Ô của màn đang chơi dừng ở đâu trong khung nhìn.\n\n" +
-                 "0 = sát MÉP TRÊN, 0.5 = giữa, 1 = sát MÉP DƯỚI.\n\n" +
-                 "Tính theo cạnh của ô chứ không theo tâm, nên 0 và 1 vẫn thấy trọn ô " +
-                 "chứ không bị cắt mất một nửa.")]
+        [Tooltip("Vị trí dừng của ô màn đang chơi trong khung nhìn.")]
         [Range(0f, 1f)]
         [SerializeField] private float _focusAlignment = 1f;
 
-        [Tooltip("Chừa thêm bao nhiêu pixel giữa ô và mép khung nhìn, sau khi đã căn theo " +
-                 "Focus Alignment.\n\n" +
-                 "Số DƯƠNG đẩy ô LÊN, tức xa mép dưới ra. Dùng khi căn sát đáy (alignment 1) " +
-                 "mà không muốn ô dính vào mép, hoặc khi có thanh nút che mất phần dưới " +
-                 "khung nhìn.\n\n" +
-                 "Không có tác dụng với ô CUỐI danh sách: lúc đó vị trí cuộn đã chạm đáy " +
-                 "và không còn chỗ để đi tiếp. Muốn ô cuối cũng có khoảng chừa thì thêm " +
-                 "Padding > Bottom cho Vertical Layout Group của Content.")]
+        [Tooltip("Khoảng cách thêm giữa ô và mép khung nhìn, tính bằng pixel.")]
         [SerializeField] private float _focusPadding;
 
-        [Tooltip("Phóng to ô đang ở vị trí tiêu điểm. Để trống thì mọi ô giữ nguyên cỡ. " +
-                 "Nhớ đặt Focus Alignment của nó TRÙNG với ô ngay trên.")]
+        [Tooltip("Phóng to ô đang ở vị trí tiêu điểm.")]
         [SerializeField] private ScrollFocusScaler _focusScaler;
 
-        [Tooltip("TẠM TẮT. Việc chỉ ra ô nào đang được quan tâm giờ do viền chọn lo — hai " +
-                 "thứ cùng chạy thì chúng nói hai điều khác nhau về cùng một danh sách.\n\n" +
-                 "Tick lại là phần phóng to chạy như cũ, ScrollFocusScaler vẫn còn nguyên.")]
+        [Tooltip("Bật phóng to ô ở vị trí tiêu điểm.")]
         [SerializeField] private bool _useFocusScaler;
 
         [Header("Dây nối giữa các ô")]
-        [Tooltip("Ảnh một ĐOẠN dây. Nó được kéo dãn và xoay để nối hai ô liền nhau, nên " +
-                 "hoạ tiết nên là loại lặp được: Image Type để Tiled hoặc Sliced.\n\n" +
-                 "Anchor và Pivot của prefab phải để GIỮA (0.5, 0.5) — code đặt nó bằng " +
-                 "vị trí tâm nên neo ở góc sẽ làm dây lệch đi nửa chiều dài.")]
+        [Tooltip("Prefab một đoạn dây nối giữa hai ô.")]
         [SerializeField] private Image _linePrefab;
 
-        [Tooltip("Cha của các đoạn dây. Đặt nó trong Content của Scroll Rect và là ANH EM " +
-                 "với object chứa các ô, nằm TRƯỚC object đó trong hệ thống phân cấp để " +
-                 "dây vẽ phía sau.\n\n" +
-                 "Phải nằm trong Content thì dây mới cuộn theo các ô mà không cần tính lại " +
-                 "mỗi frame — chúng cùng bị một Transform kéo đi. Đặt ngoài Content là dây " +
-                 "đứng yên còn ô thì trôi.\n\n" +
-                 "KHÔNG được gắn Layout Group lên nó, không thì bố cục sẽ xếp lại các đoạn " +
-                 "dây thành một hàng.")]
+        [Tooltip("Cha của các đoạn dây.")]
         [SerializeField] private RectTransform _lineRoot;
 
         [Tooltip("Bề dày dây, tính bằng pixel.")]
         [SerializeField] private float _lineWidth = 14f;
 
-        [Tooltip("Rút ngắn mỗi đầu dây bao nhiêu pixel, để hai đầu chui xuống dưới ô thay " +
-                 "vì chạm đúng tâm ô.")]
+        [Tooltip("Độ rút ngắn mỗi đầu dây, tính bằng pixel.")]
         [SerializeField] private float _lineInset = 24f;
 
         [Header("Ăn mừng sau khi thắng màn")]
-        [Tooltip("Hiệu ứng đưa bức tranh vừa hoàn thành bay vào icon bộ sưu tập. " +
-                 "Để trống thì bỏ qua phần ăn mừng, Home mở ra như bình thường.")]
+        [Tooltip("Hiệu ứng đưa bức tranh vừa hoàn thành bay vào icon bộ sưu tập.")]
         [SerializeField] private CollectionFlyEffect _collectionFly;
 
-        [Tooltip("Thời gian cuộn từ ô vừa xong sang ô của màn kế tiếp, sau khi tranh đã " +
-                 "bay đi. Cuộn có thời gian chứ không nhảy cóc, để người chơi thấy mình " +
-                 "đang đi tiếp trong danh sách.")]
+        [Tooltip("Thời gian cuộn sang ô của màn kế tiếp sau khi tranh bay đi.")]
         [SerializeField] private float _celebrateScrollSeconds = 0.6f;
 
         [Header("Vào màn hình")]
-        [Tooltip("CanvasGroup dùng để mờ dần khi Home hiện ra. Gán CanvasGroup trên chính " +
-                 "object HomeRoot.\n\n" +
-                 "Để TRỐNG thì Home bật lên tức khắc như bản cũ — mọi thứ dưới đây tắt theo.")]
+        [Tooltip("CanvasGroup dùng để mờ dần khi Home hiện ra.")]
         [SerializeField] private CanvasGroup _fadeGroup;
 
-        [Tooltip("Chờ ngần này giây rồi mới bắt đầu mờ dần vào.\n\n" +
-                 "Đây là KHOẢNG LẶNG của đoạn chuyển cảnh, và nó là phần quan trọng nhất. " +
-                 "Popup thắng màn mất 0.15 giây để tan; chờ thêm tới 0.25 thì có đúng 0.1 " +
-                 "giây chỉ còn lại bức tranh vừa hoàn thành trên màn. Nhịp đó là thứ biến " +
-                 "một cú cắt thành một cú chuyển.\n\n" +
-                 "Bảng vẫn hiện trong quãng này vì SetCovered chỉ thu các LỚP Ô về kho — " +
-                 "texture bảng thì vẫn nằm đó.")]
+        [Tooltip("Chờ ngần này giây rồi mới bắt đầu mờ dần vào.")]
         [SerializeField] private float _enterDelay = 0.25f;
 
         [Tooltip("Thời gian mờ dần vào.")]
         [SerializeField] private float _enterDuration = 0.25f;
 
-        [Tooltip("Màn che chuyển cảnh dùng shader. Có gán thì nó THAY HẲN lượt mờ ở hai ô " +
-                 "trên: màn hình bị che kín, Home dựng lại phía sau, rồi màn che quét ra.\n\n" +
-                 "Hai cách không cộng dồn được. Mờ chồng là cho người chơi thấy cả hai màn " +
-                 "hình cùng lúc; che là giấu hẳn cú đổi. Làm cả hai thì Home mờ dần lên " +
-                 "SAU một tấm đục — không ai thấy, chỉ tốn thêm thời gian chờ.\n\n" +
-                 "Để trống thì mọi thứ chạy y như cũ.")]
+        [Tooltip("Màn che chuyển cảnh dùng shader.")]
         [SerializeField] private ScreenTransition _screenTransition;
 
-        [Tooltip("Chờ thêm ngần này giây SAU KHI màn che quét ra hết, rồi mới thả bức " +
-                 "tranh bay vào bộ sưu tập.\n\n" +
-                 "Chỉ dùng khi có màn che. Không có nó thì tranh bay đúng vào lúc mép màn " +
-                 "che vừa rời khỏi màn hình — hai chuyển động dính liền, mắt không kịp " +
-                 "nhận ra Home đã hiện ra rồi mới có thứ bay.")]
+        [Tooltip("Thời gian chờ sau khi màn che quét ra rồi mới thả tranh bay.")]
         [SerializeField] private float _celebrateDelayAfterTransition = 0.2f;
 
-        [Tooltip("Bức tranh vừa xong bay RA TỪ ĐÂU. Thường gán nút Play.\n\n" +
-                 "Để TRỐNG thì nó bay ra từ ô của màn đó trong danh sách — nhưng cách ấy " +
-                 "chỉ đúng khi danh sách đang HIỆN. Danh sách bị tắt thì ô vẫn được dựng, " +
-                 "chỉ là nằm trong một cây đã tắt, và toạ độ đọc ra là toạ độ của lần bố " +
-                 "cục nào đó không ai đoán được — tranh sẽ bay ra từ một chỗ vô nghĩa.\n\n" +
-                 "Gán ô này thì nó thắng, kể cả khi danh sách đang hiện.")]
+        [Tooltip("Điểm xuất phát của bức tranh bay vào bộ sưu tập.")]
         [SerializeField] private RectTransform _celebrateFromRect;
 
         [Header("Tiền")]
-        [Tooltip("Số tiền người chơi đang có. Để trống thì không hiện.")]
+        [Tooltip("Số tiền người chơi đang có.")]
         [SerializeField] private Text _coinsText;
 
         [Header("Nút")]
         [SerializeField] private Button _playButton;
         [SerializeField] private Text _playLevelText;
 
-        [Tooltip("Phần trăm đã tô của màn ĐANG CHỌN. Để trống thì không hiện.\n\n" +
-                 "Đọc từ bản lưu ô đã tô, nên nó là tiến độ THẬT chứ không phải ước lượng.")]
+        [Tooltip("Phần trăm đã tô của màn đang chọn.")]
         [SerializeField] private Text _percentText;
         [SerializeField] private Button _collectionButton;
         [SerializeField] private Button _settingsButton;
 
         private readonly List<HomeLevelItemView> _items = new();
 
-        /// RectTransform của những ô ĐANG hiện, đưa cho ScrollFocusScaler. Giữ riêng
-        /// thay vì để nó tự đi tìm: chỉ ở đây mới biết ô nào đang dùng, ô nào đang tắt
-        /// chờ tái dùng.
         private readonly List<RectTransform> _activeItemRects = new();
 
-        /// Các đoạn dây đã tạo. Tái dùng như các ô: tạo một lần rồi bật tắt.
         private readonly List<RectTransform> _lines = new();
 
-        /// Ảnh tự dựng lúc chạy, KHÔNG phải asset. Unity không dọn giúp — mỗi lần mở
-        /// Home mà không huỷ bản cũ là bộ nhớ lớn thêm một nấc, không bao giờ trả lại.
         private readonly List<Sprite> _thumbnails = new();
 
         private ILevelService _levelService;
@@ -175,62 +107,27 @@ namespace JewelPainter.UI.Views
         private PaintProgressStore _progressStore;
         private PlayerWallet _wallet;
 
-        /// Chỉ dùng để khai "Home đang che bảng". Home không đọc gì khác của bảng.
         private BoardView _boardView;
         private ISoundService _sound;
 
-        /// Home đang hiện. MusicDirector đọc cái này để biết lúc nào đổi nhạc, và để
-        /// KHÔNG đổi sang nhạc màn chơi khi màn được nạp sau lưng một Home đang mở —
-        /// chuyện xảy ra ngay lúc vào game.
         public bool IsVisible { get; private set; }
         private RectTransform _currentItemRect;
 
-        /// Số tiền đang hiện trên màn. Chỉ đổi chữ khi giá trị thật sự khác.
         private int _displayedCoins = -1;
 
-        /// Màn vừa hoàn thành, chờ được ăn mừng ở lần dựng danh sách kế tiếp. -1 là không có.
-        ///
-        /// Phải nhớ riêng chứ không suy ra từ CurrentLevel: tiến trình đã nhích ngay lúc
-        /// tô xong, nên "màn hiện tại" là màn KẾ TIẾP chứ không phải màn vừa xong.
-        /// Lượt mờ dần vào đang chạy, và cờ cho biết nó chưa xong.
-        ///
-        /// Đoạn ăn mừng phải ĐỢI cờ này tắt: ảnh bay của CollectionFlyEffect nằm trong
-        /// chính cây mà _fadeGroup đang làm mờ, nên cho nó bay lúc alpha còn 0 là cho nó
-        /// bay vô hình. Mà tranh lại bay ra từ nút Play — nút đó phải hiện đã.
         private Tween _enterTween;
         private bool _isEntering;
 
-        /// Home đang trong lượt mờ dần vào, chưa phủ kín màn hình.
-        public bool IsEntering => _isEntering;
 
-        /// Bao nhiêu giây nữa Home mới BẮT ĐẦU hiện ra, tính từ lúc gọi Show.
-        ///
-        /// Công khai để popup thắng màn biết nó có đúng bấy nhiêu thời gian để tan đi.
-        /// Tan xong đúng lúc Home bắt đầu hiện thì không bao giờ có cảnh hai màn hình
-        /// chồng lên nhau — mà đó là cảnh xấu nhất, vì nền Home không phủ kín tuyệt đối.
-        ///
-        /// 0 khi Home không có lượt mờ nào: popup tắt ngay, đúng bằng hành vi cũ.
-        ///
-        /// Cũng là 0 khi có màn che: lúc đó popup được ẩn ở đúng frame màn hình đục kín,
-        /// nên nó chẳng có gì để tan đi một cách duyên dáng nữa — và tan chậm thì nó còn
-        /// nằm đó khi màn che quét ra.
         public float EnterDelaySeconds =>
             _screenTransition == null && _fadeGroup != null ? Mathf.Max(0f, _enterDelay) : 0f;
 
-        /// Màn che chuyển cảnh, null nếu chưa gán.
-        ///
-        /// Công khai để popup thắng màn gói cú đổi màn hình của nó vào giữa hai nửa của
-        /// màn che. Home giữ tham chiếu chứ không phải popup, vì popup là một PREFAB —
-        /// prefab không trỏ tới object trong scene được, mà Home thì đã nằm sẵn trong
-        /// scene và vốn đã được tiêm vào popup rồi.
         public ScreenTransition Transition => _screenTransition;
 
         private int _pendingCelebrationLevel = -1;
 
         private HomeLevelItemView _celebrateItem;
 
-        /// Màn đang được chọn trong danh sách — thứ nút Play sẽ nạp. Khác CurrentLevel:
-        /// người chơi bấm chọn một màn cũ thì hai con số tách nhau ra.
         private int _selectedLevel = -1;
 
         public void Init(
@@ -248,9 +145,6 @@ namespace JewelPainter.UI.Views
             _boardView = boardView;
             _sound = sound;
 
-            // Nghe sự kiện chứ không đọc lại mỗi lần mở Home: tiền cộng vào lúc thắng màn,
-            // mà popup thắng màn nằm đè lên Home — người chơi thấy con số nhảy ngay tại chỗ
-            // thay vì phải đóng ra mở lại mới thấy.
             if (_wallet != null)
             {
                 _wallet.OnCoinsChanged += SetCoins;
@@ -261,8 +155,6 @@ namespace JewelPainter.UI.Views
             if (_collectionButton != null) _collectionButton.onClick.AddListener(HandleCollectionClicked);
             if (_settingsButton != null) _settingsButton.onClick.AddListener(HandleSettingsClicked);
 
-            // KHÔNG tự mở. Vào game là màn hình chờ chạy rồi vào thẳng màn đang chơi dở;
-            // Home chỉ mở khi người chơi bấm nút Home trên HUD.
             Hide();
         }
 
@@ -283,11 +175,7 @@ namespace JewelPainter.UI.Views
             Rebuild();
         }
 
-        /// Mở Home kèm màn ăn mừng: dừng ở ô của màn vừa xong, cho bức tranh bay vào bộ
-        /// sưu tập, rồi mới cuộn sang màn kế tiếp.
-        ///
-        /// Nhận levelId thay vì tự đọc: bên gọi phải chụp lại con số TRƯỚC khi đẩy tiến
-        /// trình, vì sau đó không còn cách nào biết màn nào vừa xong.
+        /// Mở Home kèm màn ăn mừng màn vừa xong.
         public void ShowCelebrating(int clearedLevelId)
         {
             _pendingCelebrationLevel = clearedLevelId;
@@ -296,17 +184,11 @@ namespace JewelPainter.UI.Views
 
         public void Hide()
         {
-            // Huỷ luôn lần cuộn đang chờ tới frame sau: đóng Home rồi mà nó vẫn chạy thì
-            // lần mở kế tiếp bắt đầu bằng một cú nhảy vị trí không ai gọi.
             StopAllCoroutines();
 
             SetVisible(false);
         }
 
-        /// Bắn khi Home mở ra hoặc đóng lại. Chỉ bắn lúc ĐỔI.
-        ///
-        /// Có sự kiện thì phần nhạc nền không phải hỏi thăm mỗi frame, mà Home cũng
-        /// không phải biết nhạc tồn tại — nó chỉ kể ra mình vừa mở hay vừa đóng.
         public event System.Action<bool> OnVisibilityChanged;
 
         private void SetVisible(bool visible)
@@ -315,22 +197,11 @@ namespace JewelPainter.UI.Views
 
             if (target.activeSelf != visible) target.SetActive(visible);
 
-            // Khai với bảng rằng nó đang bị che kín. Ba lớp ô sẽ thu hết object về kho:
-            // đứng trước Home chúng không tốn CPU, nhưng hàng nghìn SpriteRenderer vẫn
-            // được gửi đi vẽ sau lưng một tấm UI đục.
-            //
-            // Khai chứ không để bảng tự đoán: Gameplay không được biết Home tồn tại.
-            //
-            // Đặt NGOÀI phép so activeSelf ở trên. Hai trạng thái đó không phải lúc nào
-            // cũng khớp — object có thể đã tắt sẵn từ trước — và SetCovered vốn đã tự bỏ
-            // qua khi giá trị không đổi.
             if (_boardView != null) _boardView.SetCovered(visible);
 
             if (visible) BeginEnter();
             else KillEnter();
 
-            // Báo SAU khi mọi thứ đã vào đúng chỗ: người nghe có quyền hỏi lại trạng thái
-            // của Home ngay trong handler.
             if (IsVisible == visible) return;
 
             IsVisible = visible;
@@ -344,9 +215,6 @@ namespace JewelPainter.UI.Views
 
             if (_fadeGroup == null) return;
 
-            // Có màn che thì bỏ hẳn lượt mờ: xem tooltip của Screen Transition. Vẫn phải
-            // chốt lại alpha và blocksRaycasts — lần mở trước có thể đã để chúng ở giữa
-            // chừng.
             if (_screenTransition != null)
             {
                 EndEnter();
@@ -362,8 +230,6 @@ namespace JewelPainter.UI.Views
 
             _fadeGroup.alpha = 0f;
 
-            // Khoá chạm suốt lúc chuyển. Không khoá thì nút Play đang mờ vẫn bấm được, và
-            // một cú chạm sớm sẽ nạp màn ngay khi màn hình còn chưa hiện xong.
             _fadeGroup.blocksRaycasts = false;
 
             _enterTween = DOVirtual.Float(0f, 1f, duration, value =>
@@ -376,9 +242,7 @@ namespace JewelPainter.UI.Views
                 .OnComplete(EndEnter);
         }
 
-        /// Trả CanvasGroup về trạng thái hiện đủ. Gọi cả lúc xong bình thường lẫn lúc bị
-        /// cắt ngang — Home đóng giữa chừng mà để alpha nằm ở 0.4 thì lần mở sau nó vẫn
-        /// là 0.4, và không có gì báo vì sao màn hình mờ mờ.
+        /// Trả CanvasGroup về trạng thái hiện đủ.
         private void EndEnter()
         {
             _enterTween = null;
@@ -419,11 +283,6 @@ namespace JewelPainter.UI.Views
                 var isUnlocked = _levelService.IsUnlocked(levelId);
                 var isCurrent = levelId == currentLevel;
 
-                // Ảnh nhỏ hỏi ĐÃ HOÀN THÀNH, không hỏi "có phải màn hiện tại không".
-                //
-                // Hai câu trùng nhau ở mọi màn trừ màn cuối: xong hết rồi thì CurrentLevel
-                // bị kẹp lại đúng bằng màn cuối, nên nó vừa là "màn hiện tại" vừa là màn
-                // đã xong — hỏi câu cũ là bức tranh cuối cùng hiện ra một ô xám trắng.
                 var isCompleted = _levelService.IsCompleted(levelId);
 
                 var item = GetItem(slot++);
@@ -446,8 +305,6 @@ namespace JewelPainter.UI.Views
 
             HideFrom(slot);
 
-            // Mỗi lần mở Home lại chọn màn đang chơi. Giữ lựa chọn cũ giữa hai lần mở thì
-            // người chơi qua màn xong về Home vẫn thấy con trỏ nằm ở màn cũ.
             SelectLevel(currentLevel);
 
             if (_useFocusScaler && _focusScaler != null) _focusScaler.SetTargets(_activeItemRects);
@@ -456,9 +313,6 @@ namespace JewelPainter.UI.Views
         }
 
         /// Có màn cần ăn mừng thì chạy màn ăn mừng, không thì mở như mọi lần.
-        ///
-        /// Tiêu luôn _pendingCelebrationLevel ở đây, kể cả khi không chạy được: để sót là
-        /// lần mở Home sau lại ăn mừng một màn đã cũ.
         private void BeginOpeningFlow()
         {
             var celebrateItem = _celebrateItem;
@@ -471,26 +325,15 @@ namespace JewelPainter.UI.Views
             StartCoroutine(OpeningRoutine(celebrateItem, celebrateLevel));
         }
 
-        /// Một cửa duy nhất cho mọi việc cần bố cục đã tính xong: dựng dây nối, rồi chọn
-        /// đường — ăn mừng, hay cuộn thẳng tới màn hiện tại.
-        ///
-        /// Gom vào một chỗ vì cả ba việc đều phải đợi CÙNG một mốc, và vì StopAllCoroutines
-        /// nằm rải rác ở nhiều đường thì việc này giết việc kia.
+        /// Dựng dây nối rồi chạy ăn mừng hoặc cuộn tới màn hiện tại.
         private IEnumerator OpeningRoutine(HomeLevelItemView celebrateItem, int celebrateLevel)
         {
-            // Đợi HẾT MỘT FRAME. Layout Group và Content Size Fitter tính lại kích thước ở
-            // cuối frame, nên mọi phép đo trước mốc đó đều đọc bố cục của lần dựng TRƯỚC.
             yield return null;
 
             Canvas.ForceUpdateCanvases();
 
             RebuildLines();
 
-            // Phép kiểm ăn mừng đặt TRƯỚC chốt _scrollRect, không phải sau.
-            //
-            // Từ khi tranh bay ra từ nút Play, đoạn ăn mừng không còn cần tới danh sách
-            // cuộn nữa. Để chốt cũ ở trên thì tắt danh sách đi là tắt luôn cả ăn mừng, mà
-            // hai thứ đó không còn liên quan gì tới nhau.
             if (TryResolveCelebration(celebrateItem, celebrateLevel, out var fromRect, out var sprite))
             {
                 yield return WaitBeforeCelebrate();
@@ -507,14 +350,7 @@ namespace JewelPainter.UI.Views
             }
         }
 
-        /// Chờ tới khi màn hình THẬT SỰ nhìn thấy được, rồi mới thả tranh bay.
-        ///
-        /// Có màn che thì Show() chạy lúc màn hình còn đục kín — không đợi là cả cú bay
-        /// diễn ra sau tấm che, và tới lúc lộ Home thì nó đã xong từ đời nào. Đây là cái
-        /// bẫy của việc đổi màn hình trong bóng tối: mọi thứ vẫn chạy đúng, chỉ là không
-        /// ai xem được.
-        ///
-        /// Không màn che thì mốc cần đợi là lượt mờ của Home — giữ nguyên như cũ.
+        /// Chờ tới khi màn hình thật sự nhìn thấy được, rồi mới thả tranh bay.
         private IEnumerator WaitBeforeCelebrate()
         {
             var underTransition = _screenTransition != null && _screenTransition.IsPlaying;
@@ -525,7 +361,6 @@ namespace JewelPainter.UI.Views
 
                 if (_celebrateDelayAfterTransition > 0f)
                 {
-                    // Thời gian THẬT: cú chuyển cảnh hay chạy lúc game đang dừng vì popup.
                     yield return new WaitForSecondsRealtime(_celebrateDelayAfterTransition);
                 }
 
@@ -535,14 +370,7 @@ namespace JewelPainter.UI.Views
             while (_isEntering) yield return null;
         }
 
-        /// Chốt hai thứ mà đoạn ăn mừng cần: bay ra TỪ ĐÂU, và bay cái GÌ.
-        ///
-        /// Ô Celebrate From Rect thắng ô trong danh sách, vì nó là lựa chọn có chủ ý còn
-        /// ô trong danh sách chỉ là mặc định lịch sử.
-        ///
-        /// Ảnh cũng vậy: có ô thì mượn ảnh nó đã dựng, không có thì tự dựng lấy. Màn vừa
-        /// xong nên bản lưu đã bị xoá, và BuildThumbnail hiểu điều đó — nó tô kín ảnh dựa
-        /// vào "màn này đã hoàn thành" chứ không dựa vào bản lưu.
+        /// Xác định điểm xuất phát và ảnh cho đoạn ăn mừng.
         private bool TryResolveCelebration(
             HomeLevelItemView item, int levelId, out RectTransform fromRect, out Sprite sprite)
         {
@@ -570,10 +398,6 @@ namespace JewelPainter.UI.Views
         }
 
         /// Cho tranh bay từ fromRect sang nút bộ sưu tập.
-        ///
-        /// Hai nhịp cuộn danh sách ở đầu và cuối chỉ chạy khi tranh thật sự bay ra từ ô
-        /// trong danh sách VÀ danh sách đang hiện. Bay ra từ nút Play thì cuộn một thứ
-        /// không ai nhìn thấy chỉ tổ chèn thêm nửa giây chết vào giữa đoạn chuyển cảnh.
         private IEnumerator CelebrateRoutine(RectTransform fromRect, Sprite sprite, HomeLevelItemView item)
         {
             var scrollsWithList = _celebrateFromRect == null && item != null && IsScrollUsable();
@@ -585,9 +409,6 @@ namespace JewelPainter.UI.Views
                     _scrollRect.verticalNormalizedPosition = startPosition;
                 }
 
-                // Đợi thêm một frame để vị trí cuộn vừa đặt được áp vào toạ độ thật. Không
-                // có nhịp này thì hiệu ứng đo chỗ ô ở lần cuộn TRƯỚC, và tranh bay ra từ
-                // chỗ khác.
                 yield return null;
 
                 Canvas.ForceUpdateCanvases();
@@ -607,23 +428,12 @@ namespace JewelPainter.UI.Views
         }
 
         /// Danh sách cuộn có đang thật sự hiện không.
-        ///
-        /// Hỏi activeInHierarchy chứ không chỉ hỏi null: tắt object đi thì tham chiếu vẫn
-        /// còn nguyên, mọi phép đo vẫn chạy và vẫn trả về số — chỉ là số vô nghĩa.
         private bool IsScrollUsable()
         {
             return _scrollRect != null && _scrollRect.gameObject.activeInHierarchy;
         }
 
-        /// Hỏi BẢN LƯU trước, chỉ khi không có mới suy từ "màn này đã xong".
-        ///
-        /// Thứ tự đó quan trọng từ khi có nút Tô lại: bản lưu giờ tồn tại được cho cả một
-        /// màn đã xong, vì nút đó ghi một bản rỗng để mở lại lượt chơi. Cứ thấy "đã xong"
-        /// là vẽ tô kín thì ảnh nhỏ ở Home khoe một bức tranh hoàn chỉnh trong khi bảng
-        /// thật đang trắng trơn.
-        ///
-        /// Không có bản lưu thì "đã xong" theo định nghĩa là mọi ô đều đã tô — bản lưu của
-        /// nó bị xoá ngay lúc nó xong vì đó là dữ liệu thừa.
+        /// Dựng ảnh thu nhỏ của một màn.
         private Sprite BuildThumbnail(
             Gameplay.Data.LevelGridData gridData, int levelId, bool isUnlocked, bool isCompleted)
         {
@@ -639,20 +449,12 @@ namespace JewelPainter.UI.Views
         }
 
         /// Dựng lại dây nối giữa các ô liền nhau.
-        ///
-        /// Chỉ chạy khi danh sách được dựng lại, KHÔNG chạy mỗi frame. Dây và ô cùng nằm
-        /// trong Content nên khi người chơi kéo cuộn, cả hai bị đúng một Transform kéo đi
-        /// — vị trí tương đối giữa chúng không đổi, nên không có gì để tính lại.
-        ///
-        /// Phải gọi SAU Canvas.ForceUpdateCanvases, không thì nó đo chỗ các ô ở lần bố cục
-        /// trước và dây nối vào những vị trí không còn ai đứng.
         private void RebuildLines()
         {
             if (_linePrefab == null || _lineRoot == null) return;
 
             var used = 0;
 
-            // Mỗi KHE giữa hai ô liền nhau một đoạn, nên n ô cho ra n-1 đoạn.
             for (var i = 0; i + 1 < _activeItemRects.Count; i++)
             {
                 var line = GetLine(used++);
@@ -664,10 +466,7 @@ namespace JewelPainter.UI.Views
             for (var i = used; i < _lines.Count; i++) _lines[i].gameObject.SetActive(false);
         }
 
-        /// Đặt một đoạn dây nối hai điểm, cho trước bằng toạ độ THẾ GIỚI.
-        ///
-        /// Nhận toạ độ thế giới rồi tự đổi về hệ của _lineRoot: hai ô nằm trong một Layout
-        /// Group còn dây thì không, nên toạ độ cục bộ của chúng không so được với nhau.
+        /// Đặt một đoạn dây nối hai điểm, cho trước bằng toạ độ thế giới.
         private void PlaceLine(RectTransform line, Vector3 fromWorld, Vector3 toWorld)
         {
             var from = _lineRoot.InverseTransformPoint(fromWorld);
@@ -676,9 +475,6 @@ namespace JewelPainter.UI.Views
             var delta = (Vector2)(to - from);
             var length = Mathf.Max(0f, delta.magnitude - _lineInset * 2f);
 
-            // Ghi localPosition chứ không ghi anchoredPosition: anchoredPosition đo từ điểm
-            // neo, mà neo của prefab thì tuỳ người dựng đặt ở đâu. localPosition không phụ
-            // thuộc chuyện đó nên đặt sao là nằm đúng đấy.
             line.localPosition = (from + to) * 0.5f;
             line.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
             line.sizeDelta = new Vector2(length, _lineWidth);
@@ -698,12 +494,6 @@ namespace JewelPainter.UI.Views
         }
 
         /// Cuộn sao cho ô của màn đang chơi nằm giữa khung nhìn.
-        ///
-        /// Phải đợi HẾT MỘT FRAME. Layout Group và Content Size Fitter tính lại kích
-        /// thước ở cuối frame, và ngay sau đó ScrollRect tự kẹp lại vị trí cuộn theo
-        /// kích thước mới. Đặt vị trí trong cùng frame với lúc dựng danh sách là đặt
-        /// xong bị ghi đè — đó là lý do bản trước không nhúc nhích.
-        /// duration 0 là nhảy thẳng tới nơi; lớn hơn 0 thì cuộn có thời gian.
         private IEnumerator ScrollToCurrentRoutine(float duration)
         {
             yield return null;
@@ -738,9 +528,6 @@ namespace JewelPainter.UI.Views
         }
 
         /// Vị trí cuộn (0..1) để đưa `target` về đúng chỗ đã đặt trong khung nhìn.
-        ///
-        /// false khi chưa đủ dữ kiện để tính. Gọi hàm này SAU Canvas.ForceUpdateCanvases,
-        /// không thì nó đọc kích thước của lần bố cục trước.
         private bool TryGetScrollPosition(RectTransform target, out float normalizedPosition)
         {
             normalizedPosition = 1f;
@@ -755,29 +542,14 @@ namespace JewelPainter.UI.Views
             var viewportHeight = viewport.rect.height;
             var scrollable = content.rect.height - viewportHeight;
 
-            // Danh sách ngắn hơn khung nhìn: không có gì để cuộn.
             if (scrollable <= 0f) return true;
 
-            // Đo khoảng cách từ ĐỈNH content xuống tâm ô, trong hệ toạ độ của chính
-            // content. Cách này không quan tâm padding, spacing, pivot, anchor hay thứ tự
-            // đảo ngược — nó đọc chỗ ô đang thật sự đứng, còn mấy thứ kia chỉ là nguyên
-            // nhân đưa nó tới đó.
             var itemLocalY = content.InverseTransformPoint(target.position).y;
             var distanceFromTop = content.rect.yMax - itemLocalY;
 
-            // Đưa ô về đúng chỗ đã đặt trong khung nhìn.
-            //
-            // Số hạng giữa là phần tính theo CẠNH ô thay vì tâm ô: căn sát mép dưới mà
-            // chỉ đưa tâm ô tới đó thì nửa dưới của ô nằm ngoài màn. Cộng thêm nửa chiều
-            // cao ô đúng bằng lượng cần để cạnh dưới của nó chạm mép dưới khung nhìn.
-            //   alignment 0   → cạnh TRÊN ô chạm mép trên
-            //   alignment 0.5 → tâm ô ở giữa (số hạng giữa triệt tiêu)
-            //   alignment 1   → cạnh DƯỚI ô chạm mép dưới
             var alignment = Mathf.Clamp01(_focusAlignment);
             var itemHeight = target.rect.height;
 
-            // Cộng thêm phần chừa: offsetFromTop lớn hơn nghĩa là content bị kéo xuống
-            // sâu hơn, tức ô đi LÊN trong khung nhìn — ra xa mép dưới.
             var desired = distanceFromTop
                           + itemHeight * (alignment - 0.5f)
                           - viewportHeight * alignment
@@ -785,70 +557,13 @@ namespace JewelPainter.UI.Views
 
             var offsetFromTop = Mathf.Clamp(desired, 0f, scrollable);
 
-            // Trả về theo verticalNormalizedPosition chứ không theo anchoredPosition:
-            // anchoredPosition đo từ điểm neo, mà Content của ScrollRect mặc định neo ở
-            // MÉP TRÊN viewport chứ không phải tâm. Bản trước gán thẳng vào đó nên lệch
-            // đúng nửa chiều cao khung nhìn — và lệch như nhau ở mọi giá trị padding.
             normalizedPosition = 1f - offsetFromTop / scrollable;
             return true;
         }
 
-        /// Chạy lại màn ăn mừng với màn ngay TRƯỚC màn hiện tại, để chỉnh nhịp hiệu ứng
-        /// mà không phải tô hết một màn mỗi lần.
-        ///
-        /// Dùng màn trước chứ không dùng màn hiện tại: đúng bằng thứ người chơi thấy thật
-        /// sau khi thắng, vì lúc đó tiến trình đã nhảy sang màn kế rồi. Ảnh của màn trước
-        /// cũng được vẽ tô kín, còn màn hiện tại thì vẽ theo tiến độ dở dang.
-        ///
-        /// Gọi từ CelebrationCheat bằng phím tắt, hoặc chuột phải lên tiêu đề component
-        /// này trong lúc Play.
-        [ContextMenu("Chạy thử hiệu ứng ăn mừng")]
-        public void ReplayCelebration()
-        {
-            if (!isActiveAndEnabled || _levelService == null)
-            {
-                Debug.LogWarning("Home đang đóng nên chưa chạy thử được. Mở Home rồi bấm lại.", this);
-                return;
-            }
-
-            var previous = LastCompletedLevel();
-
-            if (previous < 0)
-            {
-                Debug.LogWarning("Chưa có màn nào hoàn thành trước màn hiện tại, không có " +
-                                 "bức tranh nào để bay. Qua một màn rồi thử lại.", this);
-                return;
-            }
-
-            ShowCelebrating(previous);
-        }
-
-        /// Màn ĐÃ HOÀN THÀNH đứng cuối cùng trong danh sách. -1 nếu chưa xong màn nào.
-        ///
-        /// Đi theo THỨ TỰ của Levels chứ không lấy CurrentLevel trừ một: id không bắt buộc
-        /// liên tiếp, và mảng Levels mới là thứ quyết định ô nào đứng sau ô nào.
-        ///
-        /// Bản trước dừng lại khi gặp CurrentLevel và trả về màn ĐỨNG TRƯỚC nó. Cách đó
-        /// hỏng đúng ở cuối nội dung: xong hết rồi thì CurrentLevel bị kẹp lại bằng màn
-        /// cuối, nên nó dừng sớm một ô và bỏ qua chính bức tranh vừa hoàn thành.
-        private int LastCompletedLevel()
-        {
-            var last = -1;
-
-            foreach (var config in _levelService.Levels)
-            {
-                if (config == null) continue;
-
-                if (_levelService.IsCompleted(config.LevelId)) last = config.LevelId;
-            }
-
-            return last;
-        }
-
         private void HandleItemClicked(int levelId) => SelectLevel(levelId);
 
-        /// Đổi ô đang chọn: bật viền ở đúng một ô, tắt ở mọi ô còn lại, và đổi chữ trên
-        /// nút Play theo.
+        /// Đổi ô đang chọn: bật viền ở đúng một ô, tắt ở mọi ô còn lại, và đổi chữ trên nút Play theo.
         private void SelectLevel(int levelId)
         {
             _selectedLevel = levelId;
@@ -866,10 +581,6 @@ namespace JewelPainter.UI.Views
         }
 
         /// Phần trăm đã tô của một màn.
-        ///
-        /// Làm tròn XUỐNG, và chặn không cho ra 100 khi màn chưa thật sự xong: 99.6% mà
-        /// hiện 100% thì người chơi bấm vào rồi ngồi tìm ô cuối cùng, không hiểu vì sao
-        /// tranh đã "xong" mà vẫn còn chỗ trắng.
         private void SetPercent(int levelId)
         {
             if (_percentText == null) return;
@@ -884,12 +595,6 @@ namespace JewelPainter.UI.Views
         }
 
         /// Tỉ lệ đã tô của một màn, thang 0..1.
-        ///
-        /// Màn ĐÃ XONG trả 1 mà không đụng tới bản lưu, và đó là điểm mấu chốt: bản lưu
-        /// của màn đã xong bị xoá đi vì nó là dữ liệu thừa. Đọc bản lưu trước thì mọi
-        /// bức tranh đã hoàn thành đều hiện 0%.
-        ///
-        /// Cùng một luật mà BuildThumbnail đang dùng để quyết định tô kín ảnh nhỏ hay không.
         private float ResolveProgress(int levelId)
         {
             if (_levelService == null) return 0f;
@@ -905,9 +610,7 @@ namespace JewelPainter.UI.Views
             return Gameplay.Domain.PaintState.FractionPainted(gridData.ToGrid(), bits);
         }
 
-        /// Quét danh sách chứ không tra bảng: mười lăm màn, và hàm này chỉ chạy lúc người
-        /// chơi bấm sang một ô khác. Dựng thêm một dictionary ở đây là thêm một thứ phải
-        /// nhớ dựng lại mỗi khi danh sách màn đổi.
+        /// Tìm dữ liệu lưới của một màn.
         private Gameplay.Data.LevelGridData FindGridData(int levelId)
         {
             foreach (var config in _levelService.Levels)
@@ -918,8 +621,7 @@ namespace JewelPainter.UI.Views
             return null;
         }
 
-        /// Chỉ đổi chữ khi con số thật sự khác — đổi text là dựng lại lưới chữ, mà sự
-        /// kiện tiền có thể nổ nhiều lần liên tiếp lúc coin bay ở popup thắng màn.
+        /// Hiện số tiền.
         private void SetCoins(int coins)
         {
             if (_coinsText == null) return;
@@ -935,15 +637,12 @@ namespace JewelPainter.UI.Views
 
             Hide();
 
-            // Nạp màn ĐANG CHỌN, không phải màn theo tiến trình. Người chơi chọn một màn
-            // cũ thì hai con số này khác nhau.
             var level = _selectedLevel >= 0 ? _selectedLevel : _levelService.CurrentLevel;
 
             _levelService.LoadLevel(level);
         }
 
-        /// Hai nút này chỉ MỞ một bảng nằm đè lên Home, người chơi không đi đâu cả — nên
-        /// ButtonClick chứ không phải Direction. Xem chú thích cùng loại ở HudView.
+        /// Mở popup bộ sưu tập.
         private void HandleCollectionClicked()
         {
             if (_sound != null) _sound.Play(SoundKey.ButtonClick);
@@ -958,8 +657,7 @@ namespace JewelPainter.UI.Views
             _popupService.Show(PopupKey.SettingsHome);
         }
 
-        /// Tạo một lần rồi bật tắt để tái dùng. Ô mới sinh ra ở trạng thái TẮT vì prefab
-        /// vốn đang bật — ô nào tạo ra mà chưa kịp Bind sẽ hiện nguyên nội dung prefab.
+        /// Lấy hoặc tạo ô màn chơi để tái dùng.
         private HomeLevelItemView GetItem(int slot)
         {
             while (_items.Count <= slot)
@@ -978,8 +676,7 @@ namespace JewelPainter.UI.Views
             for (var i = slot; i < _items.Count; i++) _items[i].gameObject.SetActive(false);
         }
 
-        /// Huỷ cả Sprite lẫn Texture. Destroy(sprite) một mình để lại texture mồ côi —
-        /// Sprite.Create không sở hữu texture nó trỏ tới.
+        /// Huỷ các ảnh thu nhỏ đã tạo.
         private void ReleaseThumbnails()
         {
             foreach (var sprite in _thumbnails)

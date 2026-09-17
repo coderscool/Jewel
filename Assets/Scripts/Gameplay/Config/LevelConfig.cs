@@ -3,58 +3,41 @@ using UnityEngine;
 
 namespace JewelPainter.Gameplay.Config
 {
-    /// Dữ liệu tĩnh của một màn chơi. Designer chỉnh trong Inspector,
-    /// không cần lập trình viên đụng code.
+    /// Dữ liệu tĩnh của một màn chơi.
     [CreateAssetMenu(fileName = "LevelConfig", menuName = "JewelPainter/Gameplay/Level Config")]
     public class LevelConfig : ScriptableObject
     {
         [SerializeField] private int _levelId = 1;
         [SerializeField] private Sprite _targetImage;
         [SerializeField] private LevelGridData _gridData;
-        [SerializeField] private int _timeLimitSeconds;
 
-        [Tooltip("Số tiền thưởng khi tô xong màn này. Popup thắng màn hiện con số này " +
-                 "và bắn hiệu ứng tiền bay.")]
+        [Tooltip("Số tiền thưởng khi tô xong màn này.")]
         [SerializeField] private int _rewardCoins = 10;
 
-        [Tooltip("Tranh của màn này nằm thế nào trong ô bộ sưu tập.\n\n" +
-                 "FULL: ăn sát mép ô.\n" +
-                 "INSET: thu vào cả bốn phía một quãng, lấy lề thở. Quãng bao nhiêu thì " +
-                 "đặt ở CollectionItemView — nó là con số của giao diện, không phải của " +
-                 "từng màn.\n\n" +
-                 "Cả hai kiểu đều giữ đúng tỉ lệ tranh, không bao giờ bóp méo. Đặt ở đây " +
-                 "chứ không ở LevelGridData vì tool sinh lưới tạo asset MỚI mỗi lần chạy " +
-                 "— ô chọn nằm bên đó sẽ mất lặng lẽ sau mỗi lần sinh lại.")]
+        [Tooltip("Tranh của màn này nằm thế nào trong ô bộ sưu tập.")]
         [SerializeField] private CollectionArtworkFit _collectionFit = CollectionArtworkFit.Inset;
 
         [Header("Camera")]
-        [Tooltip("Mức phóng sát nhất, tính bằng orthographicSize. Một ô rộng một world unit " +
-                 "nên giá trị 4 là thấy 8 ô theo chiều dọc. Để 0 thì tự tính (thấy 5 ô).")]
+        [Tooltip("Mức phóng sát nhất, tính bằng orthographicSize.")]
         [SerializeField] private float _cameraMinSize;
 
-        [Tooltip("Mức kéo xa nhất, cũng là mức lúc mới vào màn. Để 0 thì tự tính (vừa khít " +
-                 "bảng cộng lề 10%). Đặt lớn hơn mức vừa khít thì kéo được ra xa hơn cả bảng.")]
+        [Tooltip("Mức kéo xa nhất, cũng là mức lúc mới vào màn.")]
         [SerializeField] private float _cameraMaxSize;
 
-        [Tooltip("orthographicSize mà tại đó lớp màu tan hết và viền ô hiện đủ — hai lớp " +
-                 "hoán đổi đúng tại mức này. Để 0 thì dùng giá trị đặt sẵn trên BoardColorFade.")]
+        [Tooltip("orthographicSize mà tại đó lớp màu tan hết và viền ô hiện đủ.")]
         [SerializeField] private float _fadeSwitchSize;
 
         public int LevelId => _levelId;
         public Sprite TargetImage => _targetImage;
         public LevelGridData GridData => _gridData;
-        public int TimeLimitSeconds => _timeLimitSeconds;
         public int RewardCoins => _rewardCoins;
 
         public CollectionArtworkFit CollectionFit => _collectionFit;
 
-        /// 0 hoặc âm nghĩa là để BoardCamera tự tính.
         public float CameraMinSize => _cameraMinSize;
 
-        /// 0 hoặc âm nghĩa là để BoardCamera tự tính.
         public float CameraMaxSize => _cameraMaxSize;
 
-        /// 0 hoặc âm nghĩa là dùng giá trị đặt sẵn trên từng BoardColorFade.
         public float FadeSwitchSize => _fadeSwitchSize;
     }
 }

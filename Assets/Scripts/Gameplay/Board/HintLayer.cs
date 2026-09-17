@@ -8,86 +8,38 @@ using UnityEngine;
 namespace JewelPainter.Gameplay.Board
 {
     /// Đánh dấu những ô tô được bằng màu đang chọn, bằng sprite đặt lên từng ô.
-    ///
-    /// Chỉ sinh marker cho ô đang lọt trong tầm nhìn camera, nên số GameObject sống
-    /// cùng lúc phụ thuộc mức zoom chứ không phụ thuộc kích thước bảng.
-    ///
-    /// Khác JewelLayer ở một chỗ quan trọng: ngọc bị cull thì ô vẫn còn màu trong
-    /// texture nên không ai nhận ra, còn marker bị cull là mất hẳn dấu hiệu. Vì vậy
-    /// ngưỡng ẩn ở đây để thấp hơn hẳn — xem tooltip.
     public class HintLayer : MonoBehaviour
     {
         [SerializeField] private Camera _camera;
         [SerializeField] private SpriteRenderer _hintPrefab;
         [SerializeField] private Transform _root;
 
-        [Tooltip("Ô nhỏ hơn ngần này pixel trên màn hình thì ngừng hiện marker.\n\n" +
-                 "Để THẤP vì gợi ý chủ yếu dùng lúc zoom xa để dò xem còn ô nào; đặt cao " +
-                 "như lớp số sẽ làm nó biến mất đúng lúc cần nhất.\n\n" +
-                 "PHẢI ngắm theo BẢNG LỚN NHẤT của game, không theo bảng đang mở. Mức zoom " +
-                 "lúc vào màn là mức vừa khít cả bảng, nên bảng càng lớn thì ô chiếu xuống " +
-                 "màn hình càng bé: một ô chỉ còn Screen.height / (2 * orthographicSize) " +
-                 "pixel. Bảng 72x72 ở orthographicSize 70 là Screen.height / 140 — màn 1080 " +
-                 "cho 7.7 pixel, màn ngắn hơn 700 tụt xuống dưới 5 và marker TẮT SẠCH ngay " +
-                 "ở mức zoom mặc định. Chính ngưỡng này là thứ khiến gợi ý chỉ hiện sau khi " +
-                 "phóng to.\n\n" +
-                 "Càng thấp thì càng nhiều object cùng lúc — nhưng ô Prewarm From Largest " +
-                 "Color bên dưới đã dựng sẵn đúng bằng trường hợp xấu nhất, nên hạ ngưỡng " +
-                 "không làm phát sinh Instantiate lúc chơi.")]
+        [Tooltip("Ô nhỏ hơn ngần này pixel trên màn hình thì ngừng hiện marker.")]
         [SerializeField] private float _minCellScreenPixels = 2f;
 
-        [Tooltip("Số marker dựng sẵn lúc vào màn. Chọn màu là lúc duy nhất sinh hàng " +
-                 "loạt object cùng lúc — dựng sẵn thì cú đó chỉ là lấy đồ khỏi kho.\n\n" +
-                 "Chỉ là mức SÀN nếu ô dưới được tick.")]
+        [Tooltip("Số marker dựng sẵn lúc vào màn.")]
         [SerializeField] private int _prewarmCount = 400;
 
-        [Tooltip("Dựng sẵn đủ marker cho MÀU NHIỀU Ô NHẤT của màn, thay vì một con số " +
-                 "cố định.\n\n" +
-                 "Đây đúng là số marker tối đa cần tới: chọn màu nào thì chỉ ô của màu đó " +
-                 "mới có marker, nên màu đông ô nhất chính là trường hợp xấu nhất. Nhờ vậy " +
-                 "bảng lớn tới đâu kho cũng không bao giờ thiếu, khỏi chỉnh tay từng màn.")]
+        [Tooltip("Dựng sẵn đủ marker cho màu nhiều ô nhất.")]
         [SerializeField] private bool _prewarmFromLargestColor = true;
 
-        [Tooltip("Dựng sẵn tối đa bao nhiêu marker trong MỘT frame. Để 0 là dựng hết " +
-                 "trong một frame như trước.")]
+        [Tooltip("Số marker dựng sẵn tối đa trong một frame.")]
         [SerializeField] private int _prewarmPerFrame = 200;
 
-        [Tooltip("Cắt bớt lượng dựng sẵn theo SỨC CHỨA CỦA MÀN HÌNH.\n\n" +
-                 "Số marker cần cùng lúc bị chặn bởi HAI thứ, không phải một: số ô của " +
-                 "lưới, VÀ vùng mà khung nhìn phủ được ở mức zoom rộng nhất mà lớp này còn " +
-                 "sống (xem Min Cell Screen Pixels). Sức chứa của màn là hằng số, còn số ô " +
-                 "thì tăng theo BÌNH PHƯƠNG cạnh — nên bảng càng lớn, phần dựng thừa càng " +
-                 "lớn. Bảng 72 lên 108 là số ô gấp 2.25 lần mà màn hình vẫn thế.\n\n" +
-                 "Trên màn hình rất cao thì cận thứ hai có thể vẫn phủ trọn bảng và không " +
-                 "cắt được gì. Điều đó ĐÚNG: ở máy đó cả bảng hiện thật, không phải chỗ " +
-                 "này tính hụt.\n\n" +
-                 "Bỏ tick là quay lại dựng đủ cho mọi ô.")]
+        [Tooltip("Giới hạn lượng dựng sẵn theo sức chứa màn hình.")]
         [SerializeField] private bool _capPrewarmToScreen = true;
 
-        [Tooltip("Hệ số an toàn nhân vào sức chứa màn hình khi cắt. Thiếu thì kho phải " +
-                 "Instantiate bù ngay giữa lúc zoom — đúng cú khựng mà việc dựng sẵn sinh " +
-                 "ra để tránh.")]
+        [Tooltip("Hệ số an toàn nhân vào sức chứa màn hình khi cắt.")]
         [Range(1f, 3f)]
         [SerializeField] private float _prewarmScreenSafety = 1.3f;
 
-        [Tooltip("Số marker được sinh tối đa trong MỘT frame.\n\n" +
-                 "**Để 0 là tất cả hiện cùng một lúc** — đây là mặc định, và nó an toàn vì " +
-                 "kho đã dựng sẵn đủ hàng: lấy ra chỉ là bật object và đặt vị trí.\n\n" +
-                 "Đặt số dương chỉ cần khi kho có thể thiếu và phải Instantiate bù.")]
+        [Tooltip("Số marker sinh tối đa trong một frame.")]
         [SerializeField] private int _maxSpawnPerFrame;
 
-        [Tooltip("Hạn mức sinh mỗi frame RIÊNG cho lúc booster tô tự do đang chạy.\n\n" +
-                 "Cần một con số riêng vì lúc đó marker phủ MỌI ô chưa tô, không phải chỉ " +
-                 "ô của một màu — trên bảng lớn ở mức zoom vừa khít, số marker cần cùng " +
-                 "lúc nhảy lên gấp cả chục lần và kho dựng sẵn chắc chắn thiếu. Không chia " +
-                 "frame thì cú bấm nút sinh ra vài nghìn Instantiate trong đúng một frame, " +
-                 "và người chơi thấy game khựng hẳn một nhịp.\n\n" +
-                 "Chia frame nên marker hiện dần trong khoảng nửa giây — đọc ra như một " +
-                 "cú quét, không phải như lỗi. Để 0 là hiện hết cùng lúc.")]
+        [Tooltip("Số marker sinh tối đa mỗi frame khi tô tự do đang chạy.")]
         [SerializeField] private int _freePaintMaxSpawnPerFrame = 250;
 
-        [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn, để ô ở rìa " +
-                 "không bị thu về rồi sinh lại liên tục khi camera nhích.")]
+        [Tooltip("Số ô nới rộng quanh tầm nhìn khi tính toán.")]
         [SerializeField] private int _visibleMarginCells = 2;
 
         private readonly Dictionary<Vector2Int, SpriteRenderer> _active = new();
@@ -95,7 +47,6 @@ namespace JewelPainter.Gameplay.Board
         private readonly List<Vector2Int> _toRelease = new();
         private readonly Dictionary<int, int> _colorCounts = new();
 
-        /// Lượt dựng sẵn đang chạy. Vào màn mới giữa chừng thì huỷ lượt cũ.
         private Coroutine _prewarmRoutine;
 
         private BoardView _boardView;
@@ -106,8 +57,6 @@ namespace JewelPainter.Gameplay.Board
         private float _lastOrthographicSize = -1f;
         private bool _needsRefresh;
 
-        /// Đã báo một lần cho màn này rằng mức zoom đang chặn marker.
-        private bool _reportedZoomGate;
 
         public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect)
         {
@@ -119,12 +68,8 @@ namespace JewelPainter.Gameplay.Board
             _boardView.OnCoverChanged += HandleCoverChanged;
             _paintService.OnColorSelected += HandleColorSelected;
 
-            // Booster bật/tắt là đổi hẳn TẬP ô được đánh dấu, không phải thêm bớt vài ô —
-            // cùng loại thay đổi với việc chọn màu khác, nên dùng chung cách xử lý.
             _paintService.OnFreePaintChanged += HandleFreePaintChanged;
 
-            // Gỡ marker lúc viên ngọc ĐÁP XUỐNG, không phải lúc bấm tô — gỡ sớm thì
-            // ô trống trơn suốt quãng viên đang bay.
             _flyEffect.OnJewelLanded += HandleJewelLanded;
         }
 
@@ -150,7 +95,6 @@ namespace JewelPainter.Gameplay.Board
             StartPrewarm();
 
             _lastOrthographicSize = -1f;
-            _reportedZoomGate = false;
         }
 
         private void HandleColorSelected(int paletteIndex)
@@ -159,16 +103,14 @@ namespace JewelPainter.Gameplay.Board
             _needsRefresh = true;
         }
 
-        /// Thu hết về kho rồi dựng lại từ đầu. Thu trước là cần thiết ở chiều TẮT: những
-        /// marker của các màu khác phải biến đi, mà vòng quét ở Refresh chỉ biết THÊM ô,
-        /// nó không đi gỡ ô không còn hợp lệ nữa.
+        /// Dựng lại marker khi tô tự do bật hoặc tắt.
         private void HandleFreePaintChanged(bool active)
         {
             ReleaseAll();
             _needsRefresh = true;
         }
 
-        /// Xem chú thích cùng tên ở JewelLayer.
+        /// Xử lý khi màn hình che bảng mở hoặc đóng.
         private void HandleCoverChanged() => _needsRefresh = true;
 
         private void HandleJewelLanded(Vector2Int cell, int paletteIndex) => Release(cell);
@@ -184,7 +126,6 @@ namespace JewelPainter.Gameplay.Board
                 _needsRefresh = true;
             }
 
-            // Còn việc dở từ frame trước thì làm tiếp, kể cả khi camera đã đứng yên.
             if (!_needsRefresh) return;
 
             _needsRefresh = !Refresh();
@@ -197,41 +138,25 @@ namespace JewelPainter.Gameplay.Board
             return _lastCameraPosition != _camera.transform.position;
         }
 
-        /// Nhãn đo cho Profiler. Không có nhãn thì cả ba lớp đều nằm lẫn trong
-        /// LateUpdate và không tách được lớp nào tốn bao nhiêu.
-        ///
-        /// static readonly để tên chỉ được cấp phát một lần cho cả chương trình.
-        /// Bản build phát hành không bật ENABLE_PROFILER thì nhãn tự tiêu biến.
         private static readonly ProfilerMarker RefreshMarker = new("JewelPainter.Hints.Refresh");
 
-        /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này.
+        /// Sinh marker cho các ô trong tầm nhìn; false khi còn việc dở.
         private bool Refresh()
         {
             using var _ = RefreshMarker.Auto();
 
-            // Bị che thì thu hết về kho — xem chú thích cùng chỗ ở JewelLayer.
             if (_boardView.IsCovered)
             {
                 ReleaseAll();
                 return true;
             }
 
-            // Tranh đã tô kín thì không còn ô nào để gợi ý, và cũng không bao giờ có lại
-            // trong lượt này.
-            //
-            // Thoát ở ĐÂY chứ không để vòng quét tự tìm ra là rỗng: vòng quét duyệt mọi ô
-            // trong tầm nhìn, mà mỗi lần camera nhích một pixel là một lượt quét mới. Màn
-            // ăn mừng thì camera động suốt gần hai giây — thu về toàn cảnh, rồi lùi ra
-            // đóng khung — nên bảng 101x105 phải quét hơn mười nghìn ô mỗi frame để kết
-            // luận đúng một điều: không có gì cả.
             if (_paintService.IsComplete)
             {
                 ReleaseAll();
                 return true;
             }
 
-            // Booster tô tự do: đánh dấu MỌI ô chưa tô, bất kể màu đang chọn — và bất kể
-            // có chọn màu nào hay chưa, vì lúc này tô không cần màu.
             var freePaint = _paintService.FreePaintActive;
 
             var selected = _paintService.SelectedPaletteIndex;
@@ -245,7 +170,6 @@ namespace JewelPainter.Gameplay.Board
 
             if (cellPixels < _minCellScreenPixels)
             {
-                ReportZoomGate(cellPixels);
                 ReleaseAll();
                 return true;
             }
@@ -258,11 +182,6 @@ namespace JewelPainter.Gameplay.Board
 
             ReleaseOutside(visible);
 
-            // 0 nghĩa là không giới hạn — marker lấy từ kho dựng sẵn nên rẻ, không cần
-            // chia frame. int.MaxValue thay vì rẽ nhánh riêng: lưới lớn nhất cũng chỉ
-            // vài nghìn ô nên phép trừ không bao giờ chạm đáy.
-            //
-            // Lúc booster chạy thì dùng hạn mức riêng — xem tooltip của ô đó.
             var perFrame = freePaint ? _freePaintMaxSpawnPerFrame : _maxSpawnPerFrame;
             var budget = perFrame > 0 ? perFrame : int.MaxValue;
 
@@ -295,33 +214,7 @@ namespace JewelPainter.Gameplay.Board
             return true;
         }
 
-        /// Marker biến mất mà không nói gì là kiểu hỏng khó lần nhất: người ta đi kiểm
-        /// prefab, kiểm sorting order, kiểm cả luật chọn màu, trong khi thủ phạm chỉ là một
-        /// con số trong Inspector.
-        ///
-        /// Bảng càng LỚN càng dễ dính, và đó là lý do lỗi chỉ hiện ra ở màn to nhất: mức
-        /// zoom lúc vào màn phải kéo đủ xa để thấy trọn bảng, nên ô chiếu xuống màn hình
-        /// càng bé. Bảng 32x32 ở mức vừa khít cho chừng 19 pixel mỗi ô, bảng 72x72 chỉ còn
-        /// chừng 8 — cùng một ngưỡng, một bên qua một bên không.
-        ///
-        /// Báo đúng một lần mỗi màn: kéo zoom qua lại quanh ngưỡng sẽ in liên tục.
-        private void ReportZoomGate(float cellPixels)
-        {
-            if (_reportedZoomGate) return;
-
-            _reportedZoomGate = true;
-
-            Debug.Log(
-                $"[HintLayer] Mức zoom hiện tại cho {cellPixels:0.0} pixel mỗi ô, dưới ngưỡng " +
-                $"Min Cell Screen Pixels = {_minCellScreenPixels} nên marker gợi ý bị ẩn — " +
-                "phải phóng to mới thấy. " +
-                $"(Screen.height = {Screen.height}, orthographicSize = {_camera.orthographicSize:0.##}, " +
-                $"bảng {_boardView.Layout.Width}x{_boardView.Layout.Height}). " +
-                "Hạ ngưỡng xuống nếu muốn thấy gợi ý ngay ở mức zoom này.", this);
-        }
-
-        /// Nới rộng tầm nhìn thêm vài ô để camera nhích một chút không làm ô ở rìa bị
-        /// thu về rồi sinh lại liên tục.
+        /// Tầm nhìn camera nới rộng thêm vài ô.
         private Rect ExpandedCameraRect()
         {
             var rect = CameraWorldRect();
@@ -335,9 +228,7 @@ namespace JewelPainter.Gameplay.Board
             return rect;
         }
 
-        /// Ô đã tô nhưng viên ngọc còn đang bay thì vẫn coi là CHƯA xong — giữ marker
-        /// tới lúc viên đáp xuống. Không có chỗ này thì chỉ cần kéo camera giữa lúc bay
-        /// là marker biến mất sớm, đúng cái lỗi vừa sửa nhưng đi đường khác.
+        /// Ô đã tô và viên ngọc đã đáp.
         private bool IsDone(Vector2Int cell)
         {
             if (!_paintService.IsPainted(cell.x, cell.y)) return false;
@@ -393,7 +284,7 @@ namespace JewelPainter.Gameplay.Board
             foreach (var cell in _toRelease) Release(cell);
         }
 
-        /// Tắt RENDERER chứ không tắt GameObject — xem chú thích cùng chỗ ở JewelLayer.
+        /// Trả marker về kho.
         private void Release(Vector2Int cell)
         {
             if (!_active.TryGetValue(cell, out var marker)) return;
@@ -418,10 +309,7 @@ namespace JewelPainter.Gameplay.Board
             return null;
         }
 
-        /// Dựng sẵn TRẢI RA nhiều frame thay vì dồn hết vào frame vào màn.
-        ///
-        /// Vắt cạn ngay tại chỗ nếu object đang tắt: coroutine không chạy được lúc đó,
-        /// mà thà khựng một nhịp còn hơn vào màn thiếu đồ dựng sẵn.
+        /// Dựng sẵn marker trải ra nhiều frame.
         private void StartPrewarm()
         {
             if (_prewarmRoutine != null) StopCoroutine(_prewarmRoutine);
@@ -442,7 +330,6 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_hintPrefab == null) yield break;
 
-            // Nhường một frame TRƯỚC khi tính trần — xem chú thích cùng chỗ ở JewelLayer.
             yield return null;
 
             var target = Mathf.Max(_prewarmCount, ResolvePrewarmTarget());
@@ -465,17 +352,12 @@ namespace JewelPainter.Gameplay.Board
         }
 
         /// Số marker cần dựng sẵn: số ô của màu đông nhất, đã cắt theo sức chứa màn hình.
-        ///
-        /// Cắt theo TỈ LỆ chứ không cắt phẳng: ở mức zoom mà marker còn sống, vùng nhìn
-        /// thấy là một mẫu khá đều của cả bức tranh, nên màu chiếm nửa tranh thì trong
-        /// khung hình cũng chiếm chừng nửa số ô.
         private int ResolvePrewarmTarget()
         {
             var largest = LargestColorCellCount();
 
             if (!_capPrewarmToScreen || largest <= 0) return largest;
 
-            // _colorCounts vừa được LargestColorCellCount điền lại, dùng luôn khỏi quét lần hai.
             var colored = 0;
             foreach (var pair in _colorCounts) colored += pair.Value;
 
@@ -489,12 +371,7 @@ namespace JewelPainter.Gameplay.Board
             return Mathf.CeilToInt(largest * ratio);
         }
 
-        /// Số ô nhiều nhất lọt vào khung nhìn, ở mức zoom RỘNG NHẤT mà lớp này còn sống.
-        ///
-        /// Hai cận, lấy cái chặt hơn: kéo ra quá Min Cell Screen Pixels là cả lớp bị thu
-        /// về hết, mà BoardCamera cũng không cho kéo xa hơn mức lúc vào màn.
-        ///
-        /// 0 khi chưa dựng bảng — bên gọi hiểu là "không cắt".
+        /// Số ô nhiều nhất lọt vào khung nhìn, ở mức zoom rộng nhất mà lớp này còn sống.
         private float VisibleCellCapacity()
         {
             var layout = _boardView != null ? _boardView.Layout : null;
@@ -503,19 +380,13 @@ namespace JewelPainter.Gameplay.Board
             var threshold = Mathf.Max(0.01f, _minCellScreenPixels);
             var widest = Mathf.Min(_camera.orthographicSize, Screen.height / (2f * threshold));
 
-            // Cộng phần nới của ExpandedCameraRect, và kẹp theo cạnh bảng vì VisibleCells
-            // cũng kẹp như vậy.
             var margin = 2f * Mathf.Max(0, _visibleMarginCells) + 1f;
 
             return Mathf.Min(layout.Width, 2f * widest * _camera.aspect + margin) *
                    Mathf.Min(layout.Height, 2f * widest + margin);
         }
 
-        /// Số ô của màu chiếm nhiều ô nhất trong màn — cận trên tuyệt đối của số marker
-        /// cần tới cùng lúc.
-        ///
-        /// Quét cả lưới một lượt. Chạy đúng một lần mỗi khi vào màn, và lúc đó màn hình
-        /// chờ đang che, nên vài nghìn phép tra dictionary không ai thấy.
+        /// Số ô của màu có nhiều ô nhất.
         private int LargestColorCellCount()
         {
             if (!_prewarmFromLargestColor) return 0;

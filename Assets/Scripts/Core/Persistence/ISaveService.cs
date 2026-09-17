@@ -1,7 +1,6 @@
 namespace JewelPainter.Core.Persistence
 {
-    /// Abstraction cho lưu trữ. Domain phụ thuộc interface này,
-    /// không bao giờ đụng thẳng PlayerPrefs — nhờ vậy test được không cần Unity.
+    /// Abstraction cho lưu trữ.
     public interface ISaveService
     {
         int GetInt(string key, int defaultValue = 0);

@@ -2,12 +2,9 @@ using System;
 
 namespace JewelPainter.Gameplay.Domain
 {
-    /// Ma trận chỉ số bảng màu. Thuần C# — không biết Texture2D hay ScriptableObject,
-    /// nên test EditMode được mà không cần scene.
-    /// Quy ước: y = 0 là hàng TRÊN CÙNG. Bên gọi chịu trách nhiệm lật cho đúng.
+    /// Ma trận chỉ số bảng màu.
     public class PixelGrid
     {
-        /// Ô không được tô — thường là vùng trong suốt của ảnh gốc.
         public const int EmptyCell = -1;
 
         private readonly int[] _cells;
@@ -31,7 +28,7 @@ namespace JewelPainter.Gameplay.Domain
 
         public void SetCell(int x, int y, int paletteIndex) => _cells[Index(x, y)] = paletteIndex;
 
-        /// Trả về bản sao — người gọi sửa mảng nhận được không ảnh hưởng lưới gốc.
+        /// Trả về bản sao mảng chỉ số.
         public int[] ToArray() => (int[])_cells.Clone();
 
         public static PixelGrid FromArray(int width, int height, int[] cells)

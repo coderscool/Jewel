@@ -2,9 +2,7 @@ using JewelPainter.Core.Persistence;
 
 namespace JewelPainter.Gameplay.Domain
 {
-    /// Trạng thái tiến trình người chơi. Thuần C# — KHÔNG có using UnityEngine,
-    /// nên chạy được trong EditMode test mà không cần vào Play Mode.
-    /// Đây là file mẫu cho luật: logic càng quan trọng càng phải ít phụ thuộc Unity.
+    /// Trạng thái tiến trình người chơi.
     public class PlayerProgress
     {
         private const int FirstLevel = 1;
@@ -27,13 +25,7 @@ namespace JewelPainter.Gameplay.Domain
             _save.Save();
         }
 
-        /// Đặt THẲNG mốc tiến trình, không đi qua Advance từng bước.
-        ///
-        /// Chỉ công cụ dev gọi (CheatKit: Unlock All / Set Progress). Luồng chơi thật vẫn
-        /// đi qua Advance — nó là thứ mô tả "vừa xong một màn", còn hàm này chỉ là đặt số.
-        ///
-        /// Kẹp về màn đầu thay vì ném lỗi: cheat gõ nhầm một con số âm không đáng làm sập
-        /// game, mà bảng trống vì tiến trình bằng 0 thì còn khó hiểu hơn.
+        /// Đặt thẳng mốc tiến trình.
         public void SetLevel(int level)
         {
             if (level < FirstLevel) level = FirstLevel;

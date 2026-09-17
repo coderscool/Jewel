@@ -7,20 +7,7 @@ using UnityEngine;
 
 namespace JewelPainter.Editor
 {
-    /// Chèn một object "SafeArea" bọc con của mỗi canvas trong scene đang mở, rồi gắn
-    /// `SafeAreaFitter` lên đó.
-    ///
-    /// Làm bằng tool thay vì kéo tay: việc này phải lặp lại y hệt trên từng canvas,
-    /// mỗi lần đều là tạo object → kéo full khung → kéo đúng thứ tự con vào trong.
-    /// Kéo tay một chỗ sai thứ tự là đảo luôn thứ tự vẽ của UI, và lỗi đó chỉ lộ ra
-    /// khi hai thứ chồng lên nhau.
-    ///
-    /// KHÔNG phải con nào cũng nên vào trong. Tấm chặn chạm của popup là ví dụ: nó phải
-    /// phủ tới tận mép máy, co vào safe area là chừa ra hai dải ăn chạm ở tai thỏ và
-    /// thanh gesture. Nên mỗi canvas có một danh sách con để bỏ tick — xem phần gập ra
-    /// dưới tên canvas.
-    ///
-    /// Mọi thao tác đi qua `Undo`, bấm nhầm thì Ctrl+Z là xong.
+    /// Cửa sổ thêm hoặc gỡ SafeArea cho các canvas trong scene.
     public class SafeAreaSetupWindow : EditorWindow
     {
         private const string SafeAreaObjectName = "SafeArea";
@@ -33,19 +20,10 @@ namespace JewelPainter.Editor
         private readonly List<Canvas> _canvases = new();
         private readonly Dictionary<int, bool> _selection = new();
 
-        /// Con nào được đưa vào SafeArea, khoá theo InstanceID của chính con đó.
-        ///
-        /// Khoá theo con chứ không theo (canvas, chỉ số): chỉ số đổi mỗi lần ai đó kéo
-        /// thả trong Hierarchy, và ô tick sẽ lặng lẽ nhảy sang một object khác.
         private readonly Dictionary<int, bool> _childSelection = new();
 
         private readonly Dictionary<int, bool> _expanded = new();
 
-        /// InstanceID của những object đang được một PopupManager giữ làm tấm chặn chạm.
-        ///
-        /// Dựng sẵn một lần mỗi lần làm mới danh sách, không hỏi lại trong OnGUI: OnGUI
-        /// chạy lại liên tục, và quét cả scene tìm PopupManager ở mỗi lần vẽ là biến một
-        /// cửa sổ nhỏ thành thứ làm Editor ì ra.
         private readonly HashSet<int> _popupBackdrops = new();
 
         private Vector2 _scroll;
@@ -74,15 +52,12 @@ namespace JewelPainter.Editor
 
             foreach (var canvas in found)
             {
-                // Canvas lồng trong canvas khác chỉ dùng để tách batch, nó không phủ
-                // màn hình nên chèn safe area vào đó là sai.
                 if (!canvas.isRootCanvas) continue;
 
                 _canvases.Add(canvas);
 
                 var id = canvas.GetInstanceID();
 
-                // Nền phải tràn ra tận mép máy, co lại chỉ tạo hai dải đen ở tai thỏ.
                 if (!_selection.ContainsKey(id)) _selection[id] = !LooksLikeBackground(canvas.name);
             }
 
@@ -116,15 +91,7 @@ namespace JewelPainter.Editor
             return lower.Contains("bg") || lower.Contains("background");
         }
 
-        /// Con này có nên vào SafeArea không — giá trị MẶC ĐỊNH, chỉ dùng ở lần đầu thấy nó.
-        ///
-        /// Chỉ một thứ bị loại sẵn: tấm chặn chạm mà PopupManager đang giữ. Nhận diện bằng
-        /// THAM CHIẾU THẬT chứ không bằng tên, vì tên của nó là do người dựng scene đặt và
-        /// không có từ khoá nào đáng tin — trong scene này nó tên "Transperian".
-        ///
-        /// Cố tình không đoán thêm bằng hình dạng: "con này căng kín canvas" đúng với tấm
-        /// chặn, nhưng cũng đúng với HomeRoot và LoadingRoot, mà hai cái đó thì phải vào
-        /// trong. Đoán sai kiểu đó thì tool im lặng làm hỏng đúng thứ nó sinh ra để sửa.
+        /// Mặc định con này có được đưa vào SafeArea không.
         private bool DefaultIncludeChild(Transform child)
         {
             return !IsPopupBackdrop(child);
@@ -198,8 +165,6 @@ namespace JewelPainter.Editor
 
             if (!IsSelected(canvas)) return;
 
-            // Đã có SafeArea rồi thì không còn gì để chọn: con đã nằm đâu thì ở đấy, và
-            // tool này không tự kéo chúng ra vào lần thứ hai. Muốn đổi thì Gỡ rồi Chèn lại.
             if (safeArea != null) return;
 
             var hasChildren = canvas.transform.childCount > 0;
@@ -236,15 +201,7 @@ namespace JewelPainter.Editor
             EditorGUI.indentLevel--;
         }
 
-        /// Cảnh báo khi một con BỊ LOẠI nằm kẹp giữa hai con được giữ.
-        ///
-        /// Tách một danh sách con thành trong/ngoài thì SafeArea chỉ đứng được ở MỘT chỗ,
-        /// nên mọi con bên trong nó cùng đứng trước hoặc cùng đứng sau con bị loại. Thứ tự
-        /// con chính là thứ tự vẽ, nên trường hợp kẹp giữa là đổi thật — và đổi thứ tự vẽ
-        /// thì chỉ lộ ra ở chỗ hai thứ chồng lên nhau, có khi vài hôm sau mới thấy.
-        ///
-        /// Báo chứ không tự sửa: cái đúng ở đây tuỳ vào thứ người dựng scene muốn nằm trên
-        /// thứ gì, mà tool thì không biết điều đó.
+        /// Cảnh báo khi một con bị loại nằm kẹp giữa hai con được giữ.
         private void WarnIfOrderWouldChange(Canvas canvas)
         {
             var seenIncluded = false;
@@ -291,8 +248,6 @@ namespace JewelPainter.Editor
         {
             var changed = 0;
 
-            // Duyệt trên bản chụp: tạo object làm hierarchy đổi, mà OnHierarchyChange
-            // thì dựng lại _canvases — duyệt thẳng trên nó là vừa đi vừa bị rút thảm.
             foreach (var canvas in new List<Canvas>(_canvases))
             {
                 if (canvas == null || !IsSelected(canvas)) continue;
@@ -310,14 +265,10 @@ namespace JewelPainter.Editor
                 EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
                 RefreshCanvasList();
             }
-
-            Debug.Log($"[Safe Area] Đã xử lý {changed} canvas.");
         }
 
         private SafeAreaFitter CreateSafeArea(Canvas canvas)
         {
-            // Chụp danh sách con TRƯỚC khi tạo object mới — tạo xong rồi mới đọc là
-            // gặp luôn chính nó trong danh sách và tự kéo mình vào mình.
             var moving = new List<Transform>(canvas.transform.childCount);
             var insertAt = canvas.transform.childCount;
 
@@ -327,10 +278,6 @@ namespace JewelPainter.Editor
 
                 if (!IncludeChild(child)) continue;
 
-                // Chỗ đứng của SafeArea là chỗ của con ĐƯỢC GIỮ đầu tiên: nó thay chỗ cho
-                // cả nhóm, nên phải nằm đúng chỗ nhóm đó từng đứng so với những con ở lại.
-                // Không con nào được giữ thì nó xuống cuối — đứng trên mọi thứ còn lại,
-                // đúng thứ ta cần cho canvas popup (tấm chặn dưới, popup trên).
                 if (moving.Count == 0) insertAt = i;
 
                 moving.Add(child);
@@ -348,27 +295,15 @@ namespace JewelPainter.Editor
             rect.localScale = Vector3.one;
             rect.SetSiblingIndex(insertAt);
 
-            // worldPositionStays: false — lúc này SafeArea trùng khít khung canvas, nên
-            // giữ nguyên giá trị local là giữ nguyên chỗ đứng. Để true thì Unity quy đổi
-            // sang toạ độ thế giới và ghi đè anchoredPosition bằng số lẻ, layout nhìn
-            // vẫn đúng nhưng mọi giá trị trong Inspector thành rác.
             foreach (var child in moving)
             {
                 Undo.SetTransformParent(child, rect, false, "Chuyển con vào SafeArea");
             }
 
-            // SetTransformParent thả từng con xuống cuối, nên vòng lặp trên đã giữ
-            // đúng thứ tự cũ — thứ tự con chính là thứ tự vẽ của UI.
-
             return Undo.AddComponent<SafeAreaFitter>(go);
         }
 
         /// Trỏ ô Root của PopupManager vào SafeArea vừa tạo, nếu nó đang trỏ vào canvas.
-        ///
-        /// Không có bước này thì việc bọc canvas popup là công cốc, mà lại KHÔNG có gì
-        /// báo: popup được sinh ra lúc chạy và đặt thẳng vào Root, nên chúng rơi ra ngoài
-        /// cái SafeArea vừa dựng. Hierarchy nhìn đúng, Inspector nhìn đúng, chỉ có điều
-        /// popup vẫn nằm dưới tai thỏ y như trước.
         private static void RepointPopupRoot(Canvas canvas, RectTransform safeArea)
         {
             var managers = FindObjectsByType<PopupManager>(
@@ -384,18 +319,11 @@ namespace JewelPainter.Editor
 
                 root.objectReferenceValue = safeArea;
 
-                // ApplyModifiedProperties tự ghi một mốc Undo, không cần RecordObject.
                 serialized.ApplyModifiedProperties();
-
-                Debug.Log($"[Safe Area] Đã trỏ Root của {manager.name} vào SafeArea của " +
-                          $"{canvas.name} — popup sinh lúc chạy giờ nằm trong safe area.", manager);
             }
         }
 
         /// Trả ô Root về chính canvas khi gỡ SafeArea đi.
-        ///
-        /// Thiếu bước này thì Root trỏ vào một object vừa bị xoá, và popup đầu tiên mở ra
-        /// sau đó sẽ được đặt vào null — tức là ra thẳng gốc scene, ngoài mọi canvas.
         private static void RestorePopupRoot(Canvas canvas, Transform safeArea)
         {
             var managers = FindObjectsByType<PopupManager>(
@@ -411,8 +339,6 @@ namespace JewelPainter.Editor
 
                 root.objectReferenceValue = canvas.transform;
                 serialized.ApplyModifiedProperties();
-
-                Debug.Log($"[Safe Area] Đã trả Root của {manager.name} về {canvas.name}.", manager);
             }
         }
 
@@ -439,12 +365,8 @@ namespace JewelPainter.Editor
 
                 var safeArea = fitter.transform;
 
-                // Trả Root về TRƯỚC khi xoá: sau khi xoá thì không còn gì để so sánh, và
-                // ô Root chỉ còn là một tham chiếu rỗng không ai lần ra được nữa.
                 RestorePopupRoot(canvas, safeArea);
 
-                // SetSiblingIndex không tự ghi vào Undo. Chụp cả nhánh canvas trước để
-                // Ctrl+Z trả lại đúng thứ tự con, không chỉ trả lại chỗ đứng.
                 Undo.RegisterFullObjectHierarchyUndo(canvas.gameObject, "Gỡ SafeArea");
 
                 var children = new List<Transform>(safeArea.childCount);
@@ -467,8 +389,6 @@ namespace JewelPainter.Editor
                 EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
                 RefreshCanvasList();
             }
-
-            Debug.Log($"[Safe Area] Đã gỡ khỏi {removed} canvas.");
         }
     }
 }

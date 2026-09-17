@@ -5,27 +5,13 @@ using UnityEngine;
 namespace JewelPainter.UI.Components
 {
     /// Dựng ảnh thu nhỏ của một màn chơi: ô đã tô hiện màu thật, ô chưa tô hiện xám.
-    ///
-    /// Cùng cách vẽ với BoardView nhưng KHÔNG dùng lại nó: BoardView vẽ màn ĐANG chơi
-    /// và gắn liền với trạng thái sống của nó, còn ở đây cần vẽ một màn bất kỳ từ dữ
-    /// liệu đọc trên đĩa, kể cả màn chưa bao giờ được nạp.
-    ///
-    /// Một pixel là một ô, đúng như BoardView. Bảng 27x36 ra ảnh 27x36 — nhỏ xíu, và
-    /// Image trong UI phóng nó lên bao nhiêu tuỳ layout.
     public static class LevelThumbnailBuilder
     {
         private static readonly Color32 Transparent = new Color32(0, 0, 0, 0);
 
-        /// paintedBits để null nghĩa là chưa tô ô nào. Truyền paintAll = true thì bỏ
-        /// qua paintedBits và coi như tô kín — dùng cho màn đã hoàn thành, vì bản lưu
-        /// của màn đó đã bị xoá ngay lúc nó xong.
-        ///
-        /// Người gọi chịu trách nhiệm huỷ: Destroy(sprite.texture) rồi Destroy(sprite).
-        /// Trả về null nếu asset chưa được tool sinh dữ liệu.
+        /// Dựng ảnh thu nhỏ; paintedBits null nghĩa là chưa tô ô nào.
         public static Sprite Build(LevelGridData data, byte[] paintedBits, bool paintAll, int levelId = 0)
         {
-            // Trả null lặng lẽ là kiểu hỏng khó chịu nhất ở đây: ô trong danh sách chỉ
-            // còn mỗi số màn, không có gì gợi ý là thiếu asset hay thiếu dữ liệu.
             if (data == null)
             {
                 Debug.LogWarning($"Màn {levelId}: LevelConfig chưa gán Grid Data — ô trên " +
@@ -64,7 +50,6 @@ namespace JewelPainter.UI.Components
                         color = painted ? colors[index] : BoardColors.ToGrayscale(colors[index]);
                     }
 
-                    // PixelGrid có y = 0 ở TRÊN, Texture2D có y = 0 ở DƯỚI.
                     pixels[(grid.Height - 1 - y) * grid.Width + x] = color;
                 }
             }
@@ -78,8 +63,6 @@ namespace JewelPainter.UI.Components
             texture.SetPixels32(pixels);
             texture.Apply(false);
 
-            // FullRect để ảnh nhỏ luôn phủ trọn khung. Mesh Tight ôm sát vùng đục, nên
-            // tranh có viền trong suốt sẽ bị Image kéo giãn phần ruột cho vừa khung.
             return Sprite.Create(
                 texture,
                 new Rect(0f, 0f, grid.Width, grid.Height),
@@ -89,8 +72,7 @@ namespace JewelPainter.UI.Components
                 SpriteMeshType.FullRect);
         }
 
-        /// Cùng cách gói bit với PaintState.ToPaintedBits: chỉ số ô chạy theo hàng,
-        /// mỗi byte tám ô, bit thấp trước.
+        /// Ô này đã tô trong bản lưu chưa.
         private static bool IsBitSet(byte[] bits, int index)
         {
             if (bits == null) return false;

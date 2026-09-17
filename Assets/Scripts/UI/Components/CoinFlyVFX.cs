@@ -6,22 +6,13 @@ using UnityEngine.UI;
 
 namespace JewelPainter.UI.Components
 {
-    /// Tiền bay: bắn ra một nắm icon coin, vãi xuống rồi bị hút theo vòng cầu về icon
-    /// tiền trên HUD.
-    ///
-    /// Hai pha có chủ đích. Bay thẳng lên đích ngay thì mắt đọc ra là "chuyển một con
-    /// số", còn vãi xuống trước rồi mới bị hút lên thì đọc ra là "nhận được một đống
-    /// tiền" — cùng một quãng đường, cảm giác khác hẳn.
-    ///
-    /// Gắn vào một GameObject nằm TRONG Canvas, cùng Canvas với from/to.
+    /// Hiệu ứng tiền bay về icon tiền trên HUD.
     public class CoinFlyVFX : MonoBehaviour
     {
-        [Tooltip("Prefab một đồng tiền: RectTransform có Image. Pivot và anchor để 0.5, 0.5.")]
+        [Tooltip("Prefab một đồng tiền.")]
         [SerializeField] private RectTransform _coinPrefab;
 
-        [Tooltip("Nơi chứa coin lúc bay. Phải là một RectTransform PHỦ KÍN màn hình và " +
-                 "KHÔNG bị Mask hay Content Size Fitter nào cắt — coin bay ra ngoài khung " +
-                 "cha sẽ bị xén mất nửa đường.")]
+        [Tooltip("Nơi chứa coin lúc bay.")]
         [SerializeField] private RectTransform _coinsParent;
 
         [Header("Số lượng và thời gian")]
@@ -30,7 +21,7 @@ namespace JewelPainter.UI.Components
         [Tooltip("Thời gian bay từ chỗ vừa rơi tới đích.")]
         [SerializeField] private float _flyDuration = 0.6f;
 
-        [Tooltip("Độ trễ giữa lúc bắn ra từng coin. 0 là cả nắm bay thành một khối cứng.")]
+        [Tooltip("Độ trễ giữa lúc bắn ra từng coin.")]
         [SerializeField] private float _staggerDelay = 0.04f;
 
         [Tooltip("Độ cao vòng cầu lúc bay lên, tính bằng pixel UI.")]
@@ -40,7 +31,7 @@ namespace JewelPainter.UI.Components
         [SerializeField] private float _scatterRadius = 60f;
 
         [Header("Pha vãi ra")]
-        [Tooltip("Thời gian coin vãi ra và rơi xuống, TRƯỚC khi bay lên đích.")]
+        [Tooltip("Thời gian coin vãi ra và rơi xuống, trước khi bay lên đích.")]
         [SerializeField] private float _dropDuration = 0.55f;
 
         [Tooltip("Rơi xuống thấp hơn điểm xuất phát bao nhiêu pixel UI.")]
@@ -49,12 +40,11 @@ namespace JewelPainter.UI.Components
         [Tooltip("Độ toả ngang khi vãi ra, lệch ngẫu nhiên ± giá trị này.")]
         [SerializeField] private float _dropSpreadX = 220f;
 
-        [Tooltip("Nằm chờ bao lâu sau khi rơi rồi mới bay lên, cho người chơi kịp thấy " +
-                 "coin đã vãi ra.")]
+        [Tooltip("Thời gian nằm chờ sau khi rơi rồi mới bay lên.")]
         [SerializeField] private float _holdAfterDrop = 0.25f;
 
         [Header("Thứ tự vẽ")]
-        [Tooltip("Sorting Layer của coin. Để trống thì không đụng tới thứ tự vẽ mặc định.")]
+        [Tooltip("Sorting Layer của coin.")]
         [SerializeField] private string _sortingLayerName = "";
 
         [SerializeField] private int _sortingOrder = 100;
@@ -62,21 +52,11 @@ namespace JewelPainter.UI.Components
         private readonly List<Tween> _pending = new();
         private readonly List<RectTransform> _flying = new();
 
-        /// Coin rảnh, chờ lượt sau.
-        ///
-        /// Trước đây mỗi lượt Instantiate bảy đồng rồi Destroy sạch. Bảy object không
-        /// nhiều, nhưng chúng sinh ra và chết đi ĐÚNG vào khoảnh khắc popup thắng màn mở
-        /// ra — cùng frame với cú mờ vào, băng rơi xuống và pháo hoa. Mọi thứ trong game
-        /// đều tránh sinh/huỷ object lúc đang diễn, chỗ này là chỗ duy nhất còn sót.
         private readonly Stack<RectTransform> _pool = new();
 
-        /// Số coin bắn ra mỗi lần Play. Bên gọi dùng để chia đều số tiền cho từng coin,
-        /// cho con số trên HUD tăng đúng nhịp coin bay tới.
         public int CoinCount => Mathf.Max(1, _coinCount);
 
-        /// onEachArrive gọi MỖI LẦN một coin tới đích. onAllDone gọi khi coin cuối cùng
-        /// xong, hoặc ngay lập tức nếu thiếu tham chiếu — bên gọi không phải tự phòng
-        /// trường hợp hiệu ứng không chạy được.
+        /// Bắn coin bay về đích.
         public void Play(RectTransform from, RectTransform to, Action onEachArrive = null, Action onAllDone = null)
         {
             if (_coinPrefab == null || _coinsParent == null || from == null || to == null)
@@ -105,9 +85,6 @@ namespace JewelPainter.UI.Components
         }
 
         /// Dừng hẳn: huỷ cả coin chưa kịp bắn lẫn coin đang bay.
-        ///
-        /// Cần thiết vì mỗi coin tới đích đều bắn onEachArrive. Không dọn thì bấm nút
-        /// đóng popup xong, số tiền vẫn tiếp tục nhảy lẹt đẹt trên màn hình sau.
         public void StopAll()
         {
             foreach (var tween in _pending) tween?.Kill();
@@ -128,15 +105,7 @@ namespace JewelPainter.UI.Components
 
         private void OnDestroy() => StopAll();
 
-        /// Dựng sẵn cả nắm coin và chốt thứ tự vẽ NGAY khi popup được tạo.
-        ///
-        /// Cả hai việc đều nặng theo kiểu không ai ngờ: Instantiate thì rõ rồi, còn
-        /// ApplySorting lại ADD một Canvas vào cây UI — mà thêm Canvas là cắt cây làm đôi
-        /// và bắt cả hai nửa dựng lại mesh. Để chúng ở lần Play đầu tiên là dồn hết vào
-        /// đúng frame popup mở ra.
-        ///
-        /// Popup do PopupManager tạo ở lần mở ĐẦU TIÊN, nên lần thắng đầu vẫn phải trả
-        /// giá này. Từ lần thứ hai trở đi thì không còn gì để trả.
+        /// Dựng sẵn coin và chốt thứ tự vẽ.
         private void Awake()
         {
             ApplySorting();
@@ -154,12 +123,6 @@ namespace JewelPainter.UI.Components
         {
             var coin = Instantiate(_coinPrefab, _coinsParent);
 
-            // SetNativeSize đọc pixel thật của sprite kèm Pixels Per Unit, khỏi phải khai
-            // kích thước bằng tay ở prefab.
-            //
-            // Gọi MỘT LẦN lúc dựng chứ không mỗi lần bắn: nó đổi sizeDelta, mà đổi
-            // sizeDelta là đánh dấu Graphic bẩn và bắt dựng lại mesh. Sprite thì không bao
-            // giờ đổi, nên bảy lần dựng lại mỗi lượt đều là dựng lại y hệt nhau.
             var image = coin.GetComponent<Image>();
             if (image != null && image.sprite != null) image.SetNativeSize();
 
@@ -183,12 +146,7 @@ namespace JewelPainter.UI.Components
             _pool.Push(coin);
         }
 
-        /// UI vẽ theo thứ tự Canvas, còn particle và Spine vẽ theo Sorting Layer — hai hệ
-        /// khác nhau, không so sánh trực tiếp được. Gắn một Canvas CON với overrideSorting
-        /// là cách duy nhất kéo UI vào cùng hệ để đặt nó nằm trên.
-        ///
-        /// KHÔNG thêm GraphicRaycaster: coin chỉ để nhìn, thêm raycaster phủ kín màn hình
-        /// là chắn luôn nút bên dưới.
+        /// Đặt sorting order cho hiệu ứng.
         private void ApplySorting()
         {
             if (string.IsNullOrEmpty(_sortingLayerName) || _coinsParent == null) return;
@@ -203,7 +161,6 @@ namespace JewelPainter.UI.Components
 
         private void SpawnCoin(RectTransform from, RectTransform to, Action onArrive)
         {
-            // Popup có thể đã tắt trong lúc chờ tới lượt stagger.
             if (_coinsParent == null)
             {
                 onArrive?.Invoke();
@@ -224,8 +181,6 @@ namespace JewelPainter.UI.Components
             coin.localScale = Vector3.one * 0.4f;
             coin.DOScale(1f, 0.15f).SetEase(Ease.OutBack);
 
-            // Điểm điều khiển của đường cong nằm giữa hai đầu rồi đẩy lên — đó là thứ làm
-            // coin bay thành vòng cầu thay vì kéo một đường thẳng.
             var mid = (dropPos + endPos) * 0.5f + Vector2.up * _arcHeight;
 
             var t = 0f;
@@ -263,8 +218,7 @@ namespace JewelPainter.UI.Components
             return Vector2.Lerp(ab, bc, t);
         }
 
-        /// Đi vòng qua screen point thay vì trừ toạ độ world: công thức này đúng với mọi
-        /// kiểu Canvas, kể cả Screen Space - Camera và World Space.
+        /// Đổi toạ độ world sang toạ độ local của canvas.
         private Vector2 WorldToLocal(Vector3 worldPosition)
         {
             var cam = ResolveCamera();
@@ -275,9 +229,7 @@ namespace JewelPainter.UI.Components
             return local;
         }
 
-        /// Tự dò Canvas gốc lúc chạy thay vì bắt gán camera bằng tay: popup là prefab,
-        /// mà prefab thì không kéo được camera của scene vào.
-        /// Overlay có worldCamera null — đúng ý, kiểu đó không cần camera.
+        /// Tìm camera của Canvas gốc.
         private Camera ResolveCamera()
         {
             if (_coinsParent == null) return null;

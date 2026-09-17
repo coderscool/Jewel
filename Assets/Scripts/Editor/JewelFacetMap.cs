@@ -4,36 +4,22 @@ using UnityEngine;
 namespace JewelPainter.Editor
 {
     /// Sinh ảnh tham số của viên ngọc từ một JewelFacetProfile.
-    ///
-    /// Không dùng bộ vẽ đa giác nào cả: mỗi điểm lấy mẫu tự hỏi "tôi nằm ở mặt nào"
-    /// bằng vài phép toán vector. Bát giác trong và bát giác ngoài đồng dạng qua tâm,
-    /// nên đường chia giữa hai mặt kề nhau chính là tia từ tâm qua đỉnh — hỏi góc là
-    /// biết mặt, không cần dựng hình.
-    ///
-    /// Chống răng cưa bằng cách lấy nhiều mẫu trong một pixel rồi lấy trung bình. Trung
-    /// bình được vì ba kênh là SỐ: nửa pixel nằm ở mặt bàn nửa ở mặt bên thì bộ số
-    /// trung bình cho ra đúng màu trung bình. Nếu ảnh mang CHỈ SỐ mặt thay vì bộ số
-    /// thì không có phép trung bình nào đúng, và đó là lý do file này tồn tại thay vì
-    /// đẩy chín bộ số thành property của material.
     public static class JewelFacetMap
     {
-        /// Thang mã hoá độ rực trong kênh R.
-        /// PHẢI KHỚP SAT_MIN/SAT_MAX trong JewelFacets.shader.
         public const float SaturationMin = -1f;
         public const float SaturationMax = 3f;
 
-        private const float Cut = 0.29f;          // cạnh bị cắt bao nhiêu phần
-        private const float Half = 0.455f;        // nửa bề ngang so với khung ảnh
-        private const float TableScale = 0.53f;   // mặt bàn = bát giác ngoài thu nhỏ
-        private const float Round = 0.055f;       // bo góc
+        private const float Cut = 0.29f;
+        private const float Half = 0.455f;
+        private const float TableScale = 0.53f;
+        private const float Round = 0.055f;
 
-        // Bề rộng NỬA của các nét, tính theo khung ảnh 1.0.
         private const float SeamHalf = 1f / 256f;
         private const float RimHalf = 1.5f / 256f;
 
         private static readonly Vector2[] Corners = BuildCorners();
 
-        /// Trả về mảng pixel theo thứ tự của Texture2D: dòng 0 ở DƯỚI cùng.
+        /// Sinh mảng pixel của ảnh tham số.
         public static Color32[] Build(JewelFacetProfile profile, int resolution, int supersample)
         {
             var pixels = new Color32[resolution * resolution];
@@ -77,9 +63,7 @@ namespace JewelPainter.Editor
             return pixels;
         }
 
-        /// Bộ số tại một điểm. `inside` cho biết điểm có nằm trong hình bóng không —
-        /// bộ số vẫn trả về cả khi ở ngoài, để pixel ở rìa lấy trung bình không hút
-        /// phải số 0 và sinh ra một vành sáng quanh viên ngọc.
+        /// Bộ số tại một điểm.
         private static ColorAdjustment Sample(
             JewelFacetProfile profile, Vector2[] outer, Vector2[] inner, float outlineHalf,
             Vector2 point, out bool inside)
@@ -87,31 +71,22 @@ namespace JewelPainter.Editor
             var toOuter = RoundedDistance(outer, point, Round);
             inside = toOuter <= 0f;
 
-            // Viền ngoài: nằm trong dải quanh biên, và cả phần tràn ra ngoài.
             if (toOuter > -outlineHalf) return profile.Outline;
 
-            // Ánh hắt ở mép dưới của mặt bàn. Dùng lại bộ số của mặt đỉnh: đây là cùng
-            // một nguồn sáng hắt lên, hạ độ loé của đỉnh mà vệt này không hạ theo thì
-            // nó thành vệt trắng lơ lửng.
             if (DistanceToSegment(point, inner[4], inner[5]) < RimHalf) return profile.GetFacet(0);
 
             var toInner = RoundedDistance(inner, point, Round * TableScale);
 
-            // Khe quanh mặt bàn.
             if (Mathf.Abs(toInner) < SeamHalf) return profile.Seam;
 
             if (toInner < 0f) return profile.Table;
 
-            // Khe trên đường chia giữa hai mặt ngoài.
             if (DistanceToNearestDivider(point) < SeamHalf) return profile.Seam;
 
             return profile.GetFacet(SectorOf(point));
         }
 
-        /// Khoảng cách có dấu tới bát giác đã bo góc. Âm là ở trong.
-        ///
-        /// Bo góc = co đa giác vào `radius` rồi nở ngược ra `radius`. `polygon` truyền
-        /// vào đã là bản co sẵn, nên chỉ còn trừ đi bán kính.
+        /// Khoảng cách có dấu tới bát giác đã bo góc.
         private static float RoundedDistance(Vector2[] polygon, Vector2 point, float radius)
         {
             return ConvexDistance(polygon, point) - radius;
@@ -129,7 +104,6 @@ namespace JewelPainter.Editor
 
                 nearest = Mathf.Min(nearest, DistanceToSegment(point, a, b));
 
-                // Đa giác xếp theo chiều kim đồng hồ trong hệ trục y hướng lên.
                 if (Cross(b - a, point - a) > 0f) inside = false;
             }
 
@@ -137,10 +111,6 @@ namespace JewelPainter.Editor
         }
 
         /// Mặt nào chứa điểm này.
-        ///
-        /// Bát giác trong là bát giác ngoài thu nhỏ QUA TÂM, nên hai đỉnh tương ứng
-        /// nằm cùng một tia từ tâm. Đường chia giữa hai mặt kề nhau chính là tia đó,
-        /// và việc "điểm nằm ở mặt nào" rút gọn thành "điểm nằm giữa hai tia nào".
         private static int SectorOf(Vector2 point)
         {
             for (var i = 0; i < Corners.Length; i++)
@@ -162,7 +132,6 @@ namespace JewelPainter.Editor
             {
                 var direction = corner.normalized;
 
-                // Chỉ tính nửa tia chứa điểm, không tính nửa đối diện bên kia tâm.
                 if (Vector2.Dot(direction, point) <= 0f) continue;
 
                 nearest = Mathf.Min(nearest, Mathf.Abs(Cross(direction, point)));
@@ -185,8 +154,7 @@ namespace JewelPainter.Editor
             return (byte)Mathf.Clamp(Mathf.RoundToInt(value * 255f), 0, 255);
         }
 
-        /// Tám đỉnh của bát giác gốc trong hệ -1..1, xếp theo chiều kim đồng hồ từ
-        /// đỉnh trên-trái. y hướng LÊN, nên cạnh 0 là cạnh trên cùng.
+        /// Tám đỉnh của bát giác gốc trong hệ -1..1, xếp theo chiều kim đồng hồ từ đỉnh trên-trái.
         private static Vector2[] BuildCorners()
         {
             var k = Cut * 2f;
@@ -217,7 +185,6 @@ namespace JewelPainter.Editor
                 var b = corners[(i + 1) % count] * scale;
                 var edge = (b - a).normalized;
 
-                // Pháp tuyến hướng vào trong với đa giác xếp theo chiều kim đồng hồ.
                 normals[i] = new Vector2(edge.y, -edge.x);
                 offsets[i] = Vector2.Dot(a, normals[i]) + radius;
             }
@@ -237,8 +204,6 @@ namespace JewelPainter.Editor
         {
             var determinant = n0.x * n1.y - n0.y * n1.x;
 
-            // Hai cạnh song song thì không có giao điểm; bát giác không rơi vào đây,
-            // nhưng trả về gốc còn hơn trả về vô cực rồi hỏng cả ảnh.
             if (Mathf.Abs(determinant) < 1e-6f) return Vector2.zero;
 
             return new Vector2(

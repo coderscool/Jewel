@@ -8,50 +8,25 @@ using UnityEngine;
 
 namespace JewelPainter.Editor
 {
-    /// Cửa sổ chỉnh màu: xem trước ô ĐẤT và VIÊN NGỌC nằm trên nó, mỗi bên một bộ núm.
-    ///
-    /// Vì sao cần một cửa sổ riêng thay vì chỉnh thẳng trong Play Mode: hai thứ quyết
-    /// định màu cuối cùng nằm ở hai asset khác nhau — bảng màu của LevelGridData và
-    /// phép chỉnh trong JewelTintConfig. Chỉnh mù ở một bên rồi chạy game xem bên kia
-    /// ra sao là vòng lặp rất chậm. Ở đây hai thứ đó nằm cạnh nhau và đổi tức thì.
-    ///
-    /// Phép toán KHÔNG nằm trong file này. Nó ở Gameplay/Domain/ColorAdjustment.cs,
-    /// đúng cái mà LevelManager chạy lúc vào màn. Trước đây cửa sổ tự tính lấy, nên
-    /// bộ số dò ra chỉ đúng ở đây còn game thì không chạy nó.
-    ///
-    /// Bộ số của viên ngọc có HAI chỗ ở được: asset JewelTintConfig, hoặc material
-    /// của prefab nếu prefab dùng shader JewelPainter/Jewel Facets. Cửa sổ ghi được
-    /// vào cả hai, nhưng chỉ nên dùng MỘT — hai phép chỉnh chồng lên nhau thì không
-    /// số nào còn nghĩa. Có nút cảnh báo ở mục Ghi lại khi cả hai đang khác 0.
+    /// Cửa sổ chỉnh màu: xem trước ô đất và viên ngọc nằm trên nó, mỗi bên một bộ núm.
     public class JewelColorTunerWindow : EditorWindow
     {
         private const int PreviewCell = 84;
         private const int PreviewColumns = 6;
 
-        /// Độ phân giải ô xem trước. Ảnh tham số 256x256 thu về đây rồi mới chạy phép
-        /// chỉnh: 84 pixel trên màn hình không cần tới 65 nghìn phép tính mỗi ô.
         private const int PreviewResolution = 96;
 
-        /// Thang mã hoá độ rực trong kênh R của ảnh tham số.
-        /// PHẢI KHỚP SAT_MIN/SAT_MAX trong JewelFacets.shader và S_MIN/S_MAX của
-        /// script sinh ảnh. Lệch một trong ba là màu xem trước khác màu chạy game.
         private const float ParamSaturationMin = JewelFacetMap.SaturationMin;
         private const float ParamSaturationMax = JewelFacetMap.SaturationMax;
 
-        /// Số mẫu mỗi chiều trong một pixel lúc sinh ảnh. 4 dùng cho ảnh nướng ra file,
-        /// 2 cho ô xem trước — xem trước sinh lại mỗi lần kéo núm nên phải rẻ.
         private const int BakeSupersample = 4;
         private const int PreviewSupersample = 2;
         private const int BakeResolution = 256;
 
-        /// Mức pha trắng mà núm "Độ trắng mặt đỉnh" không đụng tới.
-        /// PHẢI KHỚP HIGHLIGHT_FLOOR trong JewelFacets.shader.
+        /// Đảm bảo mảng mặt cắt đủ độ dài.
         private const float HighlightFloor = 0.5f;
         private const string ConfigFolder = "Assets/Scriptables";
 
-        // Tên property của shader JewelPainter/Jewel Facets. Đọc bằng HasProperty
-        // trước khi lấy: prefab có thể đang gắn Sprites/Default, lúc đó GetFloat chỉ
-        // ném cảnh báo đỏ ra Console chứ không cho biết gì.
         private const string SaturationProperty = "_Saturation";
         private const string ContrastProperty = "_Contrast";
         private const string BrightnessProperty = "_Brightness";
@@ -61,36 +36,20 @@ namespace JewelPainter.Editor
         private const string DarkLiftProperty = "_DarkLift";
         private const string ParamTexProperty = "_ParamTex";
 
-        /// Prefab viên ngọc — cùng thứ gán vào JewelLayer và JewelFlyEffect.
-        ///
-        /// Lấy prefab chứ không lấy rời sprite với material: ba thứ đó phải khớp nhau
-        /// mới ra đúng hình, mà nguồn duy nhất biết chúng khớp là prefab. Kéo rời thì
-        /// sớm muộn cũng có lúc xem trước một đằng game chạy một nẻo.
         private SpriteRenderer _jewelPrefab;
 
         private Material _jewelMaterial;
         private Sprite _jewelSprite;
         private Texture _paramTexture;
 
-        /// Ảnh tham số đã giải mã: mỗi ô một ColorAdjustment, cùng alpha hình bóng.
-        ///
-        /// Đọc thẳng byte của FILE PNG chứ không lấy pixel của texture đã import.
-        /// Texture đã import đi qua sRGB, qua nén khối, qua "Alpha Is Transparency" —
-        /// ba thứ bẻ cong giá trị mà không báo gì, và ba kênh này là SỐ chứ không
-        /// phải màu. Đọc file thì cửa sổ luôn thấy đúng cái script sinh ảnh đã ghi,
-        /// bất kể ô import bên kia tick gì.
         private ColorAdjustment[] _facetParams;
         private byte[] _facetAlpha;
 
-        /// Ảnh đã giải mã vào mảng trên. Chỉ đọc lại khi đổi sang ảnh khác.
         private Texture _loadedParamTexture;
 
-        /// Ô xem trước đã dựng, theo màu đất. Dựng lại cả bảng mỗi lần OnGUI thì kéo
-        /// núm là giật; xoá sạch khi bộ số đổi là đủ.
         private readonly Dictionary<int, Texture2D> _previewCache = new Dictionary<int, Texture2D>();
         private int _previewStateHash;
 
-        /// Material đã đọc số vào cửa sổ. Cùng lý do với _loadedConfig bên dưới.
         private Material _loadedMaterial;
 
         private float _facetStrength = 1f;
@@ -98,24 +57,14 @@ namespace JewelPainter.Editor
         private float _depth;
         private float _darkLift = 0.35f;
 
-        /// Nguồn bộ số của từng mặt. Có asset này thì ô xem trước sinh thẳng từ nó,
-        /// khỏi đọc ảnh — kéo núm là thấy ngay. Không có thì đọc ảnh như trước.
         private JewelFacetProfile _facetProfile;
         private JewelFacetProfile _loadedProfile;
         private bool _showFacets;
         private LevelGridData _gridData;
         private JewelTintConfig _tintConfig;
 
-        /// Config đã đọc số vào cửa sổ. Giữ lại để biết lúc nào người ta vừa kéo một
-        /// asset KHÁC vào ô — chỉ khi đó mới nạp lại, chứ nạp mỗi lần OnGUI thì núm
-        /// không bao giờ kéo được.
         private JewelTintConfig _loadedConfig;
 
-        /// Bảng màu tự điền, dùng khi chưa kéo Grid Data vào.
-        ///
-        /// Trước đây chỗ này là một mảng màu mẫu cứng trong code. Dò một màu cụ thể của
-        /// khách hàng thì mảng đó vô dụng: phải sinh cả một LevelGridData chỉ để xem một
-        /// mã hex chạy qua bộ số ra sao. Gõ thẳng hex vào đây là xong.
         private readonly List<Color32> _customColors = new List<Color32>
         {
             new Color32(0xEA, 0x89, 0x1E, 255),
@@ -144,8 +93,6 @@ namespace JewelPainter.Editor
             DrawSourceSection();
             EditorGUILayout.Space();
 
-            // Chỉ hiện khi không có Grid Data: hai bảng màu cùng lúc thì không ai biết
-            // ô xem trước đang lấy màu từ đâu.
             if (_gridData == null)
             {
                 DrawCustomColorSection();
@@ -197,8 +144,6 @@ namespace JewelPainter.Editor
             SyncFromMaterial();
             SyncFromConfig();
 
-            // Gọi lại sau ô asset: ResolveFromPrefab chạy trước ô đó nên frame vừa kéo
-            // asset vào, nó chưa thấy. Hàm này tự bỏ qua khi không có gì đổi.
             LoadParamMap();
 
             if (_jewelPrefab != null && _jewelMaterial == null)
@@ -223,9 +168,6 @@ namespace JewelPainter.Editor
                     "chỉnh trên đúng bảng màu của màn đó.", MessageType.None);
             }
 
-            // Chỉ giục tạo Config khi KHÔNG có đường nào khác để ghi. Prefab đã gắn
-            // shader Jewel Facets thì material chính là chỗ ở của bộ số, giục thêm một
-            // asset nữa chỉ dẫn người ta vào đúng cái bẫy chỉnh hai chỗ.
             if (_tintConfig == null && !HasTintProperties(_jewelMaterial))
             {
                 EditorGUILayout.HelpBox(
@@ -238,10 +180,6 @@ namespace JewelPainter.Editor
         }
 
         /// Rút sprite, material và ảnh mặt cắt ra khỏi prefab.
-        ///
-        /// sharedMaterial chứ không phải material: material sinh ra một bản sao chỉ
-        /// sống trong phiên Editor, ghi vào đó là ghi vào hư không rồi tự hỏi vì sao
-        /// chạy game không thấy đổi.
         private void ResolveFromPrefab()
         {
             _jewelMaterial = _jewelPrefab != null ? _jewelPrefab.sharedMaterial : null;
@@ -257,7 +195,7 @@ namespace JewelPainter.Editor
         /// Sinh mảng tham số thẳng từ asset bộ số, không qua ảnh.
         private void RebuildFromProfile()
         {
-            _loadedParamTexture = null;   // ép LoadParamMap chạy lại nếu gỡ asset ra
+            _loadedParamTexture = null;
             _loadedProfile = _facetProfile;
             ClearPreviewCache();
 
@@ -310,7 +248,6 @@ namespace JewelPainter.Editor
             var path = AssetDatabase.GetAssetPath(_paramTexture);
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
 
-            // linear: true để LoadImage giữ nguyên byte, không diễn giải là màu sRGB.
             var decoded = new Texture2D(2, 2, TextureFormat.RGBA32, false, true)
             {
                 hideFlags = HideFlags.HideAndDontSave,
@@ -347,7 +284,7 @@ namespace JewelPainter.Editor
             DestroyImmediate(decoded);
         }
 
-        /// Bộ số đổi thì mọi ô đã dựng đều hết hạn.
+        /// Xoá cache xem trước khi bộ số đổi.
         private void RefreshPreviewCache()
         {
             var hash = _jewel.Saturation.GetHashCode();
@@ -419,9 +356,6 @@ namespace JewelPainter.Editor
         }
 
         /// Nạp số từ asset vào núm, chỉ khi ô Config vừa đổi sang một asset khác.
-        ///
-        /// Gỡ asset ra khỏi ô thì GIỮ NGUYÊN số đang có. Xoá đi là vứt công dò của
-        /// người ta chỉ vì họ bấm nhầm ô, mà số trên núm thì không có Ctrl+Z.
         private void SyncFromConfig()
         {
             if (_tintConfig == _loadedConfig) return;
@@ -431,8 +365,7 @@ namespace JewelPainter.Editor
             if (_tintConfig != null) _jewel = _tintConfig.Tint;
         }
 
-        /// Asset mới sinh ra mang luôn bộ số đang dò dở, không phải bộ số rỗng — người
-        /// bấm nút này gần như luôn là người vừa kéo núm xong và muốn cất nó đi.
+        /// Tạo asset config mới từ bộ số đang chỉnh.
         private void CreateConfig()
         {
             var path = EditorUtility.SaveFilePanelInProject(
@@ -518,8 +451,7 @@ namespace JewelPainter.Editor
             }
         }
 
-        /// Ba núm của một ColorAdjustment. Thang 0 là giữ nguyên cho cả ba — xem chú
-        /// thích ở ColorAdjustment về việc vì sao không dùng thang nhân quanh mốc 1.
+        /// Ba núm của một ColorAdjustment.
         private static ColorAdjustment DrawAdjustment(ColorAdjustment value, string brightnessTooltip)
         {
             var saturation = EditorGUILayout.Slider(
@@ -539,9 +471,6 @@ namespace JewelPainter.Editor
         }
 
         /// Ô gõ hex + danh sách màu đang xem trước.
-        ///
-        /// Giữ cả ColorField lẫn ô hex chứ không chỉ một: hex là thứ designer gửi qua
-        /// chat, còn ColorField là thứ mở ra picker khi muốn dò quanh một màu.
         private void DrawCustomColorSection()
         {
             EditorGUILayout.LabelField("Màu tự điền", EditorStyles.boldLabel);
@@ -565,8 +494,6 @@ namespace JewelPainter.Editor
                 EditorGUILayout.HelpBox("Mã hex không đọc được.", MessageType.Warning);
             }
 
-            // Xoá sau vòng lặp: bỏ phần tử giữa chừng thì chỉ số của các ô còn lại lệch
-            // đi ngay trong lần OnGUI đó.
             var removeAt = -1;
 
             for (var i = 0; i < _customColors.Count; i++)
@@ -596,8 +523,6 @@ namespace JewelPainter.Editor
 
             if (!ColorUtility.TryParseHtmlString(trimmed, out var parsed)) return false;
 
-            // Alpha luôn về 255: bảng màu của ô đất không có khái niệm trong suốt, để
-            // lọt một màu alpha thấp vào đây thì ô xem trước ra màu khác game.
             color = new Color32((byte)Mathf.RoundToInt(parsed.r * 255f),
                 (byte)Mathf.RoundToInt(parsed.g * 255f),
                 (byte)Mathf.RoundToInt(parsed.b * 255f), 255);
@@ -760,22 +685,14 @@ namespace JewelPainter.Editor
                     y += PreviewCell;
                 }
 
-                // Ô có ngọc: đất trước, ngọc đè lên — đúng thứ tự lớp trong game.
                 var cell = new Rect(x, y, PreviewCell, PreviewCell);
                 EditorGUI.DrawRect(cell, ground);
 
-                // Đưa MÀU ĐẤT thô vào, không phải màu đã chỉnh: mỗi pixel của viên
-                // ngọc có bộ số riêng lấy từ ảnh tham số, áp một phép chỉnh chung ở
-                // đây trước là chạy hai lần.
                 DrawJewel(cell, ground);
             }
         }
 
         /// Vẽ viên ngọc nằm trên màu đất `ground`.
-        ///
-        /// Có ảnh tham số thì dựng ô bằng chính ColorAdjustment.Apply — đúng hàm mà
-        /// shader chép lại và LevelManager gọi lúc vào màn. Không có thì lùi về cách
-        /// cũ: nhuộm sprite bằng màu đã chỉnh sẵn, đủ xem màu nhưng không có mặt cắt.
         private void DrawJewel(Rect rect, Color32 ground)
         {
             var preview = GetPreview(ground);
@@ -790,11 +707,6 @@ namespace JewelPainter.Editor
         }
 
         /// Nhân độ đậm rồi hạ độ loé — bản C# của đúng đoạn trong JewelFacets.shader.
-        ///
-        /// Mọi mặt trong ảnh tham số đều là phép PHA THEO TỈ LỆ: pha về trắng một
-        /// lượng t thì (tương phản, sáng) = (-t, +t/2), pha về đen thì (-t, -t/2).
-        /// Nên dấu của độ sáng cho biết mặt này pha về đâu, còn -tương phản chính là
-        /// t. Nhờ vậy tách được riêng mấy mặt loé mà ảnh tham số không cần thêm kênh.
         private ColorAdjustment TrimHighlight(ColorAdjustment facet, float value)
         {
             var saturation = facet.Saturation * _facetStrength;
@@ -805,8 +717,6 @@ namespace JewelPainter.Editor
 
             var t = -contrast;
 
-            // Hạ riêng độ loé của mặt sáng nhất, rồi hạ phần pha trắng theo độ sáng
-            // của màu ô. Cùng hai bước với JewelFacets.shader, cùng thứ tự.
             t -= Mathf.Max(0f, t - HighlightFloor) * (1f - _highlightWhite);
             t *= Mathf.Lerp(_darkLift, 1f, value);
 
@@ -814,9 +724,6 @@ namespace JewelPainter.Editor
         }
 
         /// Dìm cả viên về phía đen — bản C# của đúng đoạn trong JewelFacets.shader.
-        ///
-        /// Gộp vào (tương phản, sáng) chứ không nhân vào màu đầu ra, để phép chỉnh
-        /// vẫn là MỘT lần gọi ColorAdjustment.Apply.
         private ColorAdjustment ApplyDepth(ColorAdjustment value)
         {
             if (_depth <= 0.0001f) return value;
@@ -834,8 +741,6 @@ namespace JewelPainter.Editor
             var key = (ground.r << 16) | (ground.g << 8) | ground.b;
             if (_previewCache.TryGetValue(key, out var cached) && cached != null) return cached;
 
-            // Kéo núm MÀU ĐẤT là sinh một màu mới mỗi frame, mỗi màu một texture.
-            // Không có chặn này thì rê chuột vài giây là vài trăm texture nằm lại.
             if (_previewCache.Count > 64) ClearPreviewCache();
 
             var texture = new Texture2D(PreviewResolution, PreviewResolution, TextureFormat.RGBA32, false)
@@ -847,15 +752,12 @@ namespace JewelPainter.Editor
 
             var pixels = new Color32[_facetParams.Length];
 
-            // V trong HSV của màu ô — kênh lớn nhất. Giống max(rgb) trong shader.
             var value = Mathf.Max(ground.r, Mathf.Max(ground.g, ground.b)) / 255f;
 
             for (var i = 0; i < pixels.Length; i++)
             {
                 var facet = TrimHighlight(_facetParams[i], value);
 
-                // Bộ số của mặt cắt, rồi cộng bộ số chung, rồi dìm cả viên —
-                // đúng thứ tự shader làm.
                 var combined = ApplyDepth(new ColorAdjustment(
                     facet.Saturation + _jewel.Saturation,
                     facet.Contrast + _jewel.Contrast,
@@ -873,10 +775,6 @@ namespace JewelPainter.Editor
         }
 
         /// Vẽ sprite bằng toạ độ UV của nó trong texture, không vẽ cả texture.
-        /// Sprite nằm trong atlas thì textureRect chỉ là một mảnh của tấm lớn.
-        ///
-        /// GUI.color nhân với texture, đúng như SpriteRenderer.color nhân lúc chạy game —
-        /// nên ô này cho thấy đúng thứ sẽ hiện trên bảng.
         private void DrawJewelBody(Rect rect, Color tint)
         {
             if (_jewelSprite == null || _jewelSprite.texture == null) return;
@@ -975,9 +873,6 @@ namespace JewelPainter.Editor
         }
 
         /// True khi bộ số nằm ở cả material lẫn config, cả hai đều khác 0.
-        ///
-        /// Đọc số THẬT trong material chứ không đọc núm: núm là thứ đang dò dở, còn
-        /// cái chạy trong game là số đã ghi xuống asset.
         private bool IsTunedTwice()
         {
             if (_tintConfig == null || _tintConfig.Tint.IsNone) return false;
@@ -1053,7 +948,6 @@ namespace JewelPainter.Editor
             var adjusted = new Color32[_gridData.Colors.Count];
             for (var i = 0; i < adjusted.Length; i++) adjusted[i] = _ground.Apply(_gridData.Colors[i]);
 
-            // Dựng lại mảng ô từ PixelGrid: SetData ghi đè cả cụm nên phải đưa lại đủ.
             var cells = new int[grid.Width * grid.Height];
             for (var y = 0; y < grid.Height; y++)
             {
@@ -1065,8 +959,6 @@ namespace JewelPainter.Editor
             EditorUtility.SetDirty(_gridData);
             AssetDatabase.SaveAssets();
 
-            // Bộ số đã nằm trong asset rồi, giữ nguyên trên núm sẽ chỉnh chồng lần nữa.
-            // Nhóm ngọc KHÔNG reset: nó chồng lên màu đất mới, vẫn còn nguyên ý nghĩa.
             _ground = ColorAdjustment.None;
         }
 

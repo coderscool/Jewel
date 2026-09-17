@@ -11,18 +11,9 @@ using VContainer.Unity;
 
 namespace JewelPainter.UI.Managers
 {
-    /// Báo "vừa mở khoá booster" ở lần vào màn đầu tiên sau khi tiến trình chạm mốc.
-    ///
-    /// Thuần C#, không phải MonoBehaviour — cùng khuôn với RatePopupPresenter và cùng lý
-    /// do: nó không có gì để đặt trong scene, ITickable của VContainer đã cấp nhịp Update.
-    ///
-    /// Không mở popup ngay trong lượt xử lý OnLevelStarted. Lúc đó màn hình chờ có thể
-    /// còn đang che, popup thắng màn trước có thể chưa tan hết, và một popup chen vào
-    /// giữa hai thứ đó đọc ra như lỗi chứ không như phần thưởng. Ghi một cờ rồi đợi màn
-    /// hình sạch — y hệt cách lời mời đánh giá đang làm.
+    /// Báo booster vừa mở khoá khi vào màn đạt mốc.
     public class BoosterUnlockPresenter : ITickable, IDisposable
     {
-        /// Chờ thêm ngần này giây sau khi màn hình sạch.
         private const float QuietSeconds = 0.4f;
 
         private readonly ILevelService _levelService;
@@ -31,12 +22,6 @@ namespace JewelPainter.UI.Managers
         private readonly PlayerProgress _progress;
         private readonly ISaveService _save;
 
-        /// Những booster đã tới mốc mà chưa kịp báo.
-        ///
-        /// Hàng chờ chứ không phải một cờ: mỗi booster mở ở một mốc riêng, và mỗi cái
-        /// phải có khoảnh khắc riêng của nó. Vẫn cần hàng chờ kể cả khi ba mốc cách xa
-        /// nhau — người chơi bỏ game ở màn 2 rồi quay lại khi đã có tiến trình màn 12 thì
-        /// cả ba tới mốc cùng một lúc, và chúng phải nối đuôi nhau chứ không chồng lên.
         private readonly Queue<CreditPoolKind> _pending = new();
 
         private float _quietElapsed;
@@ -57,8 +42,7 @@ namespace JewelPainter.UI.Managers
             _levelService.OnLevelStarted += HandleLevelStarted;
         }
 
-        /// VContainer gọi khi scope bị huỷ. Thay cho OnDestroy của MonoBehaviour — thiếu
-        /// nó là rò rỉ event đúng nghĩa.
+        /// Huỷ đăng ký sự kiện khi scope bị huỷ.
         public void Dispose()
         {
             if (_levelService != null) _levelService.OnLevelStarted -= HandleLevelStarted;
@@ -68,9 +52,6 @@ namespace JewelPainter.UI.Managers
         {
             if (_config == null || _progress == null) return;
 
-            // So với TIẾN TRÌNH CAO NHẤT, không phải màn đang chơi — cùng mốc mà HudView
-            // dùng để quyết định nút nào còn khoá. Hai bên lệch mốc thì sẽ có lúc popup
-            // báo mở khoá một cái nút vẫn đang đeo ổ khoá.
             var level = _progress.Level;
 
             foreach (CreditPoolKind booster in Enum.GetValues(typeof(CreditPoolKind)))
@@ -89,14 +70,12 @@ namespace JewelPainter.UI.Managers
         {
             if (_pending.Count == 0) return;
 
-            // Còn popup nào đang mở thì đếm lại từ đầu — kể cả popup người chơi tự mở.
             if (_popupService.IsAnyVisible())
             {
                 _quietElapsed = 0f;
                 return;
             }
 
-            // Thời gian KHÔNG theo timeScale: khoảng lặng này là chuyện của người xem.
             _quietElapsed += Time.unscaledDeltaTime;
             if (_quietElapsed < QuietSeconds) return;
 
@@ -104,20 +83,10 @@ namespace JewelPainter.UI.Managers
 
             var booster = _pending.Dequeue();
 
-            // Ghi cờ NGAY, trước cả khi popup kịp hiện.
-            //
-            // Popup có thể không mở được — thiếu prefab trong PopupConfig chẳng hạn. Ghi
-            // sau thì lần vào màn nào cũng thử lại và hàng chờ không bao giờ vơi, tức là
-            // một lỗi cấu hình im lặng biến thành một vòng lặp mỗi frame.
             MarkShown(booster);
 
-            // BẢNG MỐC nói booster nào gọi popup nào. Presenter không tra tên popup theo
-            // booster: thêm booster thứ tư thì chỉ phải thêm một dòng vào asset, không
-            // phải mở file này ra sửa.
             var key = _config.UnlockPopupFor(booster);
 
-            // None là mở khoá im lặng — nút chỉ đơn giản hết ổ khoá. Vẫn đã ghi cờ ở trên
-            // nên nó không quay lại hỏi nữa.
             if (key == PopupKey.None) return;
 
             _popupService.Show(key);
@@ -131,7 +100,7 @@ namespace JewelPainter.UI.Managers
             _save.Save();
         }
 
-        /// Nối SỐ của enum, không nối tên. Xem PreferenceKeys.BoosterUnlockShownPrefix.
+        /// Key lưu trữ cho một booster.
         private static string Key(CreditPoolKind booster)
         {
             return PreferenceKeys.BoosterUnlockShownPrefix + (int)booster;

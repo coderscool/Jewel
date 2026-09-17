@@ -8,75 +8,41 @@ using UnityEngine;
 namespace JewelPainter.Gameplay.Board
 {
     /// Đặt viên ngọc lên những ô đã tô.
-    ///
-    /// Chỉ sinh ngọc cho ô đang lọt trong tầm nhìn camera, nên số GameObject sống
-    /// cùng lúc phụ thuộc mức zoom chứ KHÔNG phụ thuộc số ô đã tô. Bảng tô kín 4000 ô
-    /// vẫn chỉ có chừng trăm viên tồn tại.
-    ///
-    /// Cull được là nhờ BoardView đã ghi màu vào texture: viên ngọc bị gỡ thì ô đó
-    /// vẫn còn nguyên màu bên dưới, người chơi không nhận ra có gì biến mất.
     public class JewelLayer : MonoBehaviour
     {
         [SerializeField] private Camera _camera;
         [SerializeField] private SpriteRenderer _jewelPrefab;
         [SerializeField] private Transform _root;
 
-        [Tooltip("Ô chiếu lên màn hình nhỏ hơn ngần này pixel thì không sinh ngọc — " +
-                 "ở cỡ đó viên ngọc bé hơn hạt gạo mà vẫn tốn một GameObject. " +
-                 "Màu của ô vẫn hiện vì nó nằm trong texture của bảng.")]
+        [Tooltip("Ô nhỏ hơn ngần này pixel trên màn hình thì không sinh ngọc.")]
         [SerializeField] private float _minCellScreenPixels = 14f;
 
-        [Tooltip("Số ngọc dựng sẵn lúc vào màn. Chỉ là mức SÀN nếu ô dưới được tick.")]
+        [Tooltip("Số ngọc dựng sẵn lúc vào màn.")]
         [SerializeField] private int _prewarmCount = 200;
 
-        [Tooltip("Dựng sẵn đủ ngọc cho MỌI Ô CÓ MÀU của màn, thay vì một con số cố định.\n\n" +
-                 "Đây đúng là trường hợp xấu nhất: tranh tô kín và kéo ra thấy trọn bảng " +
-                 "thì mọi ô đều cần một viên. Dựng sẵn từng đó thì zoom nhanh cỡ nào kho " +
-                 "cũng không phải Instantiate bù.\n\n" +
-                 "Cái giá là bộ nhớ và thời gian vào màn: bảng 64x64 là 4096 SpriteRenderer, " +
-                 "dựng mất cỡ 80ms. Việc đó chạy lúc màn hình chờ đang che.")]
+        [Tooltip("Dựng sẵn đủ ngọc cho mọi ô có màu.")]
         [SerializeField] private bool _prewarmFromBoardSize = true;
 
-        [Tooltip("Dựng sẵn tối đa bao nhiêu viên trong MỘT frame. Dồn hết vào frame vào " +
-                 "màn là cú đơ bạn thấy khi từ Home bấm vào một màn lớn.\n\n" +
-                 "500 thì bảng 67x68 trải ra ~10 frame, nằm gọn sau màn hình chờ.\n\n" +
-                 "Để 0 là quay lại dựng hết trong một frame.")]
+        [Tooltip("Số viên dựng sẵn tối đa trong một frame.")]
         [SerializeField] private int _prewarmPerFrame = 500;
 
-        [Tooltip("Cắt bớt lượng dựng sẵn theo SỨC CHỨA CỦA MÀN HÌNH.\n\n" +
-                 "Số ngọc cần cùng lúc bị chặn bởi HAI thứ, không phải một: số ô của " +
-                 "lưới, VÀ vùng mà khung nhìn phủ được ở mức zoom rộng nhất mà lớp này còn " +
-                 "sống (xem Min Cell Screen Pixels). Sức chứa của màn là hằng số, còn số ô " +
-                 "thì tăng theo BÌNH PHƯƠNG cạnh — nên bảng càng lớn, phần dựng thừa càng " +
-                 "lớn. Bảng 72 lên 108 là số ô gấp 2.25 lần mà màn hình vẫn thế.\n\n" +
-                 "Trên màn hình rất cao thì cận thứ hai có thể vẫn phủ trọn bảng và không " +
-                 "cắt được gì. Điều đó ĐÚNG: ở máy đó cả bảng hiện thật, không phải chỗ " +
-                 "này tính hụt.\n\n" +
-                 "Bỏ tick là quay lại dựng đủ cho mọi ô.")]
+        [Tooltip("Giới hạn lượng dựng sẵn theo sức chứa màn hình.")]
         [SerializeField] private bool _capPrewarmToScreen = true;
 
-        [Tooltip("Hệ số an toàn nhân vào sức chứa màn hình khi cắt. Thiếu thì kho phải " +
-                 "Instantiate bù ngay giữa lúc zoom — đúng cú khựng mà việc dựng sẵn sinh " +
-                 "ra để tránh.")]
+        [Tooltip("Hệ số an toàn nhân vào sức chứa màn hình khi cắt.")]
         [Range(1f, 3f)]
         [SerializeField] private float _prewarmScreenSafety = 1.3f;
 
-        [Tooltip("Số ngọc được sinh tối đa trong MỘT frame.\n\n" +
-                 "**Để 0 là tất cả hiện cùng một lúc** — đây là mặc định. Zoom ra nhanh " +
-                 "thì cả vùng mới hiện trọn ngay, không thấy ngọc lần lượt mọc lên.\n\n" +
-                 "An toàn khi kho đã dựng sẵn đủ: lấy ra chỉ là bật object, đặt vị trí và " +
-                 "gán màu.")]
+        [Tooltip("Số ngọc sinh tối đa trong một frame.")]
         [SerializeField] private int _maxSpawnPerFrame;
 
-        [Tooltip("Nới rộng vùng tính toán thêm bao nhiêu ô quanh tầm nhìn, để ô ở rìa " +
-                 "không bị thu về rồi sinh lại liên tục khi camera nhích.")]
+        [Tooltip("Số ô nới rộng quanh tầm nhìn khi tính toán.")]
         [SerializeField] private int _visibleMarginCells = 2;
 
         private readonly Dictionary<Vector2Int, SpriteRenderer> _active = new();
         private readonly Stack<SpriteRenderer> _pool = new();
         private readonly List<Vector2Int> _toRelease = new();
 
-        /// Lượt dựng sẵn đang chạy. Vào màn mới giữa chừng thì huỷ lượt cũ.
         private Coroutine _prewarmRoutine;
 
         private BoardView _boardView;
@@ -96,9 +62,6 @@ namespace JewelPainter.Gameplay.Board
             _boardView.OnBoardRebuilt += HandleBoardRebuilt;
             _boardView.OnCoverChanged += HandleCoverChanged;
 
-            // Nghe lúc viên bay ĐÁP XUỐNG, không phải lúc ô được tô — nhờ vậy ngọc chỉ
-            // hiện khi hiệu ứng kết thúc. JewelFlyEffect luôn bắn sự kiện này kể cả khi
-            // không bay được, nên không có ô nào bị bỏ quên.
             _flyEffect.OnJewelLanded += HandleJewelLanded;
         }
 
@@ -118,15 +81,13 @@ namespace JewelPainter.Gameplay.Board
             ReleaseAll();
             StartPrewarm();
 
-            _lastOrthographicSize = -1f;   // ép tính lại ở LateUpdate kế tiếp
+            _lastOrthographicSize = -1f;
         }
 
-        /// Màn hình che bảng vừa mở hoặc vừa đóng. Ép tính lại ngay, không đợi camera
-        /// nhúc nhích — che thì thu về, bỏ che thì dựng lại.
+        /// Màn hình che bảng vừa mở hoặc vừa đóng.
         private void HandleCoverChanged() => _needsRefresh = true;
 
-        /// Viên bay vừa đáp xuống: hiện ngọc ngay nếu ô đó đang trong tầm nhìn,
-        /// không đợi camera động.
+        /// Hiện ngọc ngay khi viên bay đáp xuống.
         private void HandleJewelLanded(Vector2Int cell, int paletteIndex)
         {
             if (_boardView.IsCovered) return;
@@ -148,7 +109,6 @@ namespace JewelPainter.Gameplay.Board
                 _needsRefresh = true;
             }
 
-            // Còn việc dở từ frame trước thì làm tiếp, kể cả khi camera đã đứng yên.
             if (!_needsRefresh) return;
 
             _needsRefresh = !Refresh();
@@ -161,20 +121,13 @@ namespace JewelPainter.Gameplay.Board
             return _lastCameraPosition != _camera.transform.position;
         }
 
-        /// Nhãn đo cho Profiler. Không có nhãn thì cả ba lớp đều nằm lẫn trong
-        /// LateUpdate và không tách được lớp nào tốn bao nhiêu.
-        ///
-        /// static readonly để tên chỉ được cấp phát một lần cho cả chương trình.
-        /// Bản build phát hành không bật ENABLE_PROFILER thì nhãn tự tiêu biến.
         private static readonly ProfilerMarker RefreshMarker = new("JewelPainter.Jewels.Refresh");
 
-        /// true khi đã phủ hết ô trong tầm nhìn; false khi hết hạn mức sinh của frame này.
+        /// Sinh ngọc cho các ô trong tầm nhìn; false khi còn việc dở.
         private bool Refresh()
         {
             using var _ = RefreshMarker.Auto();
 
-            // Bị che thì thu hết về kho. Cùng một luật với ngưỡng pixel ngay dưới: không
-            // ai NHÌN thấy thì không giữ object nào sống.
             if (_boardView.IsCovered)
             {
                 ReleaseAll();
@@ -193,9 +146,6 @@ namespace JewelPainter.Gameplay.Board
 
             ReleaseOutside(visible);
 
-            // 0 nghĩa là không giới hạn — ngọc lấy từ kho dựng sẵn nên rẻ, không cần
-            // chia frame. int.MaxValue thay vì rẽ nhánh riêng: lưới lớn nhất cũng chỉ
-            // vài nghìn ô nên phép trừ không bao giờ chạm đáy.
             var budget = _maxSpawnPerFrame > 0 ? _maxSpawnPerFrame : int.MaxValue;
 
             for (var y = visible.yMin; y < visible.yMax; y++)
@@ -206,7 +156,6 @@ namespace JewelPainter.Gameplay.Board
                     if (_active.ContainsKey(cell)) continue;
                     if (!_paintService.IsPainted(x, y)) continue;
 
-                    // Ô đang có viên bay tới thì để hiệu ứng lo, đừng hiện trước.
                     if (_flyEffect != null && _flyEffect.IsInFlight(cell)) continue;
 
                     Show(cell, grid.GetCell(x, y));
@@ -218,8 +167,7 @@ namespace JewelPainter.Gameplay.Board
             return true;
         }
 
-        /// Nới rộng tầm nhìn thêm vài ô để camera nhích một chút không làm ô ở rìa bị
-        /// thu về rồi sinh lại liên tục.
+        /// Tầm nhìn camera nới rộng thêm vài ô.
         private Rect ExpandedCameraRect()
         {
             var rect = CameraWorldRect();
@@ -287,14 +235,7 @@ namespace JewelPainter.Gameplay.Board
             foreach (var cell in _toRelease) Release(cell);
         }
 
-        /// Tắt RENDERER chứ không tắt GameObject.
-        ///
-        /// SetActive phải duyệt cả cây con, gửi thông điệp vòng đời và cập nhật lại cấu
-        /// trúc culling — đắt gấp nhiều lần so với gạt một cờ bool. Zoom qua lại liên
-        /// tục là hàng trăm lần bật tắt mỗi frame, và đó chính là chỗ khung hình tụt.
-        ///
-        /// Object chỉ có đúng một SpriteRenderer nên tắt renderer với tắt object là một
-        /// về mặt hình ảnh.
+        /// Trả viên ngọc về kho.
         private void Release(Vector2Int cell)
         {
             if (!_active.TryGetValue(cell, out var jewel)) return;
@@ -319,11 +260,7 @@ namespace JewelPainter.Gameplay.Board
             return null;
         }
 
-        /// Dựng sẵn lúc vào màn, lúc màn hình chờ đang che nên không ai thấy.
-        /// Dựng sẵn TRẢI RA nhiều frame thay vì dồn hết vào frame vào màn.
-        ///
-        /// Vắt cạn ngay tại chỗ nếu object đang tắt: coroutine không chạy được lúc đó,
-        /// mà thà khựng một nhịp còn hơn vào màn thiếu đồ dựng sẵn.
+        /// Dựng sẵn ngọc lúc vào màn.
         private void StartPrewarm()
         {
             if (_prewarmRoutine != null) StopCoroutine(_prewarmRoutine);
@@ -344,9 +281,6 @@ namespace JewelPainter.Gameplay.Board
         {
             if (_jewelPrefab == null) yield break;
 
-            // Nhường một frame TRƯỚC khi tính trần: mức zoom lúc vào màn do BoardCamera
-            // đặt trong handler OnBoardRebuilt của nó, và thứ tự giữa hai handler là thứ
-            // không nên phải dựa vào.
             yield return null;
 
             var target = Mathf.Max(_prewarmCount, ResolvePrewarmTarget());
@@ -381,12 +315,7 @@ namespace JewelPainter.Gameplay.Board
             return Mathf.Min(colored, Mathf.CeilToInt(capacity * Mathf.Max(1f, _prewarmScreenSafety)));
         }
 
-        /// Số ô nhiều nhất lọt vào khung nhìn, ở mức zoom RỘNG NHẤT mà lớp này còn sống.
-        ///
-        /// Hai cận, lấy cái chặt hơn: kéo ra quá Min Cell Screen Pixels là cả lớp bị thu
-        /// về hết, mà BoardCamera cũng không cho kéo xa hơn mức lúc vào màn.
-        ///
-        /// 0 khi chưa dựng bảng — bên gọi hiểu là "không cắt".
+        /// Số ô nhiều nhất lọt vào khung nhìn, ở mức zoom rộng nhất mà lớp này còn sống.
         private float VisibleCellCapacity()
         {
             var layout = _boardView != null ? _boardView.Layout : null;
@@ -395,16 +324,13 @@ namespace JewelPainter.Gameplay.Board
             var threshold = Mathf.Max(0.01f, _minCellScreenPixels);
             var widest = Mathf.Min(_camera.orthographicSize, Screen.height / (2f * threshold));
 
-            // Cộng phần nới của ExpandedCameraRect, và kẹp theo cạnh bảng vì VisibleCells
-            // cũng kẹp như vậy.
             var margin = 2f * Mathf.Max(0, _visibleMarginCells) + 1f;
 
             return Mathf.Min(layout.Width, 2f * widest * _camera.aspect + margin) *
                    Mathf.Min(layout.Height, 2f * widest + margin);
         }
 
-        /// Số ô CÓ MÀU của màn — cận trên tuyệt đối của số viên ngọc cần cùng lúc, khi
-        /// tranh đã tô kín và người chơi kéo ra thấy trọn bảng.
+        /// Số ô có màu của màn.
         private int ColoredCellCount()
         {
             if (!_prewarmFromBoardSize) return 0;
