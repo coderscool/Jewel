@@ -1,19 +1,58 @@
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-[Ll]ogs/
-UserSettings/
+# ===== Unity =====
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
 
+# ===== Thư mục tạm khi build Android =====
+/.utmp/
+*_BurstDebugInformation_DoNotShip/
+*_BackUpThisFolder_ButDontShipItWithYourGame/
+
+# ===== File build =====
+*.apk
+*.aab
+*.apks
+*.symbols.zip
+*.unitypackage
+crashlytics-build.properties
+
+# ===== IDE (Visual Studio, Rider, VS Code) =====
 .vs/
 .idea/
-
+.vscode/
 *.csproj
+*.unityproj
 *.sln
-*.user
-*.pidb
 *.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.opendb
+*.VC.db
+*.tmp
+/[Aa]ssets/Plugins/Editor/JetBrains*
 
-MemoryCaptures/
-Recordings/
+# ===== Asset tự sinh =====
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+sysinfo.txt
+
+# ===== Hệ điều hành =====
+.DS_Store
+.DS_Store.meta
+._*
+Thumbs.db
+Desktop.ini
+
+# ===== Sao lưu tạm =====
+/[Aa]ssets/Scripts_backup_*.zip
+/[Aa]ssets/Scripts_backup_*.zip.meta
