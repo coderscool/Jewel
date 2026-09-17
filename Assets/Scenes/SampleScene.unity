@@ -12906,6 +12906,7 @@ GameObject:
   - component: {fileID: 1931430645}
   - component: {fileID: 1931430647}
   - component: {fileID: 1931430646}
+  - component: {fileID: 1931430648}
   m_Layer: 5
   m_Name: ShopPanel
   m_TagString: Untagged
@@ -12973,6 +12974,39 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1931430644}
   m_CullTransparentMesh: 1
+--- !u!114 &1931430648
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1931430644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 522bd3e9a30a6e945b45ebc0173a2246, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _noAdsPackButton: {fileID: 403826212}
+  _removeAdsButton: {fileID: 1675246733}
+  _coinPacks:
+  - _button: {fileID: 629073215}
+    _coins: 50
+    _productId: 
+  - _button: {fileID: 106119267}
+    _coins: 250
+    _productId: 
+  - _button: {fileID: 1077603250}
+    _coins: 550
+    _productId: 
+  - _button: {fileID: 1040479577}
+    _coins: 1250
+    _productId: 
+  - _button: {fileID: 1124752204}
+    _coins: 3000
+    _productId: 
+  - _button: {fileID: 1669681278}
+    _coins: 7500
+    _productId: 
 --- !u!1 &1933892956
 GameObject:
   m_ObjectHideFlags: 0
