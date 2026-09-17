@@ -70,6 +70,11 @@ namespace JewelPainter.UI.Views
 
         public virtual bool BlocksBackground => _blocksBackground;
 
+        /// Tiếng phát lúc popup ĐÓNG. Virtual vì có popup mà việc im lặng là sự thật về
+        /// cấu trúc của nó chứ không phải một lựa chọn trong Inspector — lời nhắc dạng
+        /// toast tự bật tự tắt là đúng ca đó.
+        protected virtual SoundKey CloseSound => _closeSound;
+
         protected CanvasGroup CanvasGroup => _canvasGroup;
 
         /// null cho tới khi PopupManager trao vào. Mọi chỗ dùng phải tự kiểm null —
@@ -124,9 +129,11 @@ namespace JewelPainter.UI.Views
             //
             // Phát TRƯỚC nhánh thoát bên dưới thì popup đã đóng sẵn vẫn kêu thêm một
             // tiếng nữa, nên nó nằm sau.
-            if (playCloseSound && _isShown && _closeSound != SoundKey.None && Sound != null)
+            var closeSound = CloseSound;
+
+            if (playCloseSound && _isShown && closeSound != SoundKey.None && Sound != null)
             {
-                Sound.Play(_closeSound);
+                Sound.Play(closeSound);
             }
 
             // Đã đóng rồi thì chỉ chốt lại cho chắc. Không có nhánh này thì HideAll gọi

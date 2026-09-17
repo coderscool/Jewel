@@ -4023,7 +4023,7 @@ MonoBehaviour:
   _camera: {fileID: 519420031}
   _boardView: {fileID: 0}
   _panMarginScreenFraction: 0.5
-  _focusDuration: 0.4
+  _focusDuration: 0.6
   _focusInputGrace: 0.2
   _playMarginTop: 0.24
   _playMarginBottom: 0.24
@@ -4940,7 +4940,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 041c4d58bd212ed4183cc42385b40bd5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _tutorial: {fileID: 1190176223}
 --- !u!1 &610428331
 GameObject:
   m_ObjectHideFlags: 0
@@ -7789,6 +7788,8 @@ MonoBehaviour:
   _loopCells: 2
   _paintStageDelay: 0.85
   _loopSeconds: 2.2
+  _finalStageDelay: 0.6
+  _finalZoomSeconds: 0.55
   _tutorialLevelId: 1
   _delaySeconds: 0.6
   _logDecision: 1
@@ -9221,7 +9222,6 @@ MonoBehaviour:
   _fillColorProgressFill: {fileID: 0}
   _resetButton: {fileID: 1563140398}
   _settingsButton: {fileID: 1562609004}
-  _tutorial: {fileID: 1190176223}
   _boosterUnlock: {fileID: 11400000, guid: 541775cc33d349dbaac438176ad33240, type: 2}
   _hintUnlockRoot: {fileID: 1717937785}
   _hintLockRoot: {fileID: 995362760}

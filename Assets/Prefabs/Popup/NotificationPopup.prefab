@@ -103,7 +103,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _canvasGroup: {fileID: 6087860156086393156}
-  _closeSound: 11
+  _closeSound: 0
   _fadeInDuration: 0.15
   _fadeOutDuration: 0.15
   _blocksBackground: 1

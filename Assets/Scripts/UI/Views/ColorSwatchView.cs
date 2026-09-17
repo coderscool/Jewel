@@ -149,9 +149,9 @@ namespace JewelPainter.UI.Views
                  "0.75 cho thanh bắt đầu trượt trong lúc dấu tick còn đang tan — mắt đọc ra " +
                  "MỘT chuyển động liền mạch thay vì hai.\n\n" +
                  "CHÚ Ý cú loé: nó chạy theo đồng hồ riêng và có thể dài hơn Complete " +
-                 "Duration. Ô này bị tắt khi thanh khép xong, nên cú loé phải lọt vào trong " +
-                 "(Complete Duration x ô này) + Collapse Duration của thanh màu, không thì " +
-                 "nó bị cắt cụt. Loé dài quá thì nâng Burst Speed chứ đừng nâng ô này.")]
+                 "Duration. Thanh màu khép khe hở xong sẽ ĐỢI cú loé chạy hết rồi mới tắt " +
+                 "ô, nên nó không bị cắt cụt — nhưng loé càng dài thì thanh càng chậm báo " +
+                 "'ô đã biến mất'. Loé dài quá thì nâng Burst Speed.")]
         [Range(0.2f, 1f)]
         [SerializeField] private float _handoffPortion = 0.8f;
 
@@ -187,8 +187,9 @@ namespace JewelPainter.UI.Views
         [SerializeField] private FlipbookClip _completeBurstClip;
 
         [Tooltip("Loé vào lúc nào, tính theo TỈ LỆ của Complete Duration.\n\n" +
-                 "Để bằng Jewel Portion (mặc định 0.5) thì cú loé nổ đúng khoảnh khắc viên " +
-                 "ngọc vừa tan hết — nó thế chỗ viên ngọc chứ không chồng lên.")]
+                 "CHỈ dùng khi thanh màu KHÔNG được nối với ColorCompleteSparkle. Có nối " +
+                 "thì cú loé chờ đúng Start Delay của ColorCompleteSparkle để nổ cùng lúc " +
+                 "với cả màu trên bảng, và ô này bị bỏ qua.")]
         [Range(0f, 1f)]
         [SerializeField] private float _burstDelay = 0.5f;
 
@@ -403,7 +404,10 @@ namespace JewelPainter.UI.Views
         /// Object đang tắt thì gọi thẳng onFinished: coroutine không chạy trên object tắt,
         /// và nuốt mất lời gọi lại ở đây nghĩa là thanh màu đứng đợi một tín hiệu không
         /// bao giờ tới.
-        public void PlayComplete(Action onFinished)
+        /// burstDelaySeconds: cú loé chờ bao nhiêu GIÂY rồi mới nổ. Âm là dùng Burst Delay
+        /// trong Inspector. Thanh màu truyền Start Delay của ColorCompleteSparkle vào đây
+        /// để hai cú loé nổ cùng một nhịp.
+        public void PlayComplete(Action onFinished, float burstDelaySeconds = -1f)
         {
             if (!isActiveAndEnabled)
             {
@@ -413,8 +417,14 @@ namespace JewelPainter.UI.Views
 
             StopComplete();
 
-            _complete = StartCoroutine(CompleteRoutine(onFinished));
+            _complete = StartCoroutine(CompleteRoutine(onFinished, burstDelaySeconds));
         }
+
+        /// Màn diễn "tô xong" — kể cả phần đuôi của cú loé — còn đang chạy không.
+        ///
+        /// Kèm isActiveAndEnabled: object bị tắt giữa chừng thì coroutine chết mà handle
+        /// vẫn còn, và ai đứng đợi cờ này sẽ đợi mãi.
+        public bool IsPlayingComplete => _complete != null && isActiveAndEnabled;
 
         /// Bề rộng mà Horizontal Layout Group đọc để chừa chỗ cho ô này.
         ///
@@ -458,7 +468,7 @@ namespace JewelPainter.UI.Views
             _complete = null;
         }
 
-        private IEnumerator CompleteRoutine(Action onFinished)
+        private IEnumerator CompleteRoutine(Action onFinished, float burstDelaySeconds)
         {
             var target = ShrinkTarget;
 
@@ -513,7 +523,9 @@ namespace JewelPainter.UI.Views
 
             var burstFrames = burstUsable ? _completeBurstClip.FrameCount : 0;
             var burstRate = burstUsable ? _completeBurstClip.Fps * Mathf.Max(0.01f, _burstSpeed) : 0f;
-            var burstStart = Mathf.Clamp01(_burstDelay) * duration;
+            var burstStart = burstDelaySeconds >= 0f
+                ? burstDelaySeconds
+                : Mathf.Clamp01(_burstDelay) * duration;
             var burstFrame = -1;
             var burstShown = false;
 

@@ -86,6 +86,10 @@ namespace JewelPainter.UI.Views
         private JewelFlyEffect _flyEffect;
         private ISoundService _sound;
 
+        /// Được phép null. Có thì cú loé trên ô màu chờ đúng Start Delay của nó để nổ cùng
+        /// lúc với cả màu trên bảng; không có thì ô màu dùng Burst Delay của riêng nó.
+        private ColorCompleteSparkle _colorCompleteSparkle;
+
         [Tooltip("Màn hướng dẫn dạy ô màu THỨ MẤY trên thanh, đếm từ 0 trong số những ô " +
                  "đang hiện.\n\n" +
                  "0 = ô ngoài cùng bên trái, 1 = ô kế tiếp, và cứ thế.\n\n" +
@@ -113,8 +117,11 @@ namespace JewelPainter.UI.Views
         /// flyEffect được phép null — để trống thì ô màu tắt ngay lúc tô xong như bản cũ,
         /// nghĩa là tắt trong khi mấy viên cuối còn đang bay.
         public void Init(IPaintService paintService, ILevelService levelService, ILevelFlowService levelFlow,
-            JewelFlyEffect flyEffect, ISoundService sound, TutorialState tutorialState)
+            JewelFlyEffect flyEffect, ISoundService sound, TutorialState tutorialState,
+            ColorCompleteSparkle colorCompleteSparkle)
         {
+            _colorCompleteSparkle = colorCompleteSparkle;
+
             _paintService = paintService;
             _levelService = levelService;
             _levelFlow = levelFlow;
@@ -449,7 +456,11 @@ namespace JewelPainter.UI.Views
             var swatch = FindSwatch(paletteIndex);
             if (swatch == null) return;
 
-            swatch.PlayComplete(() => StartCoroutine(CollapseRoutine(swatch, paletteIndex)));
+            // Cả hai cùng nghe OnJewelLanded của viên cuối, nên chờ cùng một số giây là
+            // nổ cùng một nhịp.
+            var burstDelay = _colorCompleteSparkle != null ? _colorCompleteSparkle.StartDelay : -1f;
+
+            swatch.PlayComplete(() => StartCoroutine(CollapseRoutine(swatch, paletteIndex)), burstDelay);
         }
 
         /// Khép dần khe hở của ô vừa xong, rồi mới tắt nó và sắp lại thanh.
@@ -485,6 +496,10 @@ namespace JewelPainter.UI.Views
 
                 yield return null;
             }
+
+            // Khe đã khép nhưng cú loé có thể còn đuôi — nhất là khi nó chờ Start Delay để
+            // nổ cùng bảng. Tắt ô lúc này là cắt cụt nó.
+            while (swatch.IsPlayingComplete) yield return null;
 
             swatch.gameObject.SetActive(false);
 

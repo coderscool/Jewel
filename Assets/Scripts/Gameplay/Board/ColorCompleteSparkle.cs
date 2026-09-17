@@ -83,6 +83,12 @@ namespace JewelPainter.Gameplay.Board
         /// cờ sẽ còn bật vì những vệt sáng của lớp kia. Hai lớp phải có kho riêng.
         public bool IsCelebrating => _celebrating;
 
+        /// Số giây từ lúc viên ngọc cuối của màu đáp xuống tới lúc cả màu bắt đầu loé.
+        ///
+        /// Thanh màu đọc con số này để cú loé trên ô màu nổ CÙNG nhịp với cú loé trên
+        /// bảng. Một nguồn duy nhất: chỉnh Start Delay ở đây là cả hai cùng dời theo.
+        public float StartDelay => Mathf.Max(0f, _startDelay);
+
         public void Init(BoardView boardView, IPaintService paintService, JewelFlyEffect flyEffect,
             ISoundService sound)
         {

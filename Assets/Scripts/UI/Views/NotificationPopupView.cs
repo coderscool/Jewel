@@ -1,5 +1,6 @@
 using System.Collections;
 using DG.Tweening;
+using JewelPainter.Core.Services;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -40,6 +41,14 @@ namespace JewelPainter.UI.Views
         /// của popup này, không phải một lựa chọn. Một ô tick thì ai dựng lại prefab cũng
         /// có thể quên, và lúc quên thì cả game khoá cứng mỗi lần hiện lời nhắc.
         public override bool BlocksBackground => false;
+
+        /// KHÔNG kêu tiếng đóng.
+        ///
+        /// Popup này tự bật tự tắt mà người chơi không bấm gì — tiếng Cancel mặc định
+        /// của lớp cha vì thế vang lên từ hư không, mỗi lần lời nhắc tan đi. Override
+        /// trong code chứ không chỉ đổi ô Close Sound trong prefab, cùng lý do với
+        /// BlocksBackground ở trên.
+        protected override SoundKey CloseSound => SoundKey.None;
 
         public override void Show()
         {

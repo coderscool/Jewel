@@ -187,7 +187,7 @@ namespace JewelPainter.Bootstrap
             // Cũng nhận JewelFlyEffect: ô màu chỉ được thu lại khi viên ngọc CUỐI CÙNG
             // của màu đó đã đáp xuống tranh, không phải lúc ô cuối được bấm.
             _paletteBar.Init(_paintService, _levelService, _levelFlow, _jewelFlyEffect, _sound,
-                _tutorialState);
+                _tutorialState, _colorCompleteSparkle);
 
             // Hướng dẫn Init SAU PaletteBar: cả hai nghe OnBoardReady, mà ngón tay chỉ
             // biết đứng ở đâu sau khi thanh màu đã dựng xong các ô.
