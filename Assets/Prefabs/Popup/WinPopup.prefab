@@ -619,7 +619,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 1fa19dafff42c944f93527e6b6022355, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9a2eaf7140bd56e4698d441ea8aa6d3b, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -741,12 +741,12 @@ MonoBehaviour:
   _closeSound: 11
   _fadeInDuration: 0.15
   _fadeOutDuration: 0.15
+  _blocksBackground: 1
   _continueButton: {fileID: 6292140269080619535}
   _banner: {fileID: 7990568676880066463}
   _bannerDropDistance: 400
   _bannerDuration: 0.35
   _buttonDuration: 0.3
-  _buttonWaitsForCoins: 0
   _victoryEffect: {fileID: 1685226915213135371}
   _victoryDelay: 0.15
   _coinFly: {fileID: 3929820654483011134}
@@ -754,6 +754,8 @@ MonoBehaviour:
   _coinTarget: {fileID: 4003972085902882745}
   _rewardText: {fileID: 0}
   _coinTotalText: {fileID: 4461057451996820274}
+  _coinTailSeconds: 0.2
+  _coinMaxWaitSeconds: 4
   _levelText: {fileID: 0}
   _lastLevelNotice: {fileID: 0}
 --- !u!114 &3929820654483011134
